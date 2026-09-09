@@ -181,6 +181,29 @@ def announce(bgra, rgb, with_description: bool = True) -> tuple[str, list, int |
     return f"No highlight found. {len(body)} lines.", body, None, footer
 
 
+def change_key(rgb):
+    """What the narration loop watches to decide the screen has moved.
+
+    Deliberately not the gold. Where the gold sits is the sharpest way to find
+    an entry, which is why `announce` uses it, but it is the wrong thing to
+    watch: it pulses, appearing and vanishing between frames with nothing
+    touched, so a key built on it re-reads the same screen forever. A
+    confirmation dialog has none of it at all, which is why arrowing between
+    Yes and No used to be silent.
+
+    Whatever is selected is dark, on every screen in the game, so a coarse map
+    of the dark areas moves when the selection does and sits still when only
+    the artwork is animating. The main menu's icon column is the one thing that
+    map cannot separate, since those tiles are identical but for their picture,
+    so the panel naming the entry is watched too.
+
+    Kept out here beside `announce` so the test can build the same key the loop
+    builds. Deciding what to say and deciding when to say it drifting apart is
+    the worst bug this tool has had.
+    """
+    return screens.title_signature(rgb), menu.dark_signature(rgb)
+
+
 def clean_phrase(text: str) -> str:
     """Correct a sentence a clause at a time.
 
@@ -202,8 +225,7 @@ class App:
         self.cursor = -1
         self.watching = True
         self._stop = threading.Event()
-        self._last_band_key = None
-        self._last_title_key = b""
+        self._last_key = None
         self._last_spoken = ""
         self._last_memory_poll = 0.0
         self._last_memory_lines: list[str] = []
@@ -433,7 +455,7 @@ class App:
 
     def on_toggle_watch(self) -> None:
         self.watching = not self.watching
-        self._last_band_key = None
+        self._last_key = None
         self.speech.say(f"Menu narration {'on' if self.watching else 'off'}.")
 
     def on_quit(self) -> None:
@@ -525,7 +547,7 @@ class App:
                 # whatever is in front when the game is behind or minimised.
                 win = game.find_window()
                 if win is None or not win.is_foreground:
-                    self._last_band_key = None
+                    self._last_key = None
                     time.sleep(0.4)
                     continue
 
@@ -536,38 +558,23 @@ class App:
                 # Speech cannot keep pace with a round, and the gauges are on a
                 # hotkey instead, so narration stands down during a match.
                 if hud.looks_like_match(rgb):
-                    self._last_band_key = None
+                    self._last_key = None
                     continue
 
-                # Moving between the main menu's icon entries puts no gold
-                # anywhere the band scan looks, so the highlight measurement
-                # sits perfectly still and nothing is ever re-read. Watching
-                # the panel that names the entry covers those, and costs well
-                # under a millisecond.
-                title_key = screens.title_signature(rgb)
+                # About three milliseconds of the hundred and twenty between
+                # ticks. See `change_key` for why it watches the dark rather
+                # than the gold.
+                key = change_key(rgb)
+                if key == self._last_key:
+                    continue
+                self._last_key = key
 
-                band = menu.highlight_band(rgb)
-                if band is None:
-                    if title_key and title_key != self._last_title_key:
-                        self._last_title_key = title_key
-                        self._last_band_key = None
-                        if self._announce_now(bgra, rgb):
-                            continue
-                    self._last_band_key = None
+                if not self._announce_now(bgra, rgb):
                     # Character select has no highlighted text to find: the
                     # roster is artwork. The game knows who is picked, so ask
                     # it instead, at a slower rate since reading memory costs
                     # more than the colour scan does.
                     self._narrate_from_memory()
-                    continue
-
-                key = (band.top // 4, band.left // 8, band.right // 8)
-                if key == self._last_band_key and title_key == self._last_title_key:
-                    continue
-                self._last_band_key = key
-                self._last_title_key = title_key
-
-                self._announce_now(bgra, rgb)
             except Exception as exc:
                 print(f"[watch error] {exc}")
                 time.sleep(0.5)

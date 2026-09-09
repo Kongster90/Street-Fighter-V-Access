@@ -18,7 +18,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from sfv_access.app import announce  # noqa: E402
+from sfv_access.app import announce, change_key  # noqa: E402
 
 SNAPS = ROOT / "snapshots"
 
@@ -118,6 +118,23 @@ DIALOGS = {
     "sfv-20260909-160513": ["Internet Browser", "No is selected"],
 }
 
+# What the narration loop watches to decide the screen moved. Reading a screen
+# correctly is no use if nothing notices you moved: the confirmation dialogs
+# were read on arrival and then stayed silent as the user arrowed between Yes
+# and No, because the buttons carry no gold and sit below the panel that was
+# being watched. Pairs that must differ, and pairs that must not.
+CHANGE_MOVED = [
+    ("sfv-20260909-154802", "sfv-20260909-154804", "main menu, Arcade to Training"),
+    ("sfv-20260909-092856", "sfv-20260909-092901", "settings, one volume row to the next"),
+    ("sfv-20260909-160509", "sfv-20260909-154804", "a dialog opening over the main menu"),
+    ("sfv-20260909-160458", "sfv-20260909-160511", "icon column, Gallery to Exit"),
+]
+CHANGE_STILL = [
+    # The gold pulses hard enough to vanish between these two, 1367 gold pixels
+    # against 27, with nothing touched. The loop must not treat that as movement.
+    ("sfv-20260909-160500", "sfv-20260909-160502", "one screen, gold mid pulse"),
+]
+
 # Stage select, which has no highlighted entry and is read by position. The
 # names are stylised and come back badly, so these also check that the game's
 # own text repairs them: "Ringof PoWer" into "Ring of Power" and
@@ -200,6 +217,24 @@ def main() -> None:
         print(f"  {'ok  ' if ok else 'FAIL'} {stem[-6:]}  {why}")
         if not ok:
             print(f"        said {said[:100]!r}")
+
+    print("\nnoticing that the screen moved:")
+    for a, b, why in CHANGE_MOVED:
+        if not ((SNAPS / f"{a}.png").exists() and (SNAPS / f"{b}.png").exists()):
+            continue
+        ka = change_key(load(a)[0])
+        kb = change_key(load(b)[0])
+        ok = ka != kb
+        passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+        print(f"  {'ok  ' if ok else 'FAIL'} {why}")
+    for a, b, why in CHANGE_STILL:
+        if not ((SNAPS / f"{a}.png").exists() and (SNAPS / f"{b}.png").exists()):
+            continue
+        ka = change_key(load(a)[0])
+        kb = change_key(load(b)[0])
+        ok = ka == kb
+        passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+        print(f"  {'ok  ' if ok else 'FAIL'} {why}, must not count as movement")
 
     print("\nconfirmation dialogs:")
     for stem, wants in DIALOGS.items():

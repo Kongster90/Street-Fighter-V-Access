@@ -630,6 +630,32 @@ def strip(image: np.ndarray, band: Band, pad: int = 16) -> np.ndarray:
     return np.ascontiguousarray(image[y0:y1, x0:x1])
 
 
+def dark_signature(rgb: np.ndarray, rows: int = 20, cols: int = 16) -> bytes:
+    """A coarse map of where the dark bars are, for noticing the choice moved.
+
+    The narration loop decides whether to re-read by watching where the gold
+    sits, which fails in the two places the gold cannot be seen. A confirmation
+    dialog puts no gold anywhere the scan looks, so arrowing between Yes and No
+    left every signal unchanged and nothing was ever said after the first
+    reading. The pulsing gold has the same effect on an ordinary menu.
+
+    Whatever is selected is dark, on every screen in the game, so a coarse map
+    of the dark areas moves exactly when the selection does and sits still when
+    only the artwork is animating. Subsampled hard, this costs well under a
+    millisecond.
+    """
+    view = rgb[HEADER_BOTTOM:FOOTER_TOP:8, ::8]
+    if view.size == 0:
+        return b""
+    dark = view.max(axis=2) < 105
+    bands = [np.array_split(r, cols, axis=0) for r in np.array_split(dark, rows, axis=0)]
+    # Quantised to four levels so a pixel or two of drift does not register as
+    # movement, while a bar arriving or leaving plainly does.
+    return bytes(
+        min(3, int(c.mean() * 4)) for row in bands for c in row if c.size
+    )
+
+
 def selected_by_dark_bar(
     rgb: np.ndarray, body, min_dark: float = 0.45, max_others: float = 0.20
 ) -> int | None:
