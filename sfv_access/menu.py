@@ -14,9 +14,34 @@ through text recognition.  That is what makes live menu narration affordable.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 import numpy as np
+
+# The world map behind the main menu draws a date and a clock beside its
+# cursor. They are decoration, but they sit in the content area rather than the
+# header or footer, so nothing excludes them by position, and they are drawn
+# over a dark marker, which is exactly what the fallback looks for. One session
+# announced the clock 511 times: once for every minute that passed, and again
+# each time recognition read the noise around it differently, giving "m 4:55
+# PM", "4,' 4:55 PM", "_ v 4:55 PM" and a dozen more.
+_CLOCK = re.compile(r"\d{1,2}:\d{2}")
+_DATE = re.compile(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\b.*\d", re.I)
+
+
+def looks_like_map_chrome(text: str) -> bool:
+    """Whether a line is the map's clock or date rather than a menu entry.
+
+    The stage select screen does announce a time, but it reads by position and
+    never comes through here, so a clock in the content area of a menu is
+    always the map's.
+    """
+    if _CLOCK.search(text) or _DATE.search(text):
+        return True
+    # Recognition returns the clock wrapped in noise, "56 P M" and the like.
+    # No menu entry in this game is two letters or fewer.
+    return sum(c.isalpha() for c in text) < 3
 
 # The header strip carries the player name, coin count and league points; the
 # footer carries the description of whatever is highlighted. Neither holds
@@ -701,21 +726,22 @@ def selected_by_dark_bar(
     the gold has failed, and demands a clear separation, because plenty of
     screens are dark all over and none of those has a selection to report.
     """
-    if len(body) < 3:
+    candidates = [i for i, it in enumerate(body) if not looks_like_map_chrome(it.text)]
+    if len(candidates) < 3:
         return None
     height, width = rgb.shape[:2]
     darkness = []
-    for it in body:
+    for it in (body[i] for i in candidates):
         y0, y1 = int(it.y - it.h * 0.4), int(it.y + it.h * 1.4)
         x0, x1 = int(it.x - it.w * 0.1), int(it.x + it.w * 1.1)
         patch = rgb[max(0, y0) : min(height, y1), max(0, x0) : min(width, x1)]
         darkness.append((patch.max(axis=2) < 105).mean() if patch.size else 0.0)
 
-    order = sorted(range(len(body)), key=lambda i: -darkness[i])
+    order = sorted(range(len(candidates)), key=lambda i: -darkness[i])
     best, second = order[0], order[1]
     if darkness[best] < min_dark or darkness[second] > max_others:
         return None
-    return best
+    return candidates[best]
 
 
 def description(footer_items, row_tolerance: float = 14.0) -> str:

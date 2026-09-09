@@ -18,6 +18,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from sfv_access import menu  # noqa: E402
 from sfv_access.app import _POSITION_CLAUSE, announce, change_key  # noqa: E402
 
 SNAPS = ROOT / "snapshots"
@@ -158,6 +159,22 @@ EXPECTED_POSITION = {
 }
 NO_POSITION = {"sfv-20260909-154806": "CFN has no peers in its column"}
 
+# The world map behind the main menu draws a date and a clock beside its
+# cursor. They sit in the content area, so position does not exclude them, and
+# they are drawn over a dark marker, which is what the fallback looks for. One
+# session announced the clock 511 times, once per minute and again whenever
+# recognition read the noise around it differently. Taken from the spoken log
+# of that session, plus the entries that must survive the same rule.
+MAP_CHROME = [
+    "4:55 PM", "m 4:55 PM", "4,' 4:55 PM", "_ v 4:55 PM", "7,\" 4:55 PM",
+    "56 P M", "sep 9, 2026", "sep e, 20>6'", "'/,' 4:56 PM", "w 4:55 P",
+]
+NOT_MAP_CHROME = [
+    "Sound", "CFN", "STREET FIGHTER I", "1P Health Gauge", "DLC BGM",
+    "PLAYER 1 VS PLAYER 2", "Good Luck Charms", "Arcade Mode Endings",
+    "Ryu's Theme (Japan) from Street Fighter II",
+]
+
 # Stage select, which has no highlighted entry and is read by position. The
 # names are stylised and come back badly, so these also check that the game's
 # own text repairs them: "Ringof PoWer" into "Ring of Power" and
@@ -262,6 +279,15 @@ def main() -> None:
         print(f"  {'ok  ' if ok else 'FAIL'} {stem[-6:]}  {why}")
         if not ok:
             print(f"        said {said[:80]!r}")
+
+    print("\nthe world map's clock and date are not menu entries:")
+    wrong = [t for t in MAP_CHROME if not menu.looks_like_map_chrome(t)]
+    wrong += [t for t in NOT_MAP_CHROME if menu.looks_like_map_chrome(t)]
+    passed, failed = (passed + 1, failed) if not wrong else (passed, failed + 1)
+    print(f"  {'ok  ' if not wrong else 'FAIL'} "
+          f"{len(MAP_CHROME)} rejected, {len(NOT_MAP_CHROME)} kept")
+    if wrong:
+        print(f"        got the wrong answer for {wrong}")
 
     print("\nidling on one screen must not repeat itself:")
     for a, b, why in CHANGE_STILL:

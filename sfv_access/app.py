@@ -107,6 +107,9 @@ def announce(bgra, rgb, with_description: bool = True) -> tuple[str, list, int |
     _header, body, footer_items = menu.split_chrome(items)
     footer = clean(menu.description(footer_items))
     idx = menu.selected_index(body, band) if band else None
+    # The world map's clock is not a menu entry, whichever reader lands on it.
+    if idx is not None and menu.looks_like_map_chrome(body[idx].text):
+        idx = None
 
     # Stage select carries a highlighted control of its own for the stage
     # setting, which would otherwise be announced instead of the stage. The
