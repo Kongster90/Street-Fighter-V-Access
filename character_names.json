@@ -1,0 +1,31 @@
+{
+ "player_one_side": "pos",
+ "names": {
+  "ALX": "ALEX",
+  "BRD": "BIRDIE",
+  "CNL": "CHUN-LI",
+  "ELV": "ELEVEN",
+  "IBK": "IBUKI",
+  "JRI": "JURI",
+  "KEN": "KEN",
+  "KRN": "KARIN",
+  "LAR": "LAURA",
+  "RMK": "R. MIKA",
+  "RSD": "RASHID",
+  "RYU": "RYU",
+  "Z21": "AKUMA",
+  "Z23": "MENAT",
+  "Z24": "URIEN",
+  "Z25": "KOLIN",
+  "Z26": "SAKURA",
+  "Z29": "CODY",
+  "Z30": "E. HONDA",
+  "Z32": "KAGE",
+  "Z35": "ORO",
+  "Z36": "GILL",
+  "Z38": "DAN",
+  "Z41": "ROSE",
+  "Z42": "LUKE",
+  "ZGF": "ZANGIEF"
+ }
+}

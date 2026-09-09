@@ -1,0 +1,39 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# The llvm-mingw toolchain, ~900 MB, downloaded from its own releases.
+toolchain/
+
+# Built binaries
+native/*.dll
+native/*.exe
+native/*.o
+
+# Data recovered from the game at runtime. Deliberately not published.
+#
+# pak_key.txt is Street Fighter V's own encryption key. Recovering it from your
+# own copy so a screen reader can use the text is one thing; publishing it is
+# handing everyone a way to unpack the game's assets, and it is not needed here
+# because tools/find_pak_key.py regenerates it in a couple of seconds.
+pak_key.txt
+#
+# strings.json is all 50,417 lines of the game's text, which is its script:
+# every line of dialogue and story. That is Capcom's, not ours. Anyone with the
+# game gets their own copy from tools/extract_strings.py.
+strings.json
+#
+# names.json is a dump of the engine's name table, from tools/dump_names.py.
+names.json
+
+# Captures of the game. These carry its artwork and your profile name, rank and
+# league points, so they stay local. tools/test_screens.py needs them, so take
+# your own with Control Alt S.
+snapshots/
+
+# Third-party libraries, each with its own licence. Fetch them yourself:
+# Tolk from github.com/dkager/tolk, the NVDA controller client from NV Access.
+Tolk.dll
+TolkDotNet.dll
+nvdaControllerClient*.dll
