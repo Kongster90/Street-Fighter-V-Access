@@ -1,22 +1,23 @@
-"""Save a burst of snapshots while you move through a menu.
+"""Save snapshots while you move through the menus.
 
 Control Alt S saves one screen at a time, which is the right tool when you know
-which screen is wrong. It is the wrong tool when a screen reads wrongly only
-sometimes, because the interesting frame is the one you cannot know to ask for.
+which screen is wrong. It is the wrong tool for a calibration pass, where the
+point is to cover a lot of screens and the interesting frame is often one you
+could not have known to ask for.
 
-This saves a run of them, spoken cues at each end, so a pass through a menu
-yields the frames that go with a trace from `trace_watch.py`.
+Two modes. By default it saves one frame every time the selection moves, which
+is what you want for walking through menus: one frame per thing you land on, no
+duplicates of a screen you sat on, and nothing to time. Pass an interval to get
+the older behaviour of a frame every so many seconds instead, which is what to
+use when a single screen misbehaves on its own.
 
 Each frame is written the same way Control Alt S writes it, a PNG beside a text
 dump of every recognised line, so `replay.py`, `show_bands.py` and
 `test_screens.py` all read them unchanged.
 
 Usage:
-    python tools/grab_screens.py [count] [interval seconds] [lead-in seconds]
-
-The lead-in is how long you get to reach the game and open the screen you want
-before it starts. It defaults to eight seconds, which is enough to switch to a
-fullscreen game but not to navigate anywhere once you are there.
+    python tools/grab_screens.py [count] [lead-in seconds]
+    python tools/grab_screens.py [count] [lead-in seconds] --every 2
 """
 
 from __future__ import annotations
@@ -33,9 +34,12 @@ from PIL import Image  # noqa: E402
 
 from sfv_access import capture as _capture  # noqa: E402
 from sfv_access import game, ocr  # noqa: E402
+from sfv_access.app import WATCH_INTERVAL, change_key  # noqa: E402
 from sfv_access.speech import Speaker  # noqa: E402
 
 SNAPSHOT_DIR = ROOT / "snapshots"
+# However long the pass runs, stop eventually rather than sit there forever.
+TIME_LIMIT = 15 * 60
 
 
 def save(bgra, stamp: str) -> int:
@@ -50,21 +54,8 @@ def save(bgra, stamp: str) -> int:
     return len(items)
 
 
-def main() -> None:
-    count = int(sys.argv[1]) if len(sys.argv) > 1 else 12
-    interval = float(sys.argv[2]) if len(sys.argv) > 2 else 1.5
-    lead_in = float(sys.argv[3]) if len(sys.argv) > 3 else 8.0
-
-    speech = Speaker()
-    cap = _capture.Capture()
-    speech.say(
-        f"Saving screens in {int(lead_in)} seconds. Switch to the game now "
-        "and open the screen you want captured. "
-        f"It then takes {count} of them, one every {interval:.0f} seconds, "
-        "and says when it is done. Move to a different entry between each."
-    )
-    # A spoken countdown over the last few seconds, so the start is not a
-    # surprise when the console is behind a fullscreen game.
+def count_in(speech: Speaker, lead_in: float) -> None:
+    """Spoken countdown, since the console is behind a fullscreen game."""
     if lead_in > 4:
         time.sleep(lead_in - 3.0)
         for n in (3, 2, 1):
@@ -73,30 +64,68 @@ def main() -> None:
     else:
         time.sleep(lead_in)
 
-    saved = skipped = 0
-    for _ in range(count):
+
+def main() -> None:
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    every = None
+    if "--every" in sys.argv:
+        at = sys.argv.index("--every")
+        every = float(sys.argv[at + 1])
+        args = [a for a in args if a != sys.argv[at + 1]]
+
+    count = int(args[0]) if args else 20
+    lead_in = float(args[1]) if len(args) > 1 else 20.0
+
+    speech = Speaker()
+    cap = _capture.Capture()
+    how = (
+        f"one every {every:.0f} seconds"
+        if every
+        else "one each time you move to something new"
+    )
+    speech.say(
+        f"Saving up to {count} screens, {how}. Starting in {int(lead_in)} seconds. "
+        "Switch to the game now. It counts each one and says when it is done."
+    )
+    count_in(speech, lead_in)
+
+    saved = 0
+    last = None
+    started = time.time()
+    settling = 0
+
+    while saved < count and time.time() - started < TIME_LIMIT:
+        time.sleep(every if every else WATCH_INTERVAL)
         win = game.find_window()
         if win is None or not win.is_foreground:
-            skipped += 1
-            time.sleep(interval)
             continue
         bgra = cap.frame(max_age=0.0)
         if bgra is None:
-            skipped += 1
-            time.sleep(interval)
             continue
+
+        if every is None:
+            key = change_key(_capture.to_rgb(bgra))
+            if key == last:
+                settling = 0
+                continue
+            # One more tick before saving, so the frame is of the screen as it
+            # settled rather than mid animation.
+            if settling == 0:
+                settling = 1
+                last = key
+                continue
+            settling = 0
+            last = key
+
         stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         lines = save(bgra, stamp)
         saved += 1
         print(f"[{saved}] sfv-{stamp}  {lines} lines")
-        # A short cue rather than a sentence, so it does not run into the next.
+        # A bare number rather than a sentence, so it does not run into the next.
         speech.say(str(saved))
-        time.sleep(interval)
 
     cap.close()
     note = f"Saved {saved}."
-    if skipped:
-        note += f" {skipped} skipped, the game was not in front."
     print(note)
     speech.say(note)
     time.sleep(2.5)
