@@ -143,6 +143,18 @@ def announce(bgra, rgb, with_description: bool = True) -> tuple[str, list, int |
             said += f" {footer}"
         return said, body, idx, footer
 
+    # The main menu's left column is icons with no text, holding Options,
+    # Gallery, the terms and conditions and Exit. There is no label to find at
+    # the highlight, so the game's own panel across the middle is asked instead.
+    # Tried only once nothing else has claimed the screen, so it cannot
+    # outrank a real highlighted entry.
+    title = screens.main_menu_title(bgra)
+    if title:
+        said = f"{title}."
+        if footer and with_description:
+            said += f" {footer}"
+        return said, body, None, footer
+
     if not body:
         return "No text found on screen.", body, None, footer
     return f"No highlight found. {len(body)} lines.", body, None, footer
@@ -170,6 +182,7 @@ class App:
         self.watching = True
         self._stop = threading.Event()
         self._last_band_key = None
+        self._last_title_key = b""
         self._last_spoken = ""
         self._last_memory_poll = 0.0
         self._last_memory_lines: list[str] = []
@@ -444,6 +457,27 @@ class App:
         self.speech.say(said)
 
     # ------------------------------------------------------------------ watch
+    def _announce_now(self, bgra, rgb) -> bool:
+        """Read this frame and speak it, unless there is nothing worth saying.
+
+        Both narration paths come through here so neither can drift from the
+        other. Keeping that in one place is what fixed the worst bug this tool
+        has had, where every improvement went into the reading the user never
+        heard. Returns whether anything was spoken.
+        """
+        said, body, idx, footer = announce(bgra, rgb, with_description=False)
+        self.lines, self.footer = body, footer
+        self.cursor = idx if idx is not None else (0 if body else -1)
+        if not said or said == self._last_spoken:
+            return False
+        if said.startswith("No highlight") or said.startswith("No text"):
+            return False  # nothing worth saying; wait for the screen to settle
+        self._last_spoken = said
+        print(f"[watch] {said}")
+        self._log(said)
+        self.speech.say(said)
+        return True
+
     def _watch_loop(self) -> None:
         """Announce the highlighted entry whenever it moves.
 
@@ -484,8 +518,20 @@ class App:
                     self._last_band_key = None
                     continue
 
+                # Moving between the main menu's icon entries puts no gold
+                # anywhere the band scan looks, so the highlight measurement
+                # sits perfectly still and nothing is ever re-read. Watching
+                # the panel that names the entry covers those, and costs well
+                # under a millisecond.
+                title_key = screens.title_signature(rgb)
+
                 band = menu.highlight_band(rgb)
                 if band is None:
+                    if title_key and title_key != self._last_title_key:
+                        self._last_title_key = title_key
+                        self._last_band_key = None
+                        if self._announce_now(bgra, rgb):
+                            continue
                     self._last_band_key = None
                     # Character select has no highlighted text to find: the
                     # roster is artwork. The game knows who is picked, so ask
@@ -495,21 +541,12 @@ class App:
                     continue
 
                 key = (band.top // 4, band.left // 8, band.right // 8)
-                if key == self._last_band_key:
+                if key == self._last_band_key and title_key == self._last_title_key:
                     continue
                 self._last_band_key = key
+                self._last_title_key = title_key
 
-                said, body, idx, footer = announce(bgra, rgb, with_description=False)
-                self.lines, self.footer = body, footer
-                self.cursor = idx if idx is not None else (0 if body else -1)
-                if not said or said == self._last_spoken:
-                    continue
-                if said.startswith("No highlight") or said.startswith("No text"):
-                    continue  # nothing worth saying; wait for the screen to settle
-                self._last_spoken = said
-                print(f"[watch] {said}")
-                self._log(said)
-                self.speech.say(said)
+                self._announce_now(bgra, rgb)
             except Exception as exc:
                 print(f"[watch error] {exc}")
                 time.sleep(0.5)

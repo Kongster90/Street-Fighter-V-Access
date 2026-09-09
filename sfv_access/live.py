@@ -102,6 +102,15 @@ def valid_code(code) -> bool:
     return 2 <= len(code) <= 6 and code.isascii() and code.isalnum()
 
 
+# Capcom's internal codes use the Japanese names, and the western release swaps
+# three of them: the dictator is Vega in Japan, the claw fighter is Balrog, and
+# the boxer is Bison. So none of these three codes can ever read as initials of
+# the name on screen, and the rule below would call all three wrong forever,
+# which is why hovering never learned them. Established from the game's own
+# V-Trigger data by tools/names_from_data.py.
+SWAPPED_NAMES = {"VEG": "M. BISON", "BLR": "VEGA", "BSN": "BALROG"}
+
+
 def code_matches_name(code: str, name: str) -> bool:
     """Does the code read as an abbreviation of the name?
 
@@ -109,7 +118,11 @@ def code_matches_name(code: str, name: str) -> bool:
     line up with KEN, CAMMY and RASHID. Season characters use codes like Z20
     that cannot be checked this way, so a failure here only means unproven, not
     wrong.
+
+    The three swapped names above are the exception, and are accepted outright.
     """
+    if SWAPPED_NAMES.get(code.upper()) == name.strip().upper():
+        return True
     letters = [c for c in name.upper() if c.isalpha()]
     pos = 0
     for ch in code.upper():

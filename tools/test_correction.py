@@ -37,7 +37,20 @@ CASES = [
 ]
 
 # Things that must not be rewritten: they are not game strings at all.
-LEAVE_ALONE = ["Dengster", "Rank 153684", "6178 LP", "319290", "sep 8, 2026", "10:43 PM"]
+#
+# "Temperature 800 F" is the exception that proves the number rule. It matches
+# the bare word "Temperature" closely enough to win, and correcting to it would
+# throw the reading's value away. A correction may restore a number the reading
+# missed, as the PLAYER 1 case above does, but it may never discard one.
+LEAVE_ALONE = [
+    "Dengster",
+    "Rank 153684",
+    "6178 LP",
+    "319290",
+    "sep 8, 2026",
+    "10:43 PM",
+    "Temperature 800 F",
+]
 
 
 def main() -> None:

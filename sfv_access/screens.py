@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import re
 
-from . import ocr
+import numpy as np
+
+from . import ocr, strings
 
 # The name sits across the middle of the screen; the conditions run beneath it.
 # Given as a share of the frame so other resolutions work unchanged.
@@ -26,6 +28,68 @@ _SEPARATOR = re.compile(r"^\s*(time|temperature|weather)\s*[|Il1!:]*\s*", re.IGN
 # The degree sign comes back as a zero, so 80 degrees reads as "800 F". Stage
 # temperatures are two digits, which makes the trailing zero unambiguous.
 _DEGREES = re.compile(r"^(\d{2})0\s*([FC])$", re.IGNORECASE)
+
+
+# The main menu names the current choice in large type in a panel across the
+# middle. Given as fractions of the frame so other resolutions work unchanged.
+TITLE_BOX = (0.406, 0.398, 0.781, 0.500)  # left, top, right, bottom
+# Titles measure 39 to 49 pixels tall on a 1080 frame while ordinary menu rows
+# measure 18, so height alone separates them with room to spare.
+TITLE_MIN_HEIGHT = 0.028
+
+
+def _title_crop(frame: np.ndarray) -> np.ndarray:
+    height, width = frame.shape[:2]
+    left, top, right, bottom = TITLE_BOX
+    return np.ascontiguousarray(
+        frame[int(top * height) : int(bottom * height), int(left * width) : int(right * width)]
+    )
+
+
+def main_menu_title(bgra: np.ndarray) -> str | None:
+    """The name of the highlighted main menu entry, read from its own panel.
+
+    The far left of the main menu is a column of icons with no text at all,
+    holding Options, Gallery, the terms and conditions and Exit. Nothing can
+    read a label there because there is no label; the game puts the name in the
+    panel across the middle instead, and that panel is drawn for every entry.
+
+    It is also the only way those four are announced at all. The selected icon
+    is a solid gold tile, and the band builder rejects solid blocks on purpose,
+    since that is how it tells lettering from artwork.
+
+    Returns None unless the panel holds one piece of large type, which is what
+    keeps this from firing on an ordinary settings row.
+    """
+    items = [i for i in ocr.read(_title_crop(bgra)) if i.text.strip()]
+    if not items:
+        return None
+    tallest = max(items, key=lambda i: i.h)
+    if tallest.h < TITLE_MIN_HEIGHT * bgra.shape[0]:
+        return None
+    text = tallest.text.strip()
+    if len(text) < 2:
+        return None
+    vocabulary = strings.shared()
+    return vocabulary.correct(text).text if vocabulary else text
+
+
+def title_signature(rgb: np.ndarray) -> bytes:
+    """A cheap summary of the title panel, for noticing that it changed.
+
+    The narration loop decides whether to re-read by watching where the
+    highlight sits, which cannot work for the icon column: those entries put no
+    gold anywhere the loop looks, so moving between them leaves its measurement
+    untouched and it never re-reads. Watching the panel itself covers them, and
+    pooling it to a coarse grid costs well under a millisecond.
+    """
+    crop = _title_crop(rgb)
+    if crop.size == 0:
+        return b""
+    grey = crop.mean(axis=2)
+    rows = np.array_split(grey, 6, axis=0)
+    grid = [np.array_split(r, 16, axis=1) for r in rows]
+    return bytes(int(c.mean()) >> 4 for row in grid for c in row if c.size)
 
 
 def _attribute(text: str) -> tuple[str, str] | None:

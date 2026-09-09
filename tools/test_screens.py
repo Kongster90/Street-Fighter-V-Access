@@ -44,6 +44,26 @@ EXPECTED = {
     "sfv-20260909-092904": "Announcer Voice Volume",
     "sfv-20260909-092919": "Adjust Lower HUD Position",
     "sfv-20260909-092922": "Upper HUD Display",
+    # The live main menu, which the capture from Monday did not represent. It
+    # carries an Arcade entry that one lacks, and its entries sit on a much
+    # paler bar: the highlighted row measured 0.30 dark against a threshold of
+    # 0.32, so the reader found no highlight at all and said nothing. Half of a
+    # traced pass through this menu was silent for that reason.
+    "sfv-20260909-154759": "CHALLENGES",
+    "sfv-20260909-154802": "ARCADE",
+    "sfv-20260909-154804": "Training",
+    "sfv-20260909-154806": "CFN",
+    "sfv-20260909-154808": "CASUAL MATCH",
+    "sfv-20260909-154813": "ARCADE",
+    "sfv-20260909-154819": "Battle Settings",
+    # The main menu's far left column is icons with no text at all, holding
+    # Options, Gallery, the terms and conditions and Exit. These read nothing
+    # whatever until the panel across the middle was consulted, because there
+    # is no label at the highlight to read and the selected icon is a solid
+    # gold tile, which the band builder rejects on purpose as artwork.
+    "sfv-20260909-160458": "Gallery",
+    "sfv-20260909-160511": "EXIT",
+    "sfv-20260909-160504": "LOGIN",
 }
 
 # Entries that should also report their current value. Left out where the value
@@ -56,6 +76,25 @@ EXPECTED_VALUES = {
     "sfv-20260909-092856": "level 10 of 10",
     "sfv-20260909-092901": "level 10 of 10",
     "sfv-20260909-090755": "level 1 of 10",
+}
+
+# Entries that must NOT report a level. The drawn bar is found by looking at
+# fixed columns, and on the main menu those columns hold artwork rather than a
+# bar. CFN was announced as "CFN, level 10 of 10". A completely full bar is the
+# only reading that cannot be told from a solid block by its shape, so that is
+# the case that now has to show its cell boundaries as well.
+NO_LEVEL = {
+    "sfv-20260909-154806": "CFN is not a slider",
+    "sfv-20260909-154815": "CFN is not a slider",
+    "sfv-20260909-154759": "CHALLENGES is not a slider",
+}
+
+# The description under an entry, which is the widest text on the bottom line.
+# The "Top User" badge in the corner is set much larger and is wider than a
+# short description, so Exit was announcing that badge instead of its warning.
+EXPECTED_DESCRIPTION = {
+    "sfv-20260909-160511": "The application will close",
+    "sfv-20260909-160458": "View the illustrations",
 }
 
 # Stage select, which has no highlighted entry and is read by position. The
@@ -119,6 +158,30 @@ def main() -> None:
         ok = want.lower() in said.lower()
         passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
         print(f"  {'ok  ' if ok else 'FAIL'} {stem[-6:]}  want value {want!r}")
+        if not ok:
+            print(f"        said {said[:100]!r}")
+
+    print("\nentries whose description must be the right one:")
+    for stem, want in EXPECTED_DESCRIPTION.items():
+        if not (SNAPS / f"{stem}.png").exists():
+            continue
+        rgb, bgra = load(stem)
+        said, _body, _idx, footer = announce(bgra, rgb)
+        ok = want.lower() in footer.lower()
+        passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+        print(f"  {'ok  ' if ok else 'FAIL'} {stem[-6:]}  want description {want!r}")
+        if not ok:
+            print(f"        got {footer[:80]!r}")
+
+    print("\nentries that must not report a level:")
+    for stem, why in NO_LEVEL.items():
+        if not (SNAPS / f"{stem}.png").exists():
+            continue
+        rgb, bgra = load(stem)
+        said, _body, _idx, _footer = announce(bgra, rgb)
+        ok = "level" not in said.lower()
+        passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+        print(f"  {'ok  ' if ok else 'FAIL'} {stem[-6:]}  {why}")
         if not ok:
             print(f"        said {said[:100]!r}")
 

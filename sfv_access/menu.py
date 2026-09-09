@@ -90,7 +90,7 @@ def gold_bands(
     # of reach. Now that bands are separated horizontally the surrounding
     # measurement is local to the entry, so a lower bar reaches it without
     # letting artwork through; the screens test covers both directions.
-    dark_fraction: float = 0.32,
+    dark_fraction: float = 0.26,
 ) -> list[Band]:
     """Row runs of gold text that sit on the dark bar of a highlighted entry.
 
@@ -315,7 +315,36 @@ def volume_level(rgb: np.ndarray, top: int, bottom: int) -> int | None:
     count = sum(filled)
     if filled != [True] * count + [False] * (BAR_CELLS - count):
         return None
+    # A partly filled bar proves itself: the step from filled to empty is the
+    # shape of a level and nothing else here has it. A completely full one has
+    # no step, so it is indistinguishable from any solid block that happens to
+    # lie in these columns. On the main menu one does, and CFN was being
+    # announced as "level 10 of 10". Only that case needs the extra proof.
+    if count == BAR_CELLS and not _has_cell_gaps(band):
+        return None
     return count
+
+
+# Measured on captures: a real full bar dips about 205 grey levels at its cell
+# boundaries, while the main menu artwork behind those columns dips about 6.
+def _has_cell_gaps(band: np.ndarray, min_dip: float = 40.0) -> bool:
+    """Whether the bar shows the nine gaps that separate its ten cells.
+
+    Ten drawn cells are ten separate rectangles, so the columns between them
+    are background. Flat artwork of the same width has no such structure.
+    """
+    columns = band[-8:].mean(axis=0)
+    width = len(columns)
+    if width < BAR_CELLS * 4:
+        return False
+    edges = [round(i * width / BAR_CELLS) for i in range(1, BAR_CELLS)]
+    at_edges = float(np.mean([columns[max(0, e - 1) : e + 2].min() for e in edges]))
+    insides = [
+        columns[round(i * width / BAR_CELLS) + 2 : round((i + 1) * width / BAR_CELLS) - 2]
+        for i in range(BAR_CELLS)
+    ]
+    inside = float(np.mean([c.mean() for c in insides if c.size]))
+    return inside - at_edges >= min_dip
 
 
 def value_from_group(bgra: np.ndarray, group: list[Band]) -> str:
@@ -596,9 +625,16 @@ def strip(image: np.ndarray, band: Band, pad: int = 16) -> np.ndarray:
     return np.ascontiguousarray(image[y0:y1, x0:x1])
 
 
-def description(footer_items) -> str:
-    """The help line for the highlighted entry, which sits along the bottom."""
+def description(footer_items, row_tolerance: float = 14.0) -> str:
+    """The help line for the highlighted entry, which sits along the bottom.
+
+    Widest wins, but only among the lowest line of text. The "Top User" badge
+    in the bottom left corner is set in much larger type than the description
+    and is wider than a short one, so on the main menu's Exit entry it was
+    being announced in place of "The application will close."
+    """
     if not footer_items:
         return ""
-    # The description is the widest thing down there; the rest is status chrome.
-    return max(footer_items, key=lambda it: it.w).text
+    lowest = max(it.cy for it in footer_items)
+    bottom_line = [it for it in footer_items if it.cy >= lowest - row_tolerance]
+    return max(bottom_line, key=lambda it: it.w).text

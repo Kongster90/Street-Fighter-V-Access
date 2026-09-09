@@ -37,6 +37,8 @@ def _numbers(text: str) -> tuple[str, ...]:
     silently lost. But recognition also drops digits into the middle of words,
     turning "Area" into "A7ea", and refusing to correct those would be worse
     than the mistake. So only whole numeric words count.
+
+    See `_keeps_numbers` for what is then done with them.
     """
     out = []
     for token in re.split(r"[^0-9A-Za-z:.]+", text):
@@ -44,6 +46,27 @@ def _numbers(text: str) -> tuple[str, ...]:
         if stripped and all(c.isdigit() or c in ":." for c in token):
             out.append(token)
     return tuple(out)
+
+
+def _keeps_numbers(query: tuple[str, ...], candidate: tuple[str, ...]) -> bool:
+    """Whether a candidate keeps every number the reading found.
+
+    What has to be prevented is a correction that discards a number, because
+    that silently throws the value away: "Temperature 800 F" matches the bare
+    word "Temperature" closely enough to win otherwise.
+
+    A candidate carrying a number the reading missed is the opposite case, and
+    demanding the two agree exactly used to block it. Recognition reads the
+    digit one as a letter often enough that "PLAYER 1 VS PLAYER 2" came back as
+    "PLAYER I VS PLAYER 2" and could not be repaired, because the reading had
+    lost a number rather than gained one. Restoring it is the whole point.
+    """
+    remaining = list(candidate)
+    for number in query:
+        if number not in remaining:
+            return False
+        remaining.remove(number)
+    return True
 
 
 def trigrams(text: str) -> set[str]:
@@ -122,7 +145,7 @@ class Vocabulary:
         numbers = _numbers(query)
         best_text, best_score = text, 0.0
         for i in best_ids:
-            if numbers and _numbers(self.normalised[i]) != numbers:
+            if numbers and not _keeps_numbers(numbers, _numbers(self.normalised[i])):
                 continue
             score = SequenceMatcher(None, query, self.normalised[i]).ratio()
             if score > best_score:
