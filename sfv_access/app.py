@@ -143,6 +143,15 @@ def announce(bgra, rgb, with_description: bool = True) -> tuple[str, list, int |
             said += f" {footer}"
         return said, body, idx, footer
 
+    # A confirmation dialog marks its answer with a dark fill rather than gold
+    # lettering, so nothing above finds it. This one leads, because one of them
+    # asks whether to close the game and the answer has to be unambiguous.
+    asked = screens.dialog_choice(rgb, items)
+    if asked:
+        question, answer = asked
+        said = f"{clean(question)} {clean(answer)} is selected."
+        return said, body, None, footer
+
     # The main menu's left column is icons with no text, holding Options,
     # Gallery, the terms and conditions and Exit. There is no label to find at
     # the highlight, so the game's own panel across the middle is asked instead.

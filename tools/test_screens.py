@@ -97,6 +97,15 @@ EXPECTED_DESCRIPTION = {
     "sfv-20260909-160458": "View the illustrations",
 }
 
+# Confirmation dialogs, where mishearing the answer is expensive: one of these
+# asks whether to close the game. The chosen button is a thin gold outline
+# round a dark fill, whose edges are too narrow to survive the band builder, so
+# these read nothing at all until the fill was used as the signal instead.
+DIALOGS = {
+    "sfv-20260909-160509": ["close the application", "No is selected"],
+    "sfv-20260909-160513": ["Internet Browser", "No is selected"],
+}
+
 # Stage select, which has no highlighted entry and is read by position. The
 # names are stylised and come back badly, so these also check that the game's
 # own text repairs them: "Ringof PoWer" into "Ring of Power" and
@@ -184,6 +193,18 @@ def main() -> None:
         print(f"  {'ok  ' if ok else 'FAIL'} {stem[-6:]}  {why}")
         if not ok:
             print(f"        said {said[:100]!r}")
+
+    print("\nconfirmation dialogs:")
+    for stem, wants in DIALOGS.items():
+        if not (SNAPS / f"{stem}.png").exists():
+            continue
+        rgb, bgra = load(stem)
+        said, _body, _idx, _footer = announce(bgra, rgb)
+        missing = [w for w in wants if w.lower() not in said.lower()]
+        passed, failed = (passed + 1, failed) if not missing else (passed, failed + 1)
+        print(f"  {'ok  ' if not missing else 'FAIL'} {stem[-6:]}  {wants[0]!r}")
+        if missing:
+            print(f"        missing {missing}, said {said[:110]!r}")
 
     print("\nstage select:")
     for stem, wants in STAGES.items():

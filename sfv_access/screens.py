@@ -92,6 +92,62 @@ def title_signature(rgb: np.ndarray) -> bytes:
     return bytes(int(c.mean()) >> 4 for row in grid for c in row if c.size)
 
 
+# A confirmation dialog puts its choices side by side on one row, in the middle
+# of the screen, over a light modal panel.
+DIALOG_ROW = (0.55, 0.75)  # share of frame height the buttons sit within
+DIALOG_WORDS = 18  # a choice is a word or two, not a sentence
+
+
+def dialog_choice(rgb, items) -> tuple[str, str] | None:
+    """The question a dialog is asking and which answer is selected.
+
+    Worth its own reader because getting it wrong is expensive: one of these
+    asks whether to close the game, and it is the only screen where mishearing
+    the answer loses whatever you were doing.
+
+    The selected button is drawn as a thin gold outline around a dark fill,
+    which the band builder cannot see. Its left and right edges are separate
+    runs of gold a few pixels wide with nothing between them, so they are split
+    apart and then dropped for being too narrow. The fill is the better signal
+    anyway: these dialogs sit on a pale panel, so the chosen answer is simply
+    the dark one.
+    """
+    height, width = rgb.shape[:2]
+    row = [
+        it
+        for it in items
+        if DIALOG_ROW[0] * height <= it.cy <= DIALOG_ROW[1] * height
+        and 0 < len(it.text.strip()) <= DIALOG_WORDS
+    ]
+    if len(row) < 2:
+        return None
+    # Buttons are side by side, so they share a row; anything else is not a
+    # pair of choices.
+    row.sort(key=lambda it: it.x)
+    top = min(row, key=lambda it: it.cy)
+    row = [it for it in row if abs(it.cy - top.cy) <= 0.02 * height]
+    if len(row) < 2:
+        return None
+
+    darkness = []
+    for it in row:
+        y0, y1 = int(it.y - it.h), int(it.y + 2 * it.h)
+        x0, x1 = int(it.x - it.w), int(it.x + 2 * it.w)
+        patch = rgb[max(0, y0) : min(height, y1), max(0, x0) : min(width, x1)]
+        darkness.append((patch.max(axis=2) < 105).mean() if patch.size else 0.0)
+
+    order = sorted(range(len(row)), key=lambda i: -darkness[i])
+    best, rest = order[0], order[1]
+    # One clearly dark answer among pale ones. Anything less is not a dialog.
+    if darkness[best] < 0.35 or darkness[best] - darkness[rest] < 0.25:
+        return None
+
+    # The question is the widest line above the buttons.
+    above = [it for it in items if it.cy < top.cy - 0.02 * height and it.text.strip()]
+    question = max(above, key=lambda it: it.w).text.strip() if above else ""
+    return question, row[best].text.strip()
+
+
 def _attribute(text: str) -> tuple[str, str] | None:
     """Split "Weather I Clear" into its name and its value."""
     match = _SEPARATOR.match(text)
