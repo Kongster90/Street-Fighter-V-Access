@@ -117,9 +117,17 @@ to and then deleted `character_names.json`, destroying a table that had taken a
 session in the game to build. Tests now point at scratch files and assert that
 they are doing so.
 
-**A capture taken mid-transition is not a bug.** One snapshot has the menu
-still fading in, every pixel pure grey, no gold anywhere. No colour-based
-detector can find a highlight in it. Check for that before chasing a phantom.
+**The gold pulses, and a dim frame is not a mid-transition capture.** One
+snapshot was recorded here for a long time as a menu still fading in, with no
+gold anywhere and nothing to fix. Look at it: the screen is fully drawn and
+General Story is plainly highlighted. The Gallery submenu settled it, giving
+1367 gold pixels in one frame and 27 two seconds later without anything being
+touched, while its dark bar held at 0.68 against 0.00 for every other row in
+both. The lettering brightens and dims, and the dim phase falls outside the
+colour match, so a tight gold test goes quiet at random on any screen. The dark
+bar behind the entry does not move, and `selected_by_dark_bar` uses it once the
+gold has failed. Be suspicious of any conclusion that a frame simply has no
+highlight in it.
 
 **Do not guess geometry.** Every layout question here was settled by capturing a
 frame and measuring it. Guessing produced three wrong answers about which side

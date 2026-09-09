@@ -187,9 +187,14 @@ def _split_row_run(
 
 
 # Gold frames and rules run along the edges of these screens and carry far
-# more gold than any lettering does. Menu text never sits this close to the
-# edge, so distance from it is a cheap way to discard the decoration.
-EDGE_MARGIN = 140
+# more gold than any lettering does, so distance from the edge is a cheap way
+# to discard the decoration.
+#
+# It was 140 on the claim that menu text never sits that close to the edge.
+# The Gallery submenu does: its entries start 126 pixels in, so the whole
+# screen was silent even though the band was found and read correctly. Keep
+# this only as wide as some real screen demands.
+EDGE_MARGIN = 120
 
 
 def highlight_band(rgb: np.ndarray, bgra: np.ndarray | None = None) -> Band | None:
@@ -623,6 +628,39 @@ def strip(image: np.ndarray, band: Band, pad: int = 16) -> np.ndarray:
     y0, y1 = max(0, band.top - pad), min(h, band.bottom + pad)
     x0, x1 = max(0, band.left - pad), min(w, band.right + pad)
     return np.ascontiguousarray(image[y0:y1, x0:x1])
+
+
+def selected_by_dark_bar(
+    rgb: np.ndarray, body, min_dark: float = 0.45, max_others: float = 0.20
+) -> int | None:
+    """Which entry sits on a dark bar, when no gold could be found.
+
+    The gold lettering pulses. On the Gallery submenu the selected entry
+    measured 1367 gold pixels in one frame and 27 two seconds later without
+    anything being touched, because the dim phase of that pulse falls outside
+    the colour match. Its dark bar, meanwhile, held steady at 0.68 against 0.00
+    for every other row in both frames.
+
+    So this is the same trick the confirmation dialogs use: where one entry is
+    dark and the rest are pale, the dark one is the choice. It runs only after
+    the gold has failed, and demands a clear separation, because plenty of
+    screens are dark all over and none of those has a selection to report.
+    """
+    if len(body) < 3:
+        return None
+    height, width = rgb.shape[:2]
+    darkness = []
+    for it in body:
+        y0, y1 = int(it.y - it.h * 0.4), int(it.y + it.h * 1.4)
+        x0, x1 = int(it.x - it.w * 0.1), int(it.x + it.w * 1.1)
+        patch = rgb[max(0, y0) : min(height, y1), max(0, x0) : min(width, x1)]
+        darkness.append((patch.max(axis=2) < 105).mean() if patch.size else 0.0)
+
+    order = sorted(range(len(body)), key=lambda i: -darkness[i])
+    best, second = order[0], order[1]
+    if darkness[best] < min_dark or darkness[second] > max_others:
+        return None
+    return best
 
 
 def description(footer_items, row_tolerance: float = 14.0) -> str:

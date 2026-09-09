@@ -64,6 +64,18 @@ EXPECTED = {
     "sfv-20260909-160458": "Gallery",
     "sfv-20260909-160511": "EXIT",
     "sfv-20260909-160504": "LOGIN",
+    # The Gallery submenu, whose entries start 126 pixels from the left edge.
+    # The band was found and read correctly all along and then thrown away for
+    # sitting inside a margin set on the assumption that no menu text does.
+    "sfv-20260909-160500": "Arcade Mode Endings",
+    "sfv-20260909-160502": "Arcade Mode Endings",
+    # This was recorded for a long time as a capture taken mid fade, with
+    # nothing gold on it and nothing to fix. It is nothing of the kind. The
+    # screen is fully drawn, General Story is plainly highlighted on its dark
+    # bar, and the description underneath is the one for General Story. The
+    # gold simply was not saturated enough for the colour match, which is the
+    # same pulse that made the Gallery submenu intermittent.
+    "sfv-20260908-224334": "General Story",
 }
 
 # Entries that should also report their current value. Left out where the value
@@ -127,11 +139,6 @@ NO_HIGHLIGHT = {
     "sfv-20260908-224524": "in a match, gauges instead",
     "sfv-20260908-224515": "blank",
     "sfv-20260908-224443": "blank",
-    # Caught while the menu was still fading in. Every pixel of the entry is
-    # pure grey, from 17 to 153 with red, green and blue equal, so there is no
-    # gold anywhere and no colour-based detector can find a highlight. Nothing
-    # to fix; the screen simply was not finished drawing.
-    "sfv-20260908-224334": "captured mid fade, nothing is gold yet",
 }
 
 

@@ -164,6 +164,18 @@ def announce(bgra, rgb, with_description: bool = True) -> tuple[str, list, int |
             said += f" {footer}"
         return said, body, None, footer
 
+    # Last resort, once no gold has been found anywhere: the gold pulses, and
+    # its dim phase falls outside the colour match, so an entry that is really
+    # selected can leave no gold at all in a given frame. Its dark bar does not
+    # move, so that is what settles it.
+    dark = menu.selected_by_dark_bar(rgb, body)
+    if dark is not None:
+        label = clean(body[dark].text)
+        said = f"{label}. {dark + 1} of {len(body)}."
+        if footer and with_description:
+            said += f" {footer}"
+        return said, body, dark, footer
+
     if not body:
         return "No text found on screen.", body, None, footer
     return f"No highlight found. {len(body)} lines.", body, None, footer
