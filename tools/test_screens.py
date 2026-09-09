@@ -116,6 +116,9 @@ EXPECTED_DESCRIPTION = {
 DIALOGS = {
     "sfv-20260909-160509": ["close the application", "No is selected"],
     "sfv-20260909-160513": ["Internet Browser", "No is selected"],
+    "sfv-20260909-164459": ["close the application", "No is selected"],
+    "sfv-20260909-164501": ["close the application", "Yes is selected"],
+    "sfv-20260909-164505": ["close the application", "Yes is selected"],
 }
 
 # What the narration loop watches to decide the screen moved. Reading a screen
@@ -128,6 +131,12 @@ CHANGE_MOVED = [
     ("sfv-20260909-092856", "sfv-20260909-092901", "settings, one volume row to the next"),
     ("sfv-20260909-160509", "sfv-20260909-154804", "a dialog opening over the main menu"),
     ("sfv-20260909-160458", "sfv-20260909-160511", "icon column, Gallery to Exit"),
+    # Two answers side by side on one row. Every pair above differs vertically,
+    # so all of them passed while the dark map was being split into rows twice
+    # over and had no horizontal resolution at all. These are the only captures
+    # that can catch that, and they are the case that matters most.
+    ("sfv-20260909-164459", "sfv-20260909-164501", "dialog, No to Yes"),
+    ("sfv-20260909-164501", "sfv-20260909-164503", "dialog, Yes back to No"),
 ]
 CHANGE_STILL = [
     # The gold pulses hard enough to vanish between these two, 1367 gold pixels

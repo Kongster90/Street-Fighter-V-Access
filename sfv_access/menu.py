@@ -672,7 +672,12 @@ def dark_signature(rgb: np.ndarray, rows: int = 20, cols: int = 16) -> bytes:
     if view.size == 0:
         return b""
     dark = view.max(axis=2) < 105
-    bands = [np.array_split(r, cols, axis=0) for r in np.array_split(dark, rows, axis=0)]
+    # Split into rows, then each row into columns. Splitting both on axis 0
+    # leaves a signature with no horizontal resolution whatever, which is a
+    # profile of how dark each row is and nothing more. A confirmation dialog
+    # puts Yes and No on the same row, so moving between them changed not one
+    # cell of it and the loop never re-read.
+    bands = [np.array_split(r, cols, axis=1) for r in np.array_split(dark, rows, axis=0)]
     # Quantised to four levels so a pixel or two of drift does not register as
     # movement, while a bar arriving or leaving plainly does.
     return bytes(
