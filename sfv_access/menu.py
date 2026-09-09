@@ -630,6 +630,30 @@ def strip(image: np.ndarray, band: Band, pad: int = 16) -> np.ndarray:
     return np.ascontiguousarray(image[y0:y1, x0:x1])
 
 
+def list_position(body, idx: int, column: float = 26.0) -> tuple[int, int]:
+    """Where the selected entry sits among its own list, and how long that is.
+
+    Counting every recognised line was giving a number that meant nothing and
+    would not sit still. On the main menu it announced "Battle Settings, 10 of
+    12", then 9 of 11, then 11 of 13, without anything being touched, because
+    the count included the panel's own text, the large title naming the
+    selection, and whatever the artwork happened to yield that frame.
+
+    An entry's list is the entries lined up with it: the same left edge, in
+    reading order. That gives six on the main menu, which is both stable and
+    what a person would say.
+    """
+    if not body or idx >= len(body):
+        return 1, max(1, len(body))
+    selected = body[idx]
+    peers = [it for it in body if abs(it.x - selected.x) <= column]
+    peers.sort(key=lambda it: it.y)
+    for n, it in enumerate(peers, start=1):
+        if it is selected:
+            return n, len(peers)
+    return 1, len(peers)
+
+
 def dark_signature(rgb: np.ndarray, rows: int = 20, cols: int = 16) -> bytes:
     """A coarse map of where the dark bars are, for noticing the choice moved.
 

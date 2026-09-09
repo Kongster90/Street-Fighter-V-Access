@@ -53,6 +53,11 @@ WATCH_INTERVAL = 0.12
 # cursor moving across the roster.
 MEMORY_INTERVAL = 0.35
 
+# The " 5 of 6." a narrated entry ends with. Stripped before comparing one
+# announcement with the last, since the count depends on how much text was
+# recognised that frame and the entry itself may not have changed at all.
+_POSITION_CLAUSE = re.compile(r"\s\d+ of \d+\.\s*$")
+
 
 def clean(text: str) -> str:
     """Tidy the recognised text, then snap it to what the game actually says.
@@ -134,7 +139,13 @@ def announce(bgra, rgb, with_description: bool = True) -> tuple[str, list, int |
         if level is not None:
             value = f"level {level} of {menu.BAR_CELLS}"
         said = f"{label}, {value}." if value else f"{label}."
-        said += f" {idx + 1} of {len(body)}."
+        # Among the entry's own list, not among every line recognised on the
+        # screen: the latter counted panel text and artwork and would not sit
+        # still, giving "10 of 12", then "9 of 11", with nothing touched.
+        at, total = menu.list_position(body, idx)
+        # An entry with no peers is not in a list, so "1 of 1" says nothing.
+        if total > 1:
+            said += f" {at} of {total}."
         # The description is worth having but it is a whole sentence, and
         # hearing one on every press while moving down a list is exhausting.
         # Moving through a menu leaves it out; asking for a reading includes it,
@@ -171,7 +182,8 @@ def announce(bgra, rgb, with_description: bool = True) -> tuple[str, list, int |
     dark = menu.selected_by_dark_bar(rgb, body)
     if dark is not None:
         label = clean(body[dark].text)
-        said = f"{label}. {dark + 1} of {len(body)}."
+        at, total = menu.list_position(body, dark)
+        said = f"{label}. {at} of {total}." if total > 1 else f"{label}."
         if footer and with_description:
             said += f" {footer}"
         return said, body, dark, footer
@@ -511,11 +523,20 @@ class App:
         said, body, idx, footer = announce(bgra, rgb, with_description=False)
         self.lines, self.footer = body, footer
         self.cursor = idx if idx is not None else (0 if body else -1)
-        if not said or said == self._last_spoken:
+        if not said:
+            return False
+        # Compared without the position, because how many entries were
+        # recognised varies frame to frame while the entry itself has not
+        # changed. Idling on the main menu otherwise repeated "Battle Settings,
+        # 10 of 12", then 9 of 11, then 11 of 13, every few seconds as the
+        # artwork animated. A level such as "level 3 of 10" is not at the end
+        # and so still counts as a change.
+        identity = _POSITION_CLAUSE.sub("", said)
+        if identity == self._last_spoken:
             return False
         if said.startswith("No highlight") or said.startswith("No text"):
             return False  # nothing worth saying; wait for the screen to settle
-        self._last_spoken = said
+        self._last_spoken = identity
         print(f"[watch] {said}")
         self._log(said)
         self.speech.say(said)

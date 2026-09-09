@@ -18,7 +18,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from sfv_access.app import announce, change_key  # noqa: E402
+from sfv_access.app import _POSITION_CLAUSE, announce, change_key  # noqa: E402
 
 SNAPS = ROOT / "snapshots"
 
@@ -135,6 +135,20 @@ CHANGE_STILL = [
     ("sfv-20260909-160500", "sfv-20260909-160502", "one screen, gold mid pulse"),
 ]
 
+# The position an entry is announced with. It used to count every line
+# recognised anywhere on screen, including the panel's own text and whatever
+# the artwork yielded, so idling on the main menu produced "Battle Settings, 10
+# of 12", then 9 of 11, then 11 of 13, without anything being touched. It
+# counts the entry's own column now, which is both stable and what a person
+# would say. CFN stands alone in its column, and an entry with no peers is
+# announced without a position at all rather than as "1 of 1".
+EXPECTED_POSITION = {
+    "sfv-20260909-154804": "5 of 6",
+    "sfv-20260909-154759": "4 of 6",
+    "sfv-20260909-160500": "1 of 2",
+}
+NO_POSITION = {"sfv-20260909-154806": "CFN has no peers in its column"}
+
 # Stage select, which has no highlighted entry and is read by position. The
 # names are stylised and come back badly, so these also check that the game's
 # own text repairs them: "Ringof PoWer" into "Ring of Power" and
@@ -217,6 +231,40 @@ def main() -> None:
         print(f"  {'ok  ' if ok else 'FAIL'} {stem[-6:]}  {why}")
         if not ok:
             print(f"        said {said[:100]!r}")
+
+    print("\nthe position an entry is announced with:")
+    for stem, want in EXPECTED_POSITION.items():
+        if not (SNAPS / f"{stem}.png").exists():
+            continue
+        rgb, bgra = load(stem)
+        said, _body, _idx, _footer = announce(bgra, rgb, with_description=False)
+        ok = want in said
+        passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+        print(f"  {'ok  ' if ok else 'FAIL'} {stem[-6:]}  want {want!r}")
+        if not ok:
+            print(f"        said {said[:80]!r}")
+    for stem, why in NO_POSITION.items():
+        if not (SNAPS / f"{stem}.png").exists():
+            continue
+        rgb, bgra = load(stem)
+        said, _body, _idx, _footer = announce(bgra, rgb, with_description=False)
+        ok = " of " not in said
+        passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+        print(f"  {'ok  ' if ok else 'FAIL'} {stem[-6:]}  {why}")
+        if not ok:
+            print(f"        said {said[:80]!r}")
+
+    print("\nidling on one screen must not repeat itself:")
+    for a, b, why in CHANGE_STILL:
+        if not ((SNAPS / f"{a}.png").exists() and (SNAPS / f"{b}.png").exists()):
+            continue
+        sa = announce(*load(a)[::-1], with_description=False)[0]
+        sb = announce(*load(b)[::-1], with_description=False)[0]
+        ok = _POSITION_CLAUSE.sub("", sa) == _POSITION_CLAUSE.sub("", sb)
+        passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+        print(f"  {'ok  ' if ok else 'FAIL'} {why}, must read the same both times")
+        if not ok:
+            print(f"        {sa[:60]!r} then {sb[:60]!r}")
 
     print("\nnoticing that the screen moved:")
     for a, b, why in CHANGE_MOVED:
