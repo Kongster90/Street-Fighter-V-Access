@@ -18,7 +18,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from sfv_access import menu  # noqa: E402
+from sfv_access import menu, screens, strings  # noqa: E402
 from sfv_access.app import (  # noqa: E402
     _POSITION_CLAUSE,
     _leading_clause,
@@ -196,6 +196,26 @@ STAGE_RUN = sorted(p.stem for p in SNAPS.glob("sfv-20260909-2234*.png")) + sorte
 # Alternative" to "The Grid", which is itself a real stage, so correction
 # cannot catch it and it costs one extra announcement.
 STAGE_RUN_MAX = 9
+
+# Stage names the reader must refuse, taken verbatim from a session's spoken
+# log. These names are outlined type over full-bleed artwork on an animating
+# screen, so sitting on one stage produced twelve spellings in six seconds,
+# each announced, each cutting off the one before it. A real stage name is in
+# the game's own word list and every one of these scored below what correction
+# accepts, so they are held back and the next frame gets another go.
+BAD_STAGE_NAMES = [
+    "ki+aCRiverside", "NWåCkivénSide", "RuvaIzRivers1de",
+    "RivåiüRiversidé", "RivåLRiWersidé",
+    "Rfvå/ Riveisidé", "Bing•tPriae", "Qing ofiPriae",
+    "_ingNof'Prjde", "Weather I Clear", "EWeathe(l Clear",
+]
+GOOD_STAGE_NAMES = [
+    "Rival Riverside", "Ring of Pride", "Ring of Power", "The Grid", "Dojo",
+    "Marina of Fortune", "King's Court", "Kasugano Residence",
+    "Suzaku Castle at Night", "Flamenco Tavern",
+    # Damaged but still repairable, which is the line this must not cross.
+    "Ringof PoWer", "Hollif ollyBeatdown",
+]
 
 # The conditions are checked through the read key, which includes them. Moving
 # through the screen says the name alone: time, temperature and weather do not
@@ -378,6 +398,18 @@ def main() -> None:
         if not ok:
             for line in spoken:
                 print(f"        {line}")
+
+    print("\nstage names the reader must and must not accept:")
+    vocab = strings.shared()
+    wrong = [t for t in BAD_STAGE_NAMES
+             if vocab.correct(t).score >= screens.NAME_CONFIDENCE]
+    wrong += [t for t in GOOD_STAGE_NAMES
+              if vocab.correct(t).score < screens.NAME_CONFIDENCE]
+    passed, failed = (passed + 1, failed) if not wrong else (passed, failed + 1)
+    print(f"  {'ok  ' if not wrong else 'FAIL'} "
+          f"{len(BAD_STAGE_NAMES)} refused, {len(GOOD_STAGE_NAMES)} accepted")
+    if wrong:
+        print(f"        got the wrong answer for {wrong}")
 
     print("\nstage select:")
     for stem, wants in STAGES.items():

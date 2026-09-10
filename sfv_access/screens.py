@@ -24,6 +24,12 @@ ATTRIBUTE_WORDS = ("time", "temperature", "weather")
 
 _SEPARATOR = re.compile(r"^\s*(time|temperature|weather)\s*[|Il1!:]*\s*", re.IGNORECASE)
 
+# How sure the reader has to be that a stage name is a real one. The same
+# threshold correction uses, because it is the same question: is this a string
+# the game contains. Real names score 1.00; the misreadings seen in play scored
+# 0.48 to 0.77.
+NAME_CONFIDENCE = 0.78
+
 
 # The degree sign comes back as a zero, so 80 degrees reads as "800 F". Stage
 # temperatures are two digits, which makes the trailing zero unambiguous.
@@ -198,7 +204,31 @@ def stage_select(
         return None
     stage = max(candidates, key=lambda i: i.h * i.w)
 
-    parts = [stage.text.strip()]
+    # The name has to be a stage the game contains, or nothing is said.
+    #
+    # These names are outlined type over full-bleed artwork and the screen
+    # animates, so a stage that is read cleanly one frame is read differently
+    # the next. Sitting on Rival Riverside produced twelve spellings in six
+    # seconds, among them "RuvaIzRivers1de" and "RfvåII!kiüeFSid", each a
+    # different string, each announced, each cutting off the one before it.
+    # Ring of Pride did the same. The names were never wrong for long; they
+    # were just never quiet.
+    #
+    # The game's own word list settles it. A real stage name is in there, and
+    # every one of those spellings scored below what correction accepts, so
+    # they are dropped and the next frame gets another go. This also stops
+    # "Weather I Clear" being announced as though it were a stage.
+    name = stage.text.strip()
+    if len(name) < 3:
+        return None
+    vocabulary = strings.shared()
+    if vocabulary is not None:
+        match = vocabulary.correct(name)
+        if match.score < NAME_CONFIDENCE:
+            return None
+        name = match.text
+
+    parts = [name]
     if with_conditions:
         for name, value in attributes:
             # An unset condition shows as a question mark; saying "Weather
