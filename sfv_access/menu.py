@@ -655,6 +655,30 @@ def strip(image: np.ndarray, band: Band, pad: int = 16) -> np.ndarray:
     return np.ascontiguousarray(image[y0:y1, x0:x1])
 
 
+# A ticked box is drawn in green. Measured across a whole pass through the
+# menu music list: a tick covers 11 per cent of the box in green, and an empty
+# box covers none at all, whether it sits on the highlight bar or not.
+TICK_GREEN = 0.03
+CHECKBOX_WIDTH = 40  # how far left of the label to look, in pixels
+
+
+def is_ticked(rgb: np.ndarray, item) -> bool:
+    """Whether the box beside this entry is ticked.
+
+    Some lists are checklists: the menu music screen is a list of tracks, each
+    either on or off, and the entry read perfectly while the one thing the
+    screen exists to tell you went unsaid.
+    """
+    y0, y1 = int(item.y - 4), int(item.y + item.h + 4)
+    x1 = int(item.x - 8)
+    x0 = max(0, x1 - CHECKBOX_WIDTH)
+    box = rgb[max(0, y0) : y1, x0:x1].astype(np.float32)
+    if box.size == 0:
+        return False
+    r, g, b = box[..., 0], box[..., 1], box[..., 2]
+    return float(((g - r > 40) & (g - b > 40)).mean()) > TICK_GREEN
+
+
 def list_position(body, idx: int, column: float = 26.0) -> tuple[int, int]:
     """Where the selected entry sits among its own list, and how long that is.
 

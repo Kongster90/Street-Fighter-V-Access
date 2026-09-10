@@ -197,6 +197,17 @@ STAGE_RUN = sorted(p.stem for p in SNAPS.glob("sfv-20260909-2234*.png")) + sorte
 # cannot catch it and it costs one extra announcement.
 STAGE_RUN_MAX = 9
 
+# Checklists, where each entry is either on or off. The menu music screen is a
+# list of tracks, and the entry read perfectly while the one thing the screen
+# exists to tell you went unsaid. A tick is green and covers about 11 per cent
+# of its box; an empty box covers none at all, on the highlight bar or off it.
+# The first two are the same entry in both states.
+TICKED = {
+    "sfv-20260909-233649": ("Luke's Theme", True),
+    "sfv-20260909-233654": ("Luke's Theme", False),
+    "sfv-20260909-233633": ("Necalli's Theme", True),
+}
+
 # The voice language grid, which inverts everything else in the game: its
 # choices are portraits rather than text, laid out four across instead of in a
 # column, and the one you are on is the bright tile while the rest are dimmed,
@@ -431,6 +442,19 @@ def main() -> None:
         if not ok:
             for line in spoken:
                 print(f"        {line}")
+
+    print("\nchecklists, where an entry is on or off:")
+    for stem, (want, ticked) in TICKED.items():
+        if not (SNAPS / f"{stem}.png").exists():
+            continue
+        rgb, bgra = load(stem)
+        said, _b, _i, _f = announce(bgra, rgb, with_description=False)
+        state = "Ticked." if ticked else "Not ticked."
+        ok = want.lower() in said.lower() and state in said
+        passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+        print(f"  {'ok  ' if ok else 'FAIL'} {stem[-6:]}  want {want!r} {state}")
+        if not ok:
+            print(f"        said {said[:70]!r}")
 
     print("\nthe voice language grid:")
     for stem, want in VOICE_GRID.items():

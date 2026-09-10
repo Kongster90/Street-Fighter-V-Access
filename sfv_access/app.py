@@ -161,6 +161,12 @@ def announce(bgra, rgb, with_description: bool = True) -> tuple[str, list, int |
         if level is not None:
             value = f"level {level} of {menu.BAR_CELLS}"
         said = f"{label}, {value}." if value else f"{label}."
+        # On a checklist, whether the entry is on or off is the whole point of
+        # the screen, and it was the one thing going unsaid. The screen says so
+        # itself: only these carry a "select or deselect all" hint, so nothing
+        # else has a state read into it.
+        if any("deselect" in i.text.lower() for i in items):
+            said += " Ticked." if menu.is_ticked(rgb, body[idx]) else " Not ticked."
         # Among the entry's own list, not among every line recognised on the
         # screen: the latter counted panel text and artwork and would not sit
         # still, giving "10 of 12", then "9 of 11", with nothing touched.
