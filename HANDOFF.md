@@ -122,36 +122,63 @@ approximates by polling pixels is one the game already raises.
 **Calling them needs code inside the process**, which reading memory from
 outside cannot do. Two routes:
 
-1. **UE4SS.** Parked, close but not working. See below.
+1. **UE4SS.** Tried hard, abandoned one symbol short, uninstalled. See below
+   before spending any time on it.
 2. **Find the text field by watching it change.** The GFx value objects are at
    known addresses; dump one's bytes, move the menu, dump again, and keep what
    changed. The note above already recorded that one sample reads as UTF-16, so
-   the text is in there. This needs no injection and suits the read-only
-   approach the rest of the project takes. Probably the thing to try first.
+   the text is in there. This needs no injection, cannot crash the game, and
+   suits the read-only approach the rest of the project takes. **Do this one.**
+   It is untried, and it addresses the two things the user reports as actually
+   broken: stage names, which the pixel reader gets wrong, and character
+   select, which is unreliable.
 
-### Where UE4SS got to
+### Where UE4SS got to, and why it is not installed
 
-3.0.1 loads, detects engine 4.7 by itself, and finds GMalloc, `FName::ToString`
-and `FName::FName` unaided, on a DRM-wrapped executable five engine versions
-below anything it targets. `tools/ue4ss_setup.py` supplies the 4.7 offsets this
-project measured and an engine version override of 4.12, without which it stops
-at "Engine version is not supported" despite having correctly detected 4.7.
+Tried thoroughly and abandoned one symbol short. Nothing of it is installed;
+the game folder holds only the executable. `tools/ue4ss_setup.py --remove`
+puts it back to that state if it is ever reinstalled.
 
-Three signatures it cannot find, written by `tools/ue4ss_signatures.py`:
-`GUObjectArray`, which this project knows at module `+0x3978720`, being the
-array head at `+0x3978730` less the 0x10 its own shipped example subtracts; and
-`StaticConstructObject_Internal` and `FText::FText`, neither of which exists in
-4.7, both pointed at padding between two functions so their hooks land in dead
-space.
+The experimental build gets remarkably far on a game five engine versions below
+anything it targets. It loads, works out that this is 4.7 by itself, and finds
+GMalloc, `FName::ToString`, `FName::FName`, `FUObjectHashTables::Get`,
+`GNatives` and `GameEngineTick` unaided on a DRM-wrapped executable. Two things
+it cannot find. `GUObjectArray` this project already knows, at module
+`+0x3978720`, being the array head at `+0x3978730` less the 0x10 UE4SS's own
+example subtracts, and supplying it works. The other is object construction.
 
-`StaticConstructObject` is accepted. The other two are refused, and this is
-where it stands. They are scanned in a second pass, and giving all three the
-identical pattern that the accepted one uses changes nothing: the same two
-still fail, one reported as never matching and one as returning an invalid
-address. So it is not the pattern. Reading how 3.x scans those two specifically
-is the next step, and that means the 3.x source rather than the 2.2 tree.
+**Object construction is the whole blocker.** UE4SS looks for
+`StaticConstructObject_Internal`, a name 4.7 predates, via a call inside a class
+this engine version does not have. Pointing it at inert padding crashes the
+game with the fault address equal to the padding, which proves UE4SS calls the
+function rather than merely hooking it.
 
-`tools/ue4ss_setup.py --remove` takes the whole install back out.
+Seven approaches failed to identify the real one, and they are recorded in the
+commits so nobody repeats them: ranking functions that touch the object array
+by callers finds small accessors; ranking by size finds vtable-reached
+functions; Unreal's per-file log category names are not in this binary; call
+sites filling four stack slots narrows 46 MB to two dozen but the two at the
+right distance from the hash tables both crashed; a six-argument function with
+allocation's exact shape has no eight-argument callers; and measuring arity by
+disassembly founders on the same rock as the rest.
+
+That rock is worth naming, because it defeated every attempt: **there is no
+reliable way here to say where a function begins.** This binary does not pad
+consistently between functions. Deriving starts from call targets is better and
+is what `tools/walk_callers.py` does, but it still admits jump targets and
+thunks, and frame sizes come out wrong often enough that arity counts cannot be
+trusted. Getting further needs proper control flow recovery, not instruction
+counting.
+
+**One fact worth having before resuming:** UE4SS's hook ignores that function's
+arguments entirely and only dereferences its return value as an object. So a
+correct address really would work, and every crash meant wrong function rather
+than a broken approach.
+
+The tools are kept: `ue4ss_setup.py` installs and removes the configuration,
+`ue4ss_signatures.py` writes the signature files, `ue4ss_log.py` reads the log,
+and `walk_callers.py` and `find_construct_arity.py` are the two least bad
+searches. `find_construct.py` is the first and worst of them.
 
 
 ## Traps
