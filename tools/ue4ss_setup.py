@@ -37,7 +37,10 @@ from pathlib import Path
 WIN64 = Path(
     r"G:\Steam\steamapps\common\StreetFighterV\StreetFighterV\Binaries\Win64"
 )
-PROXY = "xinput1_3.dll"
+# 2.x loaded through an XInput proxy; 3.x loads through dwmapi and its own DLL,
+# and its release notes warn that leaving the old xinput1_3.dll in place
+# crashes the game. Either counts as installed.
+PROXIES = ("dwmapi.dll", "xinput1_3.dll")
 SETTINGS = "UE4SS-settings.ini"
 LAYOUT = "MemberVariableLayout.ini"
 
@@ -75,19 +78,26 @@ HEADER = """; Street Fighter V, Unreal Engine 4.7, written by tools/ue4ss_setup.
 ; checked before use. Do not edit by hand; change the tool.
 """
 
-# Nothing but the built-in keybinds for a first run. Each of the bundled mods
-# is another thing that can crash a game two engine versions older than any it
-# was written for, and none of them is needed to find out whether UE4SS loads.
-QUIET_MODS = """CheatManagerEnablerMod : 0
-ActorDumperMod : 0
-ConsoleCommandsMod : 0
-ConsoleEnablerMod : 0
-SplitScreenMod : 0
-LineTraceMod : 0
+def quiet_mods(text: str) -> tuple[str, int]:
+    """Turn every bundled mod off, keeping the file's own names and order.
 
-; Built-in keybinds, do not move up!
-Keybinds : 1
-"""
+    Each is another thing that can misbehave on a game five engine versions
+    older than anything UE4SS targets, and none is needed to find out whether
+    it loads. Written to switch off whatever the file lists rather than to a
+    fixed set, because 2.x and 3.x ship different mods and clobbering one
+    version's list with the other's would be its own kind of mess.
+    """
+    lines = text.splitlines()
+    off = 0
+    for i, line in enumerate(lines):
+        if ":" not in line or line.lstrip().startswith(";"):
+            continue
+        name, _, value = line.partition(":")
+        if name.strip().lower() == "keybinds" or value.strip() != "1":
+            continue
+        lines[i] = f"{name.strip()} : 0"
+        off += 1
+    return "\n".join(lines) + "\n", off
 
 SETTING_CHANGES = {
     # Not the real version, which is 4.7. UE4SS checks the version against what
@@ -176,11 +186,9 @@ def main() -> None:
 
     if not WIN64.is_dir():
         raise SystemExit(f"no such folder: {WIN64}")
-    missing = [f for f in (PROXY, SETTINGS) if not (WIN64 / f).exists()]
-    if missing:
+    if not any((WIN64 / p).exists() for p in PROXIES) or not (WIN64 / SETTINGS).exists():
         print(f"UE4SS is not installed in {WIN64}")
-        print(f"  missing: {', '.join(missing)}")
-        print("  put the contents of the UE4SS XInput build there first")
+        print(f"  looked for {SETTINGS} and one of {', '.join(PROXIES)}")
         raise SystemExit(1)
 
     print(f"UE4SS found in {WIN64}")
@@ -195,8 +203,10 @@ def main() -> None:
     print(f"would change {len(changed)} settings:")
     for c in changed:
         print(f"    {c}")
+    mods_off = 0
     if mods_path.exists():
-        print("would disable the bundled mods for a first run")
+        _, mods_off = quiet_mods(mods_path.read_text(encoding="utf-8-sig"))
+        print(f"would switch off {mods_off} bundled mods for a first run")
 
     if not apply:
         print("\nrun again with --apply to write it")
@@ -207,11 +217,12 @@ def main() -> None:
     if not backup.exists():
         shutil.copy2(settings_path, backup)
     settings_path.write_text(patched, encoding="utf-8")
-    if mods_path.exists():
+    if mods_path.exists() and mods_off:
         mods_backup = mods_path.with_suffix(".txt.orig")
         if not mods_backup.exists():
             shutil.copy2(mods_path, mods_backup)
-        mods_path.write_text(QUIET_MODS, encoding="utf-8")
+        quieted, _ = quiet_mods(mods_path.read_text(encoding="utf-8-sig"))
+        mods_path.write_text(quieted, encoding="utf-8")
 
     print(f"\nwrote {LAYOUT} and updated {SETTINGS}")
     print(f"originals kept beside them as .orig")

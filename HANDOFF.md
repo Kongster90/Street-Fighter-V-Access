@@ -77,8 +77,10 @@ classes, against 7 for UMG. There is no widget tree to walk. The class names map
 onto the screens: `WSMainMenuGFxPlayer`, `OptionMenuGFxPlayer`,
 `CharaSelectGFxPlayer`, `GameUIGFxPlayer` for the match HUD. The
 `ScaleformUtilGFxValue` objects that hold the on-screen content declare no
-properties at all, being wrappers around Scaleform's native value type. Decoding
-that is undone work.
+properties at all, being wrappers around Scaleform's native value type. They do
+declare functions, though, and those include the getters. See "The Scaleform
+text is reachable after all" below before concluding anything from the missing
+properties.
 
 **The pak files.** Standard Unreal pak version 3, unencrypted index, so the file
 table reads without a key. The contents are AES-256-ECB encrypted. The key lives
@@ -97,6 +99,60 @@ keyed by opaque hashes rather than by character code, which is why the code to
 name mapping still has to be learned by hovering.
 
 **The highlight colour is RGB 255, 227, 140**, identical on every screen.
+
+
+## The Scaleform text is reachable after all
+
+This was recorded here as undone work on the grounds that the objects holding
+the on-screen text declare no Unreal properties. That fact is true. The
+conclusion drawn from it was wrong, and it cost the project a great deal of
+pixel-reading it may not have needed.
+
+Properties are not the only thing a class declares. `ScaleformUtilGFxValue`
+declares fifty functions, and they include `GetText`, `GetString`,
+`GetTextHTML`, `GetStringMember`, `GetMember`, `GetElement` and `GetArraySize`.
+`ScaleformUtilGFxMenuPlayer` declares `OnChangeIndex` and `EI_OnChangeIndex`,
+which fire as the selection moves, alongside `OnSelect`, `OnFocusIn` and
+`OnPushListItem`. 689 functions across 123 interface classes, enumerated from
+outside with `tools/` as it already stood, no injection involved.
+
+So the menu text is behind getters rather than fields, and the event this tool
+approximates by polling pixels is one the game already raises.
+
+**Calling them needs code inside the process**, which reading memory from
+outside cannot do. Two routes:
+
+1. **UE4SS.** Parked, close but not working. See below.
+2. **Find the text field by watching it change.** The GFx value objects are at
+   known addresses; dump one's bytes, move the menu, dump again, and keep what
+   changed. The note above already recorded that one sample reads as UTF-16, so
+   the text is in there. This needs no injection and suits the read-only
+   approach the rest of the project takes. Probably the thing to try first.
+
+### Where UE4SS got to
+
+3.0.1 loads, detects engine 4.7 by itself, and finds GMalloc, `FName::ToString`
+and `FName::FName` unaided, on a DRM-wrapped executable five engine versions
+below anything it targets. `tools/ue4ss_setup.py` supplies the 4.7 offsets this
+project measured and an engine version override of 4.12, without which it stops
+at "Engine version is not supported" despite having correctly detected 4.7.
+
+Three signatures it cannot find, written by `tools/ue4ss_signatures.py`:
+`GUObjectArray`, which this project knows at module `+0x3978720`, being the
+array head at `+0x3978730` less the 0x10 its own shipped example subtracts; and
+`StaticConstructObject_Internal` and `FText::FText`, neither of which exists in
+4.7, both pointed at padding between two functions so their hooks land in dead
+space.
+
+`StaticConstructObject` is accepted. The other two are refused, and this is
+where it stands. They are scanned in a second pass, and giving all three the
+identical pattern that the accepted one uses changes nothing: the same two
+still fail, one reported as never matching and one as returning an invalid
+address. So it is not the pattern. Reading how 3.x scans those two specifically
+is the next step, and that means the 3.x source rather than the 2.2 tree.
+
+`tools/ue4ss_setup.py --remove` takes the whole install back out.
+
 
 ## Traps
 
