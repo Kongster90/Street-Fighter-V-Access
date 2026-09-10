@@ -49,7 +49,16 @@ EXE = "StreetFighterV.exe"
 WIN64 = Path(
     r"G:\Steam\steamapps\common\StreetFighterV\StreetFighterV\Binaries\Win64"
 )
-SIG_DIR = WIN64 / "UE4SS_Signatures"
+def signature_dir() -> Path:
+    """Where this build keeps its signature scripts.
+
+    3.0.1 put everything loose beside the game executable. The experimental
+    build puts it in a `ue4ss` folder next to it instead, with only the loader
+    DLL left outside, so the working directory moves with it.
+    """
+    nested = WIN64 / "ue4ss"
+    root = nested if (nested / "UE4SS-settings.ini").exists() else WIN64
+    return root / "UE4SS_Signatures"
 
 # The object array this project found and validated, and the wrapper UE4SS
 # wants, which begins four integers earlier.
@@ -75,6 +84,32 @@ end
 function OnMatchFound(MatchAddress)
     return MatchAddress + {step}
 end
+'''
+
+# A signature file may instead return the address at file scope, which skips
+# the scan entirely. That matters because the scan is the part failing: the
+# same pattern that UE4SS accepts for one symbol it reports as never matching
+# for these two, and they are looked for in a second pass whose code is in a
+# submodule that cannot be cloned.
+#
+# The cost is that this address is absolute. The executable has ASLR on with
+# high entropy, so its base moves, and while Windows keeps one base per image
+# until it reboots, this file is stale after that and must be written again.
+LUA_LITERAL = '''-- Street Fighter V, Unreal Engine 4.7. Written by
+-- tools/ue4ss_signatures.py; do not edit by hand.
+--
+{why}
+--
+-- Returned at file scope rather than scanned for, which UE4SS documents as the
+-- alternative to Register and OnMatchFound. The scan is what fails for this
+-- symbol, so this route avoids it.
+--
+-- {exe}+{target_off:#x}, with the module based at {base:#x} when this was
+-- written. THAT BASE MOVES: the executable has ASLR, so after a reboot this
+-- address is wrong and the file has to be written again. Run
+-- tools/ue4ss_signatures.py --apply with the game up, then restart it.
+
+return {target:#x}
 '''
 
 WHY_OBJECTS = """-- The engine's global object array. UE4SS cannot find it in this build, but
@@ -142,53 +177,57 @@ def main() -> None:
         anchor_off = text_base_off + at
         pad_off = text_base_off + pad_at
 
+        # The symbol whose scan UE4SS accepts keeps its scan, because a byte
+        # pattern is base-independent and survives a reboot. The two it refuses
+        # return their address at file scope instead, which is the documented
+        # alternative and skips the scanning that is what fails for them.
         files = [
-            ("GUObjectArray.lua", WHY_OBJECTS, anchor, anchor_off, GUOBJECTARRAY),
             (
                 "StaticConstructObject.lua",
                 WHY_INERT.format(name="StaticConstructObject_Internal"),
-                anchor,
+                "scan",
                 anchor_off,
                 pad_off,
             ),
-            (
-                "FText_Constructor.lua",
-                WHY_INERT.format(name="FText::FText(FString&&)"),
-                anchor,
-                anchor_off,
-                # Four bytes further into the padding, so the two hooks are not
-                # written over each other.
-                pad_off + 4,
-            ),
+            ("GUObjectArray.lua", WHY_OBJECTS, "literal", None, GUOBJECTARRAY),
         ]
 
         written = []
-        for filename, why, anchor, anchor_off, target_off in files:
-            pattern = " ".join(f"{b:02X}" for b in anchor)
-            step = target_off - anchor_off
-            body = LUA.format(
-                why=why,
-                anchor=ANCHOR,
-                exe=EXE,
-                anchor_off=anchor_off,
-                step=step,
-                target_off=target_off,
-                pattern=pattern,
-            )
+        for filename, why, how, at, target_off in files:
+            if how == "scan":
+                body = LUA.format(
+                    why=why,
+                    anchor=ANCHOR,
+                    exe=EXE,
+                    anchor_off=at,
+                    step=target_off - at,
+                    target_off=target_off,
+                    pattern=" ".join(f"{b:02X}" for b in anchor),
+                )
+                how_text = f"scanned, anchor {EXE}+{at:#x}, step {target_off - at:+#x}"
+            else:
+                body = LUA_LITERAL.format(
+                    why=why,
+                    exe=EXE,
+                    target_off=target_off,
+                    base=module.base,
+                    target=module.base + target_off,
+                )
+                how_text = "returned at file scope, absolute, stale after a reboot"
             written.append((filename, body))
             print(f"\n{filename}")
-            print(f"    anchor {EXE}+{anchor_off:#x}, unique in .text")
-            print(f"    target {EXE}+{target_off:#x}, step {step:+#x}")
-            print(f"    live   {module.base + target_off:#x}")
+            print(f"    {how_text}")
+            print(f"    target {EXE}+{target_off:#x}, live {module.base + target_off:#x}")
 
     if "--apply" not in sys.argv:
         print("\nrun again with --apply to write them")
         return
 
-    SIG_DIR.mkdir(parents=True, exist_ok=True)
+    sig_dir = signature_dir()
+    sig_dir.mkdir(parents=True, exist_ok=True)
     for filename, body in written:
-        (SIG_DIR / filename).write_text(body, encoding="utf-8")
-    print(f"\nwrote {len(written)} files to {SIG_DIR}")
+        (sig_dir / filename).write_text(body, encoding="utf-8")
+    print(f"\nwrote {len(written)} files to {sig_dir}")
     print("restart the game, then read the log with tools/ue4ss_log.py")
 
 
