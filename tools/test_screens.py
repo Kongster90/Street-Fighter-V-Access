@@ -19,7 +19,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from sfv_access import menu  # noqa: E402
-from sfv_access.app import _POSITION_CLAUSE, announce, change_key  # noqa: E402
+from sfv_access.app import (  # noqa: E402
+    _POSITION_CLAUSE,
+    _leading_clause,
+    announce,
+    change_key,
+)
 
 SNAPS = ROOT / "snapshots"
 
@@ -174,6 +179,23 @@ NOT_MAP_CHROME = [
     "PLAYER 1 VS PLAYER 2", "Good Luck Charms", "Arcade Mode Endings",
     "Ryu's Theme (Japan) from Street Fighter II",
 ]
+
+# A run of captures taken while moving through stage select, in order. Each
+# stage should announce itself once.
+#
+# It did not. Stage select reads correctly, but its detail arrives in pieces:
+# one stage read "Time 4:30" and corrected itself to "14:30" on the next look,
+# another gained its temperature, and The Grid Alternative produced four
+# readings in a row. Every one was announced and every one interrupted the
+# last, so what reached the user was a word of each and then nothing. Stages
+# seemed not to read at all when in fact they read fine.
+STAGE_RUN = sorted(p.stem for p in SNAPS.glob("sfv-20260909-2234*.png")) + sorted(
+    p.stem for p in SNAPS.glob("sfv-20260909-2235*.png")
+)
+# Eight stages were visited. One reading of one of them truncates "The Grid
+# Alternative" to "The Grid", which is itself a real stage, so correction
+# cannot catch it and it costs one extra announcement.
+STAGE_RUN_MAX = 9
 
 # Stage select, which has no highlighted entry and is read by position. The
 # names are stylised and come back badly, so these also check that the game's
@@ -330,6 +352,27 @@ def main() -> None:
         print(f"  {'ok  ' if not missing else 'FAIL'} {stem[-6:]}  {wants[0]!r}")
         if missing:
             print(f"        missing {missing}, said {said[:110]!r}")
+
+    if STAGE_RUN:
+        print("\nmoving through stage select, one announcement per stage:")
+        last, spoken = "", []
+        for stem in STAGE_RUN:
+            rgb, bgra = load(stem)
+            said, _b, _i, _f = announce(bgra, rgb, with_description=False)
+            if not said or said.startswith(("No highlight", "No text")):
+                continue
+            ident = _leading_clause(_POSITION_CLAUSE.sub("", said))
+            if ident == last:
+                continue
+            last = ident
+            spoken.append(ident)
+        ok = len(spoken) <= STAGE_RUN_MAX
+        passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+        print(f"  {'ok  ' if ok else 'FAIL'} {len(STAGE_RUN)} frames give "
+              f"{len(spoken)} announcements, at most {STAGE_RUN_MAX} allowed")
+        if not ok:
+            for line in spoken:
+                print(f"        {line}")
 
     print("\nstage select:")
     for stem, wants in STAGES.items():

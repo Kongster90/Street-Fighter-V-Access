@@ -26,7 +26,17 @@ _WHITESPACE = re.compile(r"\s+")
 
 
 def normalise(text: str) -> str:
-    return _WHITESPACE.sub(" ", text).strip().upper()
+    """Upper case for comparison, without letting the length change.
+
+    A few characters grow when upper cased, and the German sharp s is the one
+    recognition produces: it becomes two letters, so a misread stage name came
+    out one character longer than it looked and scored 0.769 against a
+    threshold of 0.78. "Ring of Power" was sitting right there and was refused
+    over four thousandths. Similarity is measured on length, so a character
+    that changes it distorts every comparison it appears in.
+    """
+    text = _WHITESPACE.sub(" ", text).strip()
+    return "".join(c if len(c.upper()) != 1 else c.upper() for c in text)
 
 
 def _numbers(text: str) -> tuple[str, ...]:

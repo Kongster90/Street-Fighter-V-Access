@@ -59,6 +59,17 @@ MEMORY_INTERVAL = 0.35
 _POSITION_CLAUSE = re.compile(r"\s\d+ of \d+\.\s*$")
 
 
+def _leading_clause(said: str) -> str:
+    """The thing being named, before anything said about it.
+
+    Announcements are a name and then its detail: a stage and its conditions, a
+    setting and its description. The name is what identifies the thing; the
+    detail arrives in pieces and changes between readings of the same screen.
+    """
+    head = said.split(".", 1)[0].strip()
+    return head or said.strip()
+
+
 def clean(text: str) -> str:
     """Tidy the recognised text, then snap it to what the game actually says.
 
@@ -534,11 +545,25 @@ class App:
         # 10 of 12", then 9 of 11, then 11 of 13, every few seconds as the
         # artwork animated. A level such as "level 3 of 10" is not at the end
         # and so still counts as a change.
-        identity = _POSITION_CLAUSE.sub("", said)
-        if identity == self._last_spoken:
-            return False
         if said.startswith("No highlight") or said.startswith("No text"):
             return False  # nothing worth saying; wait for the screen to settle
+
+        # Compared on what is being named, not on everything said about it.
+        #
+        # Stage select is why. It reads correctly but its detail arrives in
+        # pieces: one stage read "Time 4:30" and corrected itself to "14:30",
+        # another gained its temperature on the second look, and The Grid
+        # Alternative produced four readings in a row. Every one of them was
+        # announced and every one interrupted the last. Those sentences take
+        # several seconds to say and the next arrived within one, so what
+        # reached the user was a word of each and then nothing, which is why
+        # stages seemed not to read at all when they read fine.
+        #
+        # The name is the part that holds still, so it decides. Changing a
+        # volume still speaks, because the level is part of the first clause.
+        identity = _leading_clause(_POSITION_CLAUSE.sub("", said))
+        if identity == self._last_spoken:
+            return False
         self._last_spoken = identity
         print(f"[watch] {said}")
         self._log(said)

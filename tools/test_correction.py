@@ -33,6 +33,12 @@ CASES = [
     ("Character / Stage Select", "Character / Stage Select"),
     ("Frame Advantage in Color", "Frame Advantage in Color"),
     ("HARA ER SELECT", "CHARACTER SELECT"),
+    # A stage name off the live screen. The sharp s is what recognition made of
+    # the R, and upper casing used to turn it into two letters, which made the
+    # reading one character longer than it looked and scored 0.769 against a
+    # threshold of 0.78. It was refused over four thousandths, and the stage
+    # announced itself twice: once wrongly and once correctly.
+    ("Yßingof PoWe", "Ring of Power"),
     ("STAGE SELECT", "STAGE SELECT"),
 ]
 
