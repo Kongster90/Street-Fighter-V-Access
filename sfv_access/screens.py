@@ -102,6 +102,10 @@ def title_signature(rgb: np.ndarray) -> bytes:
 # of the screen, over a light modal panel.
 DIALOG_ROW = (0.55, 0.75)  # share of frame height the buttons sit within
 DIALOG_WORDS = 18  # a choice is a word or two, not a sentence
+# How sharply brightness must change from row to row down that band for a panel
+# to be there. Every real dialog captured measures about 79; every screen
+# wrongly claimed as one measures 17 to 20.
+PANEL_EDGE = 45.0
 
 
 def dialog_choice(rgb, items) -> tuple[str, str] | None:
@@ -119,6 +123,25 @@ def dialog_choice(rgb, items) -> tuple[str, str] | None:
     the dark one.
     """
     height, width = rgb.shape[:2]
+
+    # There has to be a panel, or this is not a dialog at all.
+    #
+    # Without this it claimed character select, announcing "ininirri KEN is
+    # selected" and "riJ5inirrJ ER SELEqt is selected" over and over: the
+    # roster is artwork, so some rows hold two pieces of text with very
+    # different backgrounds, which is all the test below looks for.
+    #
+    # A dialog is drawn on a panel laid over the screen, and a panel has a hard
+    # edge. Measured down the band the answers sit in, that edge makes the
+    # brightness of one row differ sharply from the next: 79 on every real
+    # dialog captured, against 17 to 20 on every screen that was wrongly
+    # claimed. Nothing else here separates so cleanly.
+    band = rgb[int(DIALOG_ROW[0] * height) : int(DIALOG_ROW[1] * height)]
+    if band.size == 0:
+        return None
+    if float(band.astype(np.float32).mean(axis=2).mean(axis=1).std()) < PANEL_EDGE:
+        return None
+
     row = [
         it
         for it in items

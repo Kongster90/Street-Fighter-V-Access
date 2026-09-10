@@ -18,7 +18,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from sfv_access import menu, screens, strings  # noqa: E402
+from sfv_access import menu, ocr, screens, strings  # noqa: E402
 from sfv_access.app import (  # noqa: E402
     _POSITION_CLAUSE,
     _leading_clause,
@@ -196,6 +196,20 @@ STAGE_RUN = sorted(p.stem for p in SNAPS.glob("sfv-20260909-2234*.png")) + sorte
 # Alternative" to "The Grid", which is itself a real stage, so correction
 # cannot catch it and it costs one extra announcement.
 STAGE_RUN_MAX = 9
+
+# Screens the dialog reader must NOT claim. Without a test for the panel it
+# claimed character select and announced "ininirri KEN is selected" and
+# "riJ5inirrJ ER SELEqt is selected" over and over, because the roster is
+# artwork and some rows hold two pieces of text on very different backgrounds.
+# A dialog is drawn on a panel and a panel has a hard edge, which is what is
+# measured now: about 79 on every real dialog, 17 to 20 on all of these.
+NOT_DIALOGS = {
+    "sfv-20260908-224434": "character select",
+    "sfv-20260909-222908": "character select",
+    "sfv-20260909-154759": "main menu",
+    "sfv-20260909-154806": "main menu",
+    "sfv-20260909-154815": "main menu",
+}
 
 # Stage names the reader must refuse, taken verbatim from a session's spoken
 # log. These names are outlined type over full-bleed artwork on an animating
@@ -398,6 +412,19 @@ def main() -> None:
         if not ok:
             for line in spoken:
                 print(f"        {line}")
+
+    print("\nscreens that are not dialogs:")
+    for stem, what in NOT_DIALOGS.items():
+        if not (SNAPS / f"{stem}.png").exists():
+            continue
+        rgb, bgra = load(stem)
+        items = ocr.reading_order(ocr.read(bgra))
+        got = screens.dialog_choice(rgb, items)
+        ok = got is None
+        passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+        print(f"  {'ok  ' if ok else 'FAIL'} {stem[-6:]}  {what}")
+        if not ok:
+            print(f"        claimed {got[1]!r} is selected")
 
     print("\nstage names the reader must and must not accept:")
     vocab = strings.shared()
