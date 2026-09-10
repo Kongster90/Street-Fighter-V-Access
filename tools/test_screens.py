@@ -197,6 +197,11 @@ STAGE_RUN = sorted(p.stem for p in SNAPS.glob("sfv-20260909-2234*.png")) + sorte
 # cannot catch it and it costs one extra announcement.
 STAGE_RUN_MAX = 9
 
+# The conditions are checked through the read key, which includes them. Moving
+# through the screen says the name alone: time, temperature and weather do not
+# affect play, and three of them after every stage is a lot of talking for
+# nothing. STAGE_RUN above replays the moving case and so sees names only.
+
 # Stage select, which has no highlighted entry and is read by position. The
 # names are stylised and come back badly, so these also check that the game's
 # own text repairs them: "Ringof PoWer" into "Ring of Power" and

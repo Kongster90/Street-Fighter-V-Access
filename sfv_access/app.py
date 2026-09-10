@@ -125,7 +125,7 @@ def announce(bgra, rgb, with_description: bool = True) -> tuple[str, list, int |
     # Stage select carries a highlighted control of its own for the stage
     # setting, which would otherwise be announced instead of the stage. The
     # stage is the point of the screen, so it leads and the control follows.
-    stage = screens.stage_select(items, rgb.shape[0])
+    stage = screens.stage_select(items, rgb.shape[0], with_conditions=with_description)
     if stage:
         said = clean_phrase(stage)
         if idx is not None:

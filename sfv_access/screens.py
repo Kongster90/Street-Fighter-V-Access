@@ -161,12 +161,19 @@ def _attribute(text: str) -> tuple[str, str] | None:
     return match.group(1).capitalize(), value
 
 
-def stage_select(items: list[ocr.TextItem], height: int) -> str | None:
+def stage_select(
+    items: list[ocr.TextItem], height: int, with_conditions: bool = True
+) -> str | None:
     """A description of the stage on offer, or None if this is not that screen.
 
     Identified by its conditions rather than its heading. The heading is
     stylised and comes back as anything from "STAGESELECT" to "ST -", while
     Time, Temperature and Weather are plain text and always present.
+
+    Those conditions identify the screen but are left out of what is spoken
+    while moving through it: they do not affect play, and hearing three of them
+    after every stage name is a lot of talking for nothing. Asking for a
+    reading includes them.
     """
     attributes: list[tuple[str, str]] = []
     for item in items:
@@ -192,9 +199,10 @@ def stage_select(items: list[ocr.TextItem], height: int) -> str | None:
     stage = max(candidates, key=lambda i: i.h * i.w)
 
     parts = [stage.text.strip()]
-    for name, value in attributes:
-        # An unset condition shows as a question mark; saying "Weather
-        # question mark" is worse than leaving it out.
-        if value and value not in ("?", "-"):
-            parts.append(f"{name} {value}")
+    if with_conditions:
+        for name, value in attributes:
+            # An unset condition shows as a question mark; saying "Weather
+            # question mark" is worse than leaving it out.
+            if value and value not in ("?", "-"):
+                parts.append(f"{name} {value}")
     return ". ".join(parts) + "."
