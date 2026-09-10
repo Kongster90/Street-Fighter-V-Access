@@ -37,3 +37,6 @@ snapshots/
 Tolk.dll
 TolkDotNet.dll
 nvdaControllerClient*.dll
+
+# Third party tooling, downloaded rather than written here.
+UE4SS/
