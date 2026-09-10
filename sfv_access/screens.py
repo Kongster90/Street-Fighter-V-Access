@@ -10,7 +10,10 @@ Beatdown".
 
 from __future__ import annotations
 
+import json
 import re
+from difflib import SequenceMatcher
+from pathlib import Path
 
 import numpy as np
 
@@ -175,6 +178,130 @@ def dialog_choice(rgb, items) -> tuple[str, str] | None:
     above = [it for it in items if it.cy < top.cy - 0.02 * height and it.text.strip()]
     question = max(above, key=lambda it: it.w).text.strip() if above else ""
     return question, row[best].text.strip()
+
+
+# The voice language grid: a panel of character portraits, four across, each
+# carrying the character's name along its foot and a two letter language badge
+# in its top corner. Measured from the grid's own separator lines on a 1920 by
+# 1080 capture and given as fractions so other resolutions work unchanged.
+VOICE_GRID = (0.5115, 0.3278, 0.0854, 0.0481, 4, 7)  # left, top, cell w, cell h, cols, rows
+VOICE_NAME_TOP = 0.40  # where in a cell the name begins, as a share of its height
+VOICE_BADGE = (0.66, 0.42)  # the badge sits in the top corner, right of this
+VOICE_HEADER = "voice language"
+LANGUAGES = {"EN": "English", "JA": "Japanese"}
+
+
+ROSTER_FILE = Path(__file__).resolve().parent.parent / "character_names.json"
+# How close a tile's name has to be to a character the game has. Far looser
+# than the threshold used against the game's whole word list, and safely so:
+# there are 46 candidates rather than 21,922, and the wrong ones are not close.
+# "c BJ-LI" reaches Chun-Li at 0.57 and "Q ALSInn" reaches Dhalsim at 0.53,
+# while genuine noise such as "Tsotgl" gets no nearer than 0.40.
+ROSTER_CONFIDENCE = 0.50
+_roster: list[str] | None = None
+
+
+def nearest_character(text: str) -> str | None:
+    """The character whose name this reading is closest to, if any is close.
+
+    The names on these tiles are small and sit over artwork, so they come back
+    damaged. Matching them against every string the game contains does badly,
+    because the right answer competes with fifty thousand others. Matching
+    against the roster alone is a far easier question, and the roster is known
+    exactly: it was recovered from the game's own files.
+    """
+    global _roster
+    if _roster is None:
+        try:
+            data = json.loads(ROSTER_FILE.read_text(encoding="utf-8"))
+            _roster = sorted(set(data["names"].values()))
+        except Exception:
+            _roster = []
+    if not _roster:
+        return text
+    query = text.upper()
+    best = max(_roster, key=lambda n: SequenceMatcher(None, query, n.upper()).ratio())
+    score = SequenceMatcher(None, query, best.upper()).ratio()
+    return best if score >= ROSTER_CONFIDENCE else None
+
+
+def _read_bigger(crop: np.ndarray, scale: int = 4) -> str:
+    """Recognise a small piece of text by enlarging it first.
+
+    A name on one of these tiles is about twelve pixels tall over artwork, and
+    recognition returns nothing at all from it at that size.
+    """
+    from PIL import Image
+
+    if crop.size == 0:
+        return ""
+    image = Image.fromarray(np.ascontiguousarray(crop))
+    image = image.resize((image.width * scale, image.height * scale), Image.LANCZOS)
+    grown = np.asarray(image)
+    bgra = np.ascontiguousarray(
+        np.dstack([grown[..., ::-1], np.full(grown.shape[:2], 255, np.uint8)])
+    )
+    for view in (bgra, ocr.boost(bgra)):
+        text = " ".join(i.text for i in ocr.read(view)).strip()
+        if text:
+            return text
+    return ""
+
+
+def voice_grid(rgb: np.ndarray, items) -> str | None:
+    """Which character the voice language grid is on, and their language.
+
+    This screen inverts everything else in the game. Its choices are portraits
+    rather than text, laid out four across instead of in a column, and the one
+    you are on is the bright tile while every other is dimmed, where every
+    other screen marks its choice with gold on a dark bar. So nothing already
+    here could see it and the screen read as silence.
+
+    The selected tile is found by brightness, which separates cleanly: 192
+    against 111 for the rest on the capture this was built from. Its name is
+    then enlarged before being recognised, because at its own size it returns
+    nothing, and repaired against the game's own words like any other reading.
+    """
+    if not any(VOICE_HEADER in i.text.lower() for i in items):
+        return None
+
+    height, width = rgb.shape[:2]
+    left, top, cw, ch, cols, rows = VOICE_GRID
+    x0, y0 = left * width, top * height
+    cell_w, cell_h = cw * width, ch * height
+
+    grey = rgb.astype(np.float32).mean(axis=2)
+    cells = []
+    for r in range(rows):
+        for c in range(cols):
+            cy, cx = int(y0 + r * cell_h), int(x0 + c * cell_w)
+            patch = grey[cy : cy + int(cell_h), cx : cx + int(cell_w)]
+            if patch.size:
+                cells.append((patch.mean(), cx, cy))
+    if len(cells) < 4:
+        return None
+
+    cells.sort(reverse=True)
+    brightest, cx, cy = cells[0]
+    others = float(np.mean([c[0] for c in cells[1:]]))
+    # A selected tile stands well clear. Anything less and the panel is
+    # probably mid animation, so say nothing and let the next frame try.
+    if brightest - others < 30:
+        return None
+
+    tile = rgb[cy : cy + int(cell_h), cx : cx + int(cell_w)]
+    name = _read_bigger(tile[int(cell_h * VOICE_NAME_TOP) :])
+    if not name:
+        return None
+    name = nearest_character(name)
+    if name is None:
+        return None
+
+    badge = _read_bigger(
+        tile[: int(cell_h * VOICE_BADGE[1]), int(cell_w * VOICE_BADGE[0]) :]
+    )
+    language = LANGUAGES.get(badge.strip().upper()[:2], "")
+    return f"{name}, {language}." if language else f"{name}."
 
 
 def _attribute(text: str) -> tuple[str, str] | None:

@@ -197,6 +197,25 @@ STAGE_RUN = sorted(p.stem for p in SNAPS.glob("sfv-20260909-2234*.png")) + sorte
 # cannot catch it and it costs one extra announcement.
 STAGE_RUN_MAX = 9
 
+# The voice language grid, which inverts everything else in the game: its
+# choices are portraits rather than text, laid out four across instead of in a
+# column, and the one you are on is the bright tile while the rest are dimmed,
+# where every other screen marks its choice with gold on a dark bar. Nothing
+# here could see it, so the screen read as silence.
+#
+# The names are about twelve pixels tall over artwork and return nothing at
+# their own size, so they are enlarged first, then matched against the roster
+# rather than the game's whole word list: 46 candidates instead of 21,922 is
+# what lets "c BJ-LI" reach Chun-Li and "Q ALSInn" reach Dhalsim.
+VOICE_GRID = {
+    "sfv-20260909-232410": "R. MIKA",
+    "sfv-20260909-232404": "CHUN-LI",
+    "sfv-20260909-232411": "DHALSIM",
+    "sfv-20260909-232417": "IBUKI",
+    "sfv-20260909-232413": "F.A.N.G",
+    "sfv-20260909-232401": "RYU",
+}
+
 # Screens the dialog reader must NOT claim. Without a test for the panel it
 # claimed character select and announced "ininirri KEN is selected" and
 # "riJ5inirrJ ER SELEqt is selected" over and over, because the roster is
@@ -412,6 +431,18 @@ def main() -> None:
         if not ok:
             for line in spoken:
                 print(f"        {line}")
+
+    print("\nthe voice language grid:")
+    for stem, want in VOICE_GRID.items():
+        if not (SNAPS / f"{stem}.png").exists():
+            continue
+        rgb, bgra = load(stem)
+        said, _b, _i, _f = announce(bgra, rgb, with_description=False)
+        ok = want.lower() in said.lower()
+        passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+        print(f"  {'ok  ' if ok else 'FAIL'} {stem[-6:]}  want {want!r}")
+        if not ok:
+            print(f"        said {said[:70]!r}")
 
     print("\nscreens that are not dialogs:")
     for stem, what in NOT_DIALOGS.items():

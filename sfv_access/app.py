@@ -122,6 +122,14 @@ def announce(bgra, rgb, with_description: bool = True) -> tuple[str, list, int |
     if idx is not None and menu.looks_like_map_chrome(body[idx].text):
         idx = None
 
+    # The voice language grid marks its choice by brightening a tile rather
+    # than by gold on a dark bar, so nothing else here can see it and the
+    # screen read as silence. Checked before the rest because it recognises
+    # itself by its own heading and cannot be confused with anything.
+    voice = screens.voice_grid(rgb, items)
+    if voice:
+        return voice, body, None, footer
+
     # Stage select carries a highlighted control of its own for the stage
     # setting, which would otherwise be announced instead of the stage. The
     # stage is the point of the screen, so it leads and the control follows.
