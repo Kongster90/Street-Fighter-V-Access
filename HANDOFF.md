@@ -34,14 +34,62 @@ Used where the screen cannot help, which today means character select.
 
 ## What works
 
-- Menu narration, automatic, as the cursor moves. Main menu, the story, versus,
-  challenges and settings submenus, Battle Settings, arcade path select, all
-  three training pause tabs.
+- Menu narration, automatic, as the cursor moves. Main menu including its icon
+  column, the story, versus, challenges and settings submenus, Battle Settings,
+  arcade path select, the Gallery submenus, all three training pause tabs.
 - Settings rows report their value. Volume sliders report a level out of ten.
-- Stage select reports the stage, time, temperature and weather.
-- Character select reports both fighters, costume and colour, read from memory.
+- Checklists say whether the entry is ticked, which is the whole point of the
+  menu music screens.
+- The voice language grid reads, naming the character and their language.
+- Confirmation dialogs read the question and which answer is selected. This
+  matters: one of them asks whether to close the game.
+- Stage select reports the stage name. Time, temperature and weather come on
+  the read key rather than unprompted; they do not affect play.
+- Character select reports both fighters, costume and colour, read from memory,
+  with all 46 characters named.
 - Health, V-Trigger and Critical Art on a hotkey during a match.
 - Speech through Tolk to NVDA, with fallbacks.
+
+## What a session in play actually fixed
+
+Worth reading before touching the narration, because every one of these read
+correctly in the tests while being useless in the user's ears, and the tests
+could not have found any of them.
+
+**Reading a screen and noticing you moved are different jobs.** The loop
+watched where the gold sits. Confirmation dialogs have no gold anywhere it
+looked, so arrowing between Yes and No was silent: the dialog was read once on
+arrival and never again. It now watches a coarse map of the dark areas, since
+whatever is selected is dark on every screen in the game. See `change_key`.
+
+**That map was split into rows twice over** and so had no horizontal resolution
+at all. Every test pair differed vertically, so all of them passed while it was
+broken. Two answers side by side on one row changed not a single cell of it.
+The captures that catch this are in the suite now.
+
+**Announcements interrupted each other into nonsense.** Stage select reads
+correctly but its detail arrives in pieces across an animating screen: one
+stage read "Time 4:30" and corrected itself to "14:30", another gained its
+temperature, one produced four readings in a row. Each was announced and each
+cut off the last, so what reached the user was a word of each and then nothing.
+Announcements are compared on the thing being named, not on everything said
+about it.
+
+**A misreading is not a reading.** Sitting on one stage produced twelve
+spellings in six seconds. They are refused now unless the name is a stage the
+game contains, which the game's own word list settles. 263 of one session's 738
+announcements would have been held back by that rule, and every one was
+garbage.
+
+**The count you announce has to mean something.** It counted every line of text
+recognised anywhere, so idling on the main menu gave "Battle Settings, 10 of
+12", then 9 of 11, then 11 of 13, with nothing touched. It counts the entry's
+own column now.
+
+**The spoken log is the best diagnostic here by a distance.** Everything
+announced goes to `snapshots/spoken-log.txt` with timestamps. Every fault named
+quickly this session was named from it; every one guessed at was wrong at least
+once first. Ask what they heard and when, then read it.
 
 ## Facts worth not rediscovering
 
@@ -94,9 +142,23 @@ padding, so read to the next block boundary, decrypt, then trim.
 
 **The localisation table has 50,417 strings**, and this is the single most
 useful thing in the project. It corrects every misreading, because a misreading
-is by definition a string the game does not contain. Character names in it are
-keyed by opaque hashes rather than by character code, which is why the code to
-name mapping still has to be learned by hovering.
+is by definition a string the game does not contain. It is also the authority
+used to refuse a reading outright: a stage name that is not in it is not a
+stage name.
+
+**The character names come out of the game's own files.** They used to be
+learned by hovering, which was slow and went wrong quietly.
+`Content/Chara/DA_VTriggerNameAsset` pairs every character code with the
+localisation hashes of its V-Trigger names, and those resolve against the
+extracted string table, so `tools/names_from_data.py` recovers all 45 named
+characters offline in seconds. Every name it produces appears verbatim in the
+game's own strings. It found five codes the hovering had got wrong.
+
+**Three names can never be learned by hovering**, and this is why the rule that
+a code should read as the initials of its name must not be trusted alone.
+Capcom's internal codes use the Japanese names: `VEG` is M. Bison, `BLR` is
+Vega and `BSN` is Balrog. The initials rule rejects all three, so they were
+refused forever. `live.SWAPPED_NAMES` records them.
 
 **The highlight colour is RGB 255, 227, 140**, identical on every screen.
 
@@ -185,7 +247,11 @@ searches. `find_construct.py` is the first and worst of them.
 
 **There is one regression suite and it matters.** `tools/test_screens.py`
 replays every captured screen through the real announcement code and checks the
-entry that is actually highlighted. It is at 36 checks. Several times a change
+entry that is actually highlighted. It is at 87 checks, and it now covers more
+than which entry is named: what position it claims, whether it reports a value
+or a level it should not, which description it picks, whether moving is
+noticed, whether idling repeats itself, and the screens that must never be read
+as dialogs. Several times a change
 fixed one screen and quietly broke two others, and this is the only thing that
 caught it. Run it after every change to reading behaviour.
 
@@ -214,39 +280,93 @@ highlight in it.
 
 **Do not guess geometry.** Every layout question here was settled by capturing a
 frame and measuring it. Guessing produced three wrong answers about which side
-of the stage each fighter stands on before measuring produced the right one.
+of the stage each fighter stands on before measuring produced the right one,
+and the voice grid went the same way: its rows are 52 pixels apart, not the 45
+first assumed, so every crop landed just above the names and recognition
+returned nothing at all. Find the separator lines and measure them.
+
+**Not every screen marks its choice the same way.** The gold on a dark bar is
+the rule, not a law. The main menu's icon column marks its choice with a solid
+gold tile and carries no text at all. A confirmation dialog uses a thin gold
+outline round a dark fill, whose edges are too narrow to survive the band
+builder. The voice language grid inverts it completely: the tile you are on is
+the bright one and every other is dimmed. Each needed its own reader, and each
+read as silence until it got one.
+
+**Small text over artwork needs enlarging before it will read.** The names on
+the voice grid tiles are about twelve pixels tall and return nothing at their
+own size. Enlarged four times they read every time. `screens._read_bigger`.
+
+**Match against the smallest vocabulary that can hold the answer.** Those tile
+names, matched against the game's whole 21,922 string word list, came back as
+"c BJ-LI" and "Q ALSInn". Matched against the 46 known characters they come
+back as Chun-Li and Dhalsim, and genuine noise is refused. The right list beats
+a better algorithm.
 
 ## Where it stands, and what to do next
 
-In rough order of value:
+The menus are in good shape and were tested in play. The user's own words after
+the last pass were that it works "for the most part, maybe 95 per cent of the
+time". What follows is roughly in order of value.
 
-1. **Sit with the user while they use it.** It has just had its narration path
-   corrected and has not been tested in play since. Everything announced is
-   logged to `snapshots/spoken-log.txt` with timestamps, so a bad reading can be
-   looked at rather than recalled.
+1. **Screens nobody has ever captured.** This is the highest value work and it
+   is cheap. Everything verified so far came from a capture pass, and each new
+   screen has taken minutes rather than hours. Not yet seen: the online modes,
+   so Ranked, Casual, Battle Lounge and Extra Battle; story mode and its
+   chapter select; survival difficulty; the trials and tutorial lists; the
+   controller and button config page; the command list; the shop; the player
+   profile; the post-match results screen.
 
-2. **Finish the character names.** About 20 of 56 codes are still unnamed, so
-   they read as `Z34` rather than a name. `tools/learn_names.py` does it; the
-   game's word list makes it reliable now. `tools/show_names.py` reports the
-   state. The season codes cannot be self-checked, so if one reads wrongly in
-   play, correct it by hand.
+   `tools/grab_screens.py` saves a frame each time the selection moves, so the
+   user plays normally and you read what comes out. Ask them what they heard as
+   well as reading the frames: every real bug this session lived in the gap
+   between those two.
 
-3. **Combat.** Deliberately deferred and completely unstarted. Speech cannot
+2. **Character select's third fighter.** It says "Other, KEN" alongside Player
+   1 and Player 2. The game keeps a third preview model and the reader does not
+   know what to call it. Small, and it needs no game in front since it reads
+   from memory.
+
+3. **The Scaleform text, from memory.** The one big idea still untried, and the
+   only one that would retire the whole class of problems above. The interface
+   objects sit at known addresses and one of them already reads as UTF-16 text.
+   Dump one object's bytes, have the user move the menu, dump again, keep what
+   changed. It needs no injection, cannot crash the game, and would give exact
+   text instead of recognised pixels. See "The Scaleform text is reachable
+   after all" above for why this is now known to be possible.
+
+4. **Combat.** Deliberately deferred and completely unstarted. Speech cannot
    follow a round, so this wants continuous audio cues rather than words: pitch
    for health, stereo position for the distance between fighters, and speech
    kept for round transitions and a hotkey query. This is where the mod stops
    being a menu reader and becomes something to fight with. The HUD reader in
    `sfv_access/hud.py` already gives health and both meters.
 
-4. **Move stage select to memory.** It works, but off the screen, so unlike
+5. **Move stage select to memory.** It works off the screen, so unlike
    character select it needs the game in front. There is almost certainly a
    stage code in memory to match, as with characters.
 
-5. **The injected library.** `native/toolchain_check.cpp` builds and loads, so
-   the toolchain is proven, but nothing else is written. Only worth doing for
-   things reading cannot achieve, such as being notified when a menu changes
-   instead of polling for it. Decoding Scaleform's value type would be the
-   bigger prize, since it would generalise to every screen at once.
+Deliberately not on this list: UE4SS, and finishing the character names. The
+names are done, from the game's own files. UE4SS is written up above and is one
+function short after seven approaches; do not restart it without reading that
+section first.
+
+## Working with this person
+
+They are blind, they cannot see the screen for you, and the loop that works is
+this. They play, the capture tool writes frames, you read the frames, you
+change the code, they play again. Ask for what you need in one message rather
+than several, since every round trip costs them a pass through the game.
+
+Two things they have asked for that are easy to forget. Do not make them
+navigate by screen position: they cannot know what is on the left or the right
+until the mod tells them, and asking is the wrong way round. And do not read
+out what does not affect play; the stage conditions were cut for exactly that
+reason.
+
+Push every change to `origin`, which is
+github.com/Kongster90/Street-Fighter-V-Access. They asked for that as a
+standing instruction rather than something to be asked about each time.
 
 ## Running things
 
