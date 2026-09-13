@@ -32,7 +32,6 @@ from sfv_access import scaleform  # noqa: E402
 LOG = ROOT / "snapshots" / "scaleform-log.txt"
 TIME_LIMIT = 30 * 60
 POLL = 0.03             # a quick read takes about forty thousandths of a second
-PAGE_REFRESH = 1.0      # how often the address space is walked for new blocks
 SETTLE = 0.2            # how long a move with nothing selected waits to settle
 GROUP_MEMORY = 1.0      # how long a prompt counts as open once its panel is gone
 LOG_INTERVAL = 0.25
@@ -85,18 +84,7 @@ def watch(reader: scaleform.ScaleformText) -> None:
     if keys.failed:
         print(f"could not register {keys.failed}; is the mod running?")
 
-    # Quick reads look only where text was last found. Keep that list current
-    # in the background, since a full sweep takes a third of a second and
-    # would hold up every read made while it runs.
-    def keep_pages_current():
-        while not stop.is_set():
-            try:
-                reader.refresh_pages()
-            except Exception as exc:
-                print(f"page refresh failed: {exc}")
-            stop.wait(PAGE_REFRESH)
-
-    threading.Thread(target=keep_pages_current, daemon=True).start()
+    reader.keep_pages_current(stop)
 
     LOG.parent.mkdir(exist_ok=True)
     speech.say("Reading from memory. Control Alt Q stops.")

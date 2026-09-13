@@ -95,6 +95,7 @@ def main() -> None:
     speech = Speaker()
     cap = _capture.Capture()
     stop = threading.Event()
+    reader.keep_pages_current(stop)
     keys = Hotkeys()
     keys.bind("ctrl+alt+q", stop.set)
     keys.start()

@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import math
 import struct
+import threading
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -132,6 +133,8 @@ HEAP_PAGE_LIMIT = 0x100000
 # for every page, so a quick read sweeps those alone.
 SCALEFORM_CHUNK = 0x10000
 SCALEFORM_EXTRA = 0x1000
+# How often to walk the address space for blocks Scaleform has newly taken.
+PAGE_REFRESH = 1.0
 
 MAX_PARAGRAPHS = 512
 MAX_PARAGRAPH_CHARS = 4096
@@ -295,6 +298,25 @@ class ScaleformText:
         self._scaleform_pages = None
 
     # ------------------------------------------------------------- discovery
+    def keep_pages_current(self, stop: threading.Event, interval: float = PAGE_REFRESH) -> None:
+        """Refresh the block list on a background thread until `stop` is set.
+
+        Anything polling with quick reads needs this. Without it, a screen
+        opened after the first read has its text in blocks the list never
+        learns about, and reads as next to nothing: the first stage grid
+        recording caught Battle Settings as seven lines of header.
+        """
+        def run():
+            while not stop.is_set():
+                try:
+                    self.refresh_pages()
+                except Exception as exc:  # the game closing, most likely
+                    print(f"page refresh failed: {exc}")
+                stop.wait(interval)
+
+        self.refresh_pages()
+        threading.Thread(target=run, daemon=True).start()
+
     def refresh_pages(self) -> None:
         """Walk the address space for Scaleform's blocks, for quick reads to sweep."""
         self._scaleform_pages = [
@@ -472,8 +494,8 @@ class ScaleformText:
 
         `quick` sweeps only Scaleform's blocks as found by the last
         `refresh_pages`, for polling. A block Scaleform takes after that is
-        missed until the next refresh, so a caller polling quickly should keep
-        refreshing in the background.
+        missed until the next refresh, so a caller polling quickly must run
+        `keep_pages_current` alongside.
         """
         if quick:
             if self._scaleform_pages is None:
