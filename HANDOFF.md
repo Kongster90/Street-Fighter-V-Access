@@ -51,8 +51,13 @@ same narration the mod now does:
   tab which songs are unavailable.
 - Speed: a move is heard within about a tenth of a second.
 
-The mod was only dry run with this wired in, silently against the live game,
-not played; see "Where it stands".
+In the mod itself, played by the user on 2026-09-13:
+
+- Stage select, moving says the stage name and Alt R adds weather, time and
+  temperature, including after backing out of character select, which took
+  four rounds to fix (see "Stage select has nothing selected" and what
+  follows it).
+- Character select does not read. See item 0 under "Where it stands".
 
 From the screen, the older path, now the fallback:
 
@@ -455,10 +460,11 @@ select each of its checks scans every object for half a second. The read
 keys (R, D, A) and the snapshot key use the memory reading when there is one;
 a snapshot saves it beside the frame as `sfv-<stamp>-memory.txt`.
 
-Known gaps. The clock sits one object further down and is not resolved. Not
-yet heard from memory in play: character select, the voice language grid (the brightness rule may cover it; its EN and JA badges
-are pictures and are not read), and anything in a match. Pixel-level things
-such as the health bars are untouched.
+Known gaps. The clock sits one object further down and is not resolved.
+Character select does not read from memory. Not yet heard from memory in
+play: the voice language grid (the brightness rule may cover it; its EN and
+JA badges are pictures and are not read), and anything in a match.
+Pixel-level things such as the health bars are untouched.
 
 ### Where UE4SS got to, and why it is not installed
 
@@ -576,17 +582,38 @@ a better algorithm.
 The pixel-read menus were judged "for the most part, maybe 95 per cent of the
 time" by the user. The memory reader then took over narration, and every screen
 the user tried with it in the watch mode ended with "it works as it should".
+The user finds memory reading better and wants it everywhere; the pixel reader
+is kept as the fallback and for the gauges.
 What follows is roughly in order of value.
 
-0. **Play the mod itself with memory narration on.** It was wired in at the
-   end of a session and only dry run silently. Start it with `run.py`, have
-   the user go through the screens listed under "What works", and read both
-   `snapshots/spoken-log.txt` and `snapshots/scaleform-log.txt`. Then the
-   screens memory has not been heard on: character select (does the `live.py`
-   readout still come through, and does Scaleform select anything there that
-   would stop it), the real stage select, the voice language grid, the
-   Training pause menu mid-match. Where memory is silent, F9
-   switches to the screen, which tells you whether the gap is memory's.
+0. **Character select from memory.** The user's stated goal is memory reading
+   everywhere, screen by screen, and this is where they stopped: stage select
+   works, character select does not. What the last session's log shows there
+   (`snapshots/scaleform-log.txt`, 12:31, a Versus match against the CPU):
+
+   - The text Scaleform shows is "BLUE TEAM", player one's fighter name at
+     (134, 590) and again twice at (166, 619), the CPU's at (932, 590) and
+     twice at (904, 619), "CHARACTER SELECT" at (960, 685), "1P" at alpha 0.4,
+     and "CPU" at (1025, 843) in 0.65 grey.
+   - Nothing marks the cursor, so moving through the roster changes player
+     one's name and nothing is selected. Worse, "CPU" is taken as selected
+     and, being grey, said as "CPU. Unavailable". Find which rule marks it
+     (`_mark_highlighted_rows` or `_mark_by_brightness` are the candidates)
+     and keep it off this screen.
+   - Because something counts as selected, the `live.py` readout ("Player 1,
+     KEN, costume 0, colour 0"), which `app._character_select_loop` runs only
+     while nothing is selected, mostly never runs; it came through twice.
+
+   A likely shape for the fix, following stage select: recognise the screen
+   (the "CHARACTER SELECT" heading, or the name fields' layout), take player
+   one's name field as the selection so moving says the fighter, and add
+   costume and colour from `live.py`, or drop the Scaleform name and let
+   `live.py` speak. Ask the user to move through a few fighters and change
+   costume and colour with the mod running; the log will have the rest. F9
+   switches to screen reading, which tells you whether a gap is memory's.
+
+   Then the screens memory has not been heard on: the voice language grid,
+   the Training pause menu mid-match, and the rest under item 1.
 
    Two things the user asked for next and were agreed but not started: reading
    the challenge notices the game opens with at startup (the reader already
