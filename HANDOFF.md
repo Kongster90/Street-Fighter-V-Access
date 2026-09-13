@@ -232,6 +232,16 @@ How it was found, since none of it came from documentation:
   until overwritten. They fail the walk to a render node, or come out
   detached, hidden or transparent, and `TextItem.shown` drops them.
 
+**Not everything selectable is text.** The main menu's icon row, Options,
+Gallery, Message Log, Login and Exit, lights no text when selected, so a
+reader that only looks for gold goes silent there; the user caught this on
+the first try. What does change is the description line at (110, 992), and
+the banner, which switches to the icon's name as it is reached before going
+back to rotating adverts. So a move is a change in the gold text or the
+description, and a move with no gold is named by whatever short text changed
+with it, falling back to the description. The adverts change neither, so
+they are never read. `scaleform.selection_key` and `scaleform.landed_on`.
+
 Known gaps. The clock, the date and a few title-screen fields have DocViews
 whose owners do not sit at the usual distance, so they read as leftovers.
 Only the main menu has been checked; other screens may highlight differently,

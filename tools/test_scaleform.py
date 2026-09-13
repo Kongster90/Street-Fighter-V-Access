@@ -159,6 +159,38 @@ check("stale DocView is kept only when asked", "Close" in everything and everyth
 mem.put(mem.ptr(stale + sf.DOCVIEW_TEXT), "<Q", MODULE + 0x1234)
 check("wrong StyledText vtable is refused", reader.field_text(stale) is None)
 
+# What a move lands on. These are the main menu as the watch mode logged it.
+def item(text, x, y, tint=WHITE):
+    return sf.TextItem(text, x, y, tint, True, 7)
+
+
+def main_menu(banner, description, lit=None):
+    entries = [("ARCADE", 442, 219), ("STORY", 442, 339), ("VERSUS", 442, 459)]
+    out = [item("Dengster", 1379, 53), item(banner, 799, 452), item(description, 110, 992)]
+    out += [item(t, x, y, GOLD if t == lit else GREY) for t, x, y in entries]
+    return out
+
+
+on_arcade = main_menu("Fighting Chance", "A single player mode.", lit="ARCADE")
+on_story = main_menu("Fighting Chance", "Play through the storylines.", lit="STORY")
+on_exit = main_menu("EXIT", "The application will close.")
+on_login = main_menu("LOGIN", "Log into server.")
+advert_rotated = main_menu("Nostalgia Collection", "The application will close.")
+on_info = main_menu("Nostalgia Collection", "Go to the purchase screen.")
+
+check("gold text is what a move lands on", sf.landed_on(on_arcade, on_story) == ["STORY"],
+      repr(sf.landed_on(on_arcade, on_story)))
+check("an icon is named by the banner", sf.landed_on(on_arcade, on_exit) == ["EXIT"],
+      repr(sf.landed_on(on_arcade, on_exit)))
+check("icon to icon", sf.landed_on(on_exit, on_login) == ["LOGIN"], repr(sf.landed_on(on_exit, on_login)))
+check("nothing else changed, so the description", sf.landed_on(advert_rotated, on_info) == ["Go to the purchase screen."],
+      repr(sf.landed_on(advert_rotated, on_info)))
+check("a whole new screen falls back to the description",
+      sf.landed_on([], on_exit) == ["The application will close."], repr(sf.landed_on([], on_exit)))
+check("a rotating advert is not a move", sf.selection_key(on_exit) == sf.selection_key(advert_rotated))
+check("moving along the icon row is a move", sf.selection_key(on_exit) != sf.selection_key(on_login))
+check("the footer is found by where it sits", (sf.footer(on_exit) or item("", 0, 0)).text == "The application will close.")
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

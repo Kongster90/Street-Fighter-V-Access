@@ -72,6 +72,13 @@ STAGE_WIDTH, STAGE_HEIGHT = 1920, 1080
 HIGHLIGHT_TINT = (1.0, 0.89, 0.549)
 TINT_TOLERANCE = 0.05
 
+# The line describing the selected entry, which every menu with the shared
+# footer draws at (110, 992).
+FOOTER_TOP = 960
+FOOTER_RIGHT = 400
+# More changed text than this at once is a new screen, not a move onto one thing.
+MOVE_TEXT_LIMIT = 3
+
 PAGE_READWRITE = 0x04
 # Scaleform's pages are all well under this. Larger read-write regions are
 # engine and driver allocations with nothing of the interface in them.
@@ -110,6 +117,48 @@ class TextItem:
             and self.on_stage
             and bool(self.text.strip())
         )
+
+
+def footer(items: list[TextItem]) -> TextItem | None:
+    """The description line under the menu, if this screen has one."""
+    return next((it for it in items if it.y >= FOOTER_TOP and it.x < FOOTER_RIGHT), None)
+
+
+def selection_key(items: list[TextItem]):
+    """What changes when the cursor moves, and does not change on its own.
+
+    The gold text is the usual sign. It is not enough by itself: the main
+    menu's icon row, Options, Gallery, Message Log, Login and Exit, carries no
+    text, so moving along it lights nothing. The description line changes
+    either way, while the adverts that rotate in the banner change neither.
+    """
+    foot = footer(items)
+    return (
+        tuple(it.text for it in items if it.highlighted),
+        foot.text if foot else None,
+    )
+
+
+def landed_on(before: list[TextItem], after: list[TextItem]) -> list[str]:
+    """What to say for a move from the `before` screen to the `after` one.
+
+    The gold text if there is any. Otherwise the text that changed with the
+    move, which is how an icon gets its name: the banner switches to OPTIONS
+    or EXIT as the icon is reached. Failing that, the description line.
+    """
+    lit = [it.text for it in after if it.highlighted]
+    if lit:
+        return lit
+    foot = footer(after)
+    old = {(round(it.x), round(it.y), it.text) for it in before}
+    changed = [
+        it.text
+        for it in after
+        if it is not foot and (round(it.x), round(it.y), it.text) not in old
+    ]
+    if 0 < len(changed) <= MOVE_TEXT_LIMIT:
+        return changed
+    return [foot.text] if foot else []
 
 
 def _compose(outer, inner):

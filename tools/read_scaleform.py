@@ -57,14 +57,11 @@ def watch(reader: scaleform.ScaleformText) -> None:
 
     speech = Speaker()
     stop = threading.Event()
-    state = {"items": []}
-
-    def highlighted_phrase(items):
-        return ". ".join(it.text.replace("\n", " ") for it in items if it.highlighted)
+    state = {"items": [], "said": ""}
 
     keys = Hotkeys()
     keys.bind("ctrl+alt+q", stop.set)
-    keys.bind("ctrl+alt+r", lambda: speech.say(highlighted_phrase(state["items"]) or "Nothing highlighted."))
+    keys.bind("ctrl+alt+r", lambda: speech.say(state["said"] or "Nothing yet."))
     keys.bind("ctrl+alt+a", lambda: speech.say_lines([it.text for it in state["items"]]))
     keys.start()
     if keys.failed:
@@ -73,7 +70,12 @@ def watch(reader: scaleform.ScaleformText) -> None:
     LOG.parent.mkdir(exist_ok=True)
     speech.say("Reading from memory. Control Alt Q stops.")
     last_shown = None
-    last_phrase = None
+    previous: list = []
+    last_key = None
+    # The screen from just before a move, held until the move has settled.
+    # The description and the banner can update a read apart, so comparing
+    # against the read before the move catches both.
+    pending = None
     started = time.time()
     with LOG.open("a", encoding="utf-8") as log:
         log.write(f"\n=== {_dt.datetime.now():%Y-%m-%d %H:%M:%S} watch started\n")
@@ -92,14 +94,22 @@ def watch(reader: scaleform.ScaleformText) -> None:
                 for it in items:
                     log.write(f"    {line(it)}\n")
                 log.flush()
-            phrase = highlighted_phrase(items)
-            if phrase != last_phrase:
-                last_phrase = phrase
-                log.write(f"{stamp} said {phrase!r}\n")
-                log.flush()
-                print(f"{stamp} {phrase}")
-                if phrase:
-                    speech.say(phrase)
+
+            key = scaleform.selection_key(items)
+            if key != last_key:
+                if pending is None:
+                    pending = previous
+                last_key = key
+            elif pending is not None:
+                said = ". ".join(t.replace("\n", " ") for t in scaleform.landed_on(pending, items))
+                pending = None
+                if said and said != state["said"]:
+                    state["said"] = said
+                    log.write(f"{stamp} said {said!r}\n")
+                    log.flush()
+                    print(f"{stamp} {said}")
+                    speech.say(said)
+            previous = items
             time.sleep(0.1)
         log.write(f"=== {_dt.datetime.now():%H:%M:%S} watch stopped\n")
     speech.say("Stopped.")
