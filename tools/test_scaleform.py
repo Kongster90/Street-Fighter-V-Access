@@ -64,32 +64,40 @@ class FakeMemory:
 
     u64 = ptr
 
+    def u32(self, a):
+        b = self.read(a, 4)
+        return struct.unpack("<I", b)[0] if b else None
+
     def regions(self, max_size=1 << 31):
         return [Region(HEAP, len(self.buf), 0x04)]
 
 
-def display_object(mem, parent, x, y, tint, visible=True):
+NODE_FLAG_WORD = sf.NODE_FLAGS
+
+
+def display_object(mem, parent, x, y, tint, flags=1, children=0):
     """A display object with a render node placing it at (x, y) pixels in its parent."""
     obj = mem.alloc(0x360)
     entry = mem.alloc(0x20)
     data = mem.alloc(0x80)
     mem.put(obj + sf.DISPLAY_PARENT, "<Q", parent)
     mem.put(obj + sf.DISPLAY_RENDER_NODE, "<Q", entry)
+    mem.put(obj + sf.DISPLAY_CHILD_COUNT, "<I", children)
     mem.put(entry + sf.RENDER_NODE_DATA, "<Q", data)
-    mem.put(data + sf.NODE_FLAGS, "<H", 1 if visible else 0)
+    mem.put(data + NODE_FLAG_WORD, "<H", flags)
     mem.put(data + sf.NODE_MATRIX, "<8f", 1, 0, 0, x * 20, 0, 1, 0, y * 20)
     mem.put(data + sf.NODE_CXFORM, "<8f", *tint, 0, 0, 0, 0)
     return obj
 
 
-def text_field(mem, parent, x, y, paragraphs, tint=WHITE, visible=True, separate=False):
+def text_field(mem, parent, x, y, paragraphs, tint=WHITE, flags=1, separate=False):
     """A text field with its DocView and text.
 
     The listener lives inside the field on the main menu, and in its own
     allocation elsewhere, the case the first reader missed. `separate` puts it
     after a gap of unrelated memory.
     """
-    field = display_object(mem, parent, x, y, tint, visible)
+    field = display_object(mem, parent, x, y, tint, flags)
     if separate:
         mem.alloc(0x400)
         listener = mem.alloc(0x200) + 0x130
@@ -124,7 +132,10 @@ text_field(mem, arcade_item, 42, 19, ["ARCADE"])
 text_field(mem, training_item, 42, 19, ["TRAINING"])
 text_field(mem, root, 110, 992, ["Enjoy battle without worrying about a time limit.\r"], separate=True)
 text_field(mem, root, 100, 100, ["Two lines\r", "of text"])
-text_field(mem, menu, 0, 700, ["HIDDEN"], visible=False)
+# The Exit prompt's question has its own node's visible bit clear while on
+# screen; a date line that never shows is hidden by its parent's.
+text_field(mem, menu, 0, 700, ["Flag word clear"], flags=0)
+text_field(mem, display_object(mem, root, 0, 0, WHITE, flags=0), 0, 0, ["Parent switched off"])
 text_field(mem, root, -1920, 0, ["Off to the side"])
 text_field(mem, root, 300, 300, ["Faded out"], tint=(1, 1, 1, 0))
 text_field(mem, root, 500, 500, ["   "])
@@ -138,13 +149,14 @@ mem.put(mem.ptr(listener + sf.LISTENER_OWNER) + sf.DISPLAY_RENDER_NODE, "<Q", 0)
 reader = sf.ScaleformText(mem, MODULE)
 
 found = reader.docviews()
-check("sweep finds every DocView", len(found) == 10, f"{len(found)} found")
+check("sweep finds every DocView", len(found) == 11, f"{len(found)} found")
 
 shown = reader.items()
 texts = [it.text for it in shown]
 check(
     "shown fields in reading order",
-    texts == ["Two lines\nof text", "ARCADE", "TRAINING", "Enjoy battle without worrying about a time limit."],
+    texts == ["Two lines\nof text", "ARCADE", "TRAINING", "Flag word clear",
+              "Enjoy battle without worrying about a time limit."],
     repr(texts),
 )
 
@@ -160,7 +172,9 @@ check("an unselected entry is not highlighted", arcade is not None and not arcad
 check("paragraph terminators stripped", "Two lines\nof text" in by_text)
 
 everything = {it.text: it for it in reader.items(everything=True)}
-check("hidden parent hides the field", "HIDDEN" in everything and not everything["HIDDEN"].shown)
+check("a field's own clear visible bit does not hide it", "Flag word clear" in by_text)
+check("a parent's clear visible bit does", "Parent switched off" in everything
+      and not everything["Parent switched off"].shown)
 check("off the stage is not shown", "Off to the side" in everything and not everything["Off to the side"].shown)
 check("fully transparent is not shown", "Faded out" in everything and not everything["Faded out"].shown)
 check("blank text is not shown", "   " in everything and not everything["   "].shown)
@@ -173,7 +187,7 @@ check("wrong StyledText vtable is refused", reader.field_text(stale) is None)
 
 # What a move lands on. These are the main menu as the watch mode logged it.
 def item(text, x, y, tint=WHITE):
-    return sf.TextItem(text, x, y, tint, True, 7)
+    return sf.TextItem(text, x, y, tint, 7)
 
 
 def main_menu(banner, description, lit=None):
@@ -202,6 +216,77 @@ check("a whole new screen falls back to the description",
 check("a rotating advert is not a move", sf.selection_key(on_exit) == sf.selection_key(advert_rotated))
 check("moving along the icon row is a move", sf.selection_key(on_exit) != sf.selection_key(on_login))
 check("the footer is found by where it sits", (sf.footer(on_exit) or item("", 0, 0)).text == "The application will close.")
+label_gone = [it for it in on_exit if it.text != "EXIT"]
+check("labels vanishing mid-move say nothing", sf.landed_on(on_exit, label_gone) == [],
+      repr(sf.landed_on(on_exit, label_gone)))
+
+
+# The Exit prompt, laid out as recorded: a panel holding the question and a row
+# of two buttons. The selected button has four more children, its outline and
+# fill, and its label sits one level further down inside them.
+def exit_prompt(selected, with_menu=True):
+    mem = FakeMemory()
+    root = display_object(mem, 0, 0, 0, WHITE)
+    if with_menu:
+        text_field(mem, root, 110, 992, ["The application will close."])
+    panel = display_object(mem, root, 0, 340, WHITE)
+    text_field(mem, panel, 520, 100, ["Are you sure you want to close the application?"],
+               tint=(0.62, 0.62, 0.62, 0.5), flags=0, separate=True)
+    row = display_object(mem, panel, 960, 350, WHITE)
+    for label, x in (("Yes ", -233), ("No", 233)):
+        if label.strip() == selected:
+            button = display_object(mem, row, x, 0, WHITE, children=6)
+            layer = display_object(mem, button, 201, -19, WHITE)
+            text_field(mem, layer, 0, 0, [label], tint=(1, 1, 1, 0.15), separate=True)
+        else:
+            button = display_object(mem, row, x, 0, WHITE, children=2)
+            text_field(mem, button, 0, 0, [label], separate=True)
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+menu_only = [it for it in exit_prompt("No") if it.text == "The application will close."]
+on_no = exit_prompt("No")
+on_yes = exit_prompt("Yes")
+chosen = [it.text.strip() for it in on_no if it.chosen]
+check("the button with the outline is the selected one", chosen == ["No"], repr(chosen))
+check("and it follows the selection", [it.text.strip() for it in on_yes if it.chosen] == ["Yes"])
+check("the question is shown though its flag word is clear",
+      any("Are you sure" in it.text for it in on_no))
+check("opening the prompt reads the question, then the answer",
+      sf.landed_on(menu_only, on_no) == ["Are you sure you want to close the application?", "No"],
+      repr(sf.landed_on(menu_only, on_no)))
+check("moving to the other answer reads only that answer", sf.landed_on(on_no, on_yes) == ["Yes "],
+      repr(sf.landed_on(on_no, on_yes)))
+check("a dialog move is a move", sf.selection_key(on_no) != sf.selection_key(on_yes))
+
+# The choice rule has to stay off things that merely look like two buttons.
+mem = FakeMemory()
+root = display_object(mem, 0, 0, 0, WHITE)
+banner = display_object(mem, root, 799, 191, WHITE)
+date = display_object(mem, banner, 0, 0, WHITE, children=3)
+layer = display_object(mem, date, 0, 0, WHITE)
+text_field(mem, layer, 0, 0, ["Aug 31, 2026 - Sep 30, 2026"])
+title = display_object(mem, banner, 0, 261, WHITE, children=2)
+text_field(mem, title, 0, 0, ["UPGRADE KIT AVAILABLE NOW"])
+check("long labels are never a choice", not any(it.chosen for it in sf.ScaleformText(mem, MODULE).items()))
+
+mem = FakeMemory()
+root = display_object(mem, 0, 0, 0, WHITE)
+pair = display_object(mem, root, 500, 500, WHITE)
+text_field(mem, display_object(mem, pair, 0, 0, WHITE, children=4), 0, 0, ["ON"])
+text_field(mem, display_object(mem, pair, 200, 0, WHITE, children=2), 0, 0, ["OFF"])
+check("more layers without deeper nesting is not a choice",
+      not any(it.chosen for it in sf.ScaleformText(mem, MODULE).items()))
+
+mem = FakeMemory()
+root = display_object(mem, 0, 0, 0, WHITE)
+menu = display_object(mem, root, 0, 0, WHITE)
+text_field(mem, display_object(mem, menu, 400, 200, GOLD), 0, 0, ["ARCADE"])
+button = display_object(mem, root, 900, 600, WHITE, children=6)
+text_field(mem, display_object(mem, button, 0, 0, WHITE), 0, 0, ["Yes"])
+text_field(mem, display_object(mem, root, 1100, 600, WHITE, children=2), 0, 0, ["No"])
+check("gold on screen means no guessing from structure",
+      not any(it.chosen for it in sf.ScaleformText(mem, MODULE).items()))
 
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")

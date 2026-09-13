@@ -1,7 +1,8 @@
 """Read the interface text straight from the game's memory.
 
 With no arguments, prints every text field showing now, in reading order, with
-its stage position and tint, and marks the highlighted ones with an asterisk.
+its stage position and tint. The gold-highlighted ones are marked with an
+asterisk, and a dialog's selected button with a plus.
 
     python tools/read_scaleform.py            what is showing
     python tools/read_scaleform.py --all      leftovers and hidden fields too
@@ -32,9 +33,21 @@ LOG = ROOT / "snapshots" / "scaleform-log.txt"
 TIME_LIMIT = 30 * 60
 
 
+def phrase(texts: list[str]) -> str:
+    """Join pieces into one sentence without doubling their punctuation."""
+    out = ""
+    for text in (t.strip().replace("\n", " ") for t in texts):
+        if not text:
+            continue
+        if out:
+            out += " " if out[-1] in ".?!:" else ". "
+        out += text
+    return out
+
+
 def line(it: scaleform.TextItem) -> str:
     r, g, b, a = it.tint
-    mark = "*" if it.highlighted else " "
+    mark = "*" if it.highlighted else ("+" if it.chosen else " ")
     state = "" if it.shown else "  (not shown)"
     return (
         f"{mark} ({it.x:7.1f},{it.y:7.1f}) tint {r:.2f} {g:.2f} {b:.2f} {a:.2f}  "
@@ -101,7 +114,7 @@ def watch(reader: scaleform.ScaleformText) -> None:
                     pending = previous
                 last_key = key
             elif pending is not None:
-                said = ". ".join(t.replace("\n", " ") for t in scaleform.landed_on(pending, items))
+                said = phrase(scaleform.landed_on(pending, items))
                 pending = None
                 if said and said != state["said"]:
                     state["said"] = said

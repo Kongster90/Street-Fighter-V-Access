@@ -251,9 +251,31 @@ time. The listener keeps a pointer to its field 0x98 before itself; follow
 that. Comparing a working field's bytes against a failing one side by side is
 what showed it: the same back pointers, pointing at different distances.
 
-Known gaps. The clock sits one object further down and is not resolved. Only
-the main menu has been checked for highlighting; the dialog and the voice
-grid, which already need their own pixel readers, highlight some other way. Pixel-level things such as the health bars are untouched.
+**A dialog's buttons are not tinted.** The selected one has a gold outline and
+a dark fill, and its label stays plain. Recording the Exit prompt while the
+user moved between Yes and No, with a screenshot per record to say which was
+selected, showed it in the structure instead: the selected button has four
+more children (6 against 2), and its label sits one level further down inside
+them. `ScaleformText.mark_choices` compares buttons in a row on both counts,
+only when nothing on screen is gold, and only for short labels; the rotating
+banner's date line has an extra layer too, and without those limits it reads
+as a selected button. Display objects keep a child array at `+0xD8`, sixteen
+bytes an entry, with the count at `+0xE0`.
+
+**The render node's visible bit only counts on parents.** It is clear on the
+Exit prompt's question while the question is on screen, and dropping the
+check entirely brought back a date line that never shows on the main menu,
+which its container hides. Ignore the field's own bit; honour its parents'.
+
+**Get ground truth into the recording.** Three recorders for the prompt caught
+nothing useful, because each one decided in advance what to keep. The one that
+worked kept every field whatever the reader thought of it, saved a frame with
+each record, and stopped on a hotkey rather than guessing when the user was
+done. Also: a file being written reports its old size in a directory listing
+on Windows, so open it before concluding a recorder wrote nothing.
+
+Known gaps. The clock sits one object further down and is not resolved. The
+voice grid, which needed its own pixel reader, has not been looked at. Pixel-level things such as the health bars are untouched.
 
 ### Where UE4SS got to, and why it is not installed
 

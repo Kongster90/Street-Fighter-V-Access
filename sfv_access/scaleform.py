@@ -4,8 +4,8 @@ The interface is Scaleform GFx, which keeps its text and its display tree well
 away from anything Unreal describes, so the object reader in `unreal.py` cannot
 see it. The pixel reader rebuilds the screen from a picture. This reads the real
 thing instead: each text field's exact text, where it sits, the colour it is
-tinted, and whether it is showing at all. No recognition, so no misreadings, and
-it does not need the game in front.
+tinted, and which one is selected. No recognition, so no misreadings, and it
+does not need the game in front.
 
 How it is found, all confirmed against this build:
 
@@ -23,26 +23,36 @@ How it is found, all confirmed against this build:
   allocate it separately, anywhere up to megabytes away, which is why the Exit
   prompt read as nothing. From the field, every display object points at its
   parent and at its render node, and the node's data holds a 2 by 4 transform
-  in twips and a colour transform.
+  in twips and a colour transform. Each also keeps an array of its children,
+  sixteen bytes an entry, with the count beside it.
 - Multiplying the transforms and colours from the field up to the root gives
   the position on the 1920 by 1080 stage and the tint the text is drawn with.
-  A highlighted menu entry is tinted by the multiplier 1.0, 0.89, 0.549, which
-  is RGB 255, 227, 140, the gold the pixel reader already looks for. Unselected
-  entries on the main menu sit at 0.27 grey.
 
-The layout was found by recording memory while the selection moved and keeping
-what followed it, then walking pointers from the text fields until the colour
-turned up. `tools/read_scaleform.py` prints the result.
+Two ways of marking a selection, each found by recording memory while the user
+moved and keeping what followed the selection:
+
+- A menu entry is tinted by the multiplier 1.0, 0.89, 0.549, which is RGB 255,
+  227, 140, the gold the pixel reader already looks for. Unselected entries on
+  the main menu sit at 0.27 grey.
+- A dialog's buttons are not tinted. The selected one is drawn with a gold
+  outline and a dark fill, which in memory is four more children on the
+  button, with its label moved one level further down inside them. The
+  labels themselves stay plain, so the choice is read off the buttons'
+  structure by comparing each with its neighbours.
 
 DocViews from screens that have closed stay in the heap until overwritten. They
 fail the walk to a render node, or come out detached, hidden or transparent,
-and are dropped unless asked for.
+and are dropped unless asked for. Hidden means a parent's render node has its
+visible bit clear. The text field's own bit does not count: it is clear on the
+Exit prompt's question while the question is on screen, whereas a date line
+that never shows on the main menu is hidden by the container above it.
 """
 
 from __future__ import annotations
 
 import math
 import struct
+from collections import defaultdict
 from dataclasses import dataclass
 
 import numpy as np
@@ -64,8 +74,9 @@ TEXT_PARAGRAPHS = 0x18       # array of Paragraph*
 TEXT_PARAGRAPH_COUNT = 0x20
 DISPLAY_PARENT = 0x38
 DISPLAY_RENDER_NODE = 0x48
+DISPLAY_CHILD_COUNT = 0xE0   # beside the child array at 0xD8
 RENDER_NODE_DATA = 0x10
-NODE_FLAGS = 0x0A            # u16, bit 0 set while visible
+NODE_FLAGS = 0x0A            # u16; bit 0 set while visible, for parents at least
 NODE_MATRIX = 0x10           # 2 by 4 floats: sx, shx, 0, tx / shy, sy, 0, ty
 NODE_CXFORM = 0x50           # multiply r, g, b, a then add r, g, b, a
 
@@ -75,6 +86,10 @@ STAGE_WIDTH, STAGE_HEIGHT = 1920, 1080
 
 HIGHLIGHT_TINT = (1.0, 0.89, 0.549)
 TINT_TOLERANCE = 0.05
+
+# Labels longer than this are not answers on a button. It keeps the choice rule
+# off the banner, whose date line and title sit side by side like two buttons.
+CHOICE_TEXT_LIMIT = 24
 
 # The line describing the selected entry, which every menu with the shared
 # footer draws at (110, 992).
@@ -99,13 +114,20 @@ class TextItem:
     x: float                 # stage pixels, the text field's origin
     y: float
     tint: tuple[float, float, float, float]   # effective colour multiplier
-    visible: bool
     depth: int               # the field plus each parent above it
     docview: int = 0
+    chain: tuple[int, ...] = ()   # the field, then each parent up to the root
+    chosen: bool = False     # the selected button of a group, by structure
+    group: int = 0           # the container holding that group of buttons
+    hidden: bool = False     # a parent is switched off
 
     @property
     def highlighted(self) -> bool:
         return all(abs(c - h) <= TINT_TOLERANCE for c, h in zip(self.tint, HIGHLIGHT_TINT))
+
+    @property
+    def selected(self) -> bool:
+        return self.highlighted or self.chosen
 
     @property
     def on_stage(self) -> bool:
@@ -113,10 +135,10 @@ class TextItem:
 
     @property
     def shown(self) -> bool:
-        """Visible, attached to a movie, on the stage, and not blank."""
+        """Attached, not hidden, not transparent, on the stage, and not blank."""
         return (
-            self.visible
-            and self.depth >= 2
+            self.depth >= 2
+            and not self.hidden
             and self.tint[3] > 0.01
             and self.on_stage
             and bool(self.text.strip())
@@ -131,38 +153,63 @@ def footer(items: list[TextItem]) -> TextItem | None:
 def selection_key(items: list[TextItem]):
     """What changes when the cursor moves, and does not change on its own.
 
-    The gold text is the usual sign. It is not enough by itself: the main
+    The selected text is the usual sign. It is not enough by itself: the main
     menu's icon row, Options, Gallery, Message Log, Login and Exit, carries no
-    text, so moving along it lights nothing. The description line changes
-    either way, while the adverts that rotate in the banner change neither.
+    text, so moving along it selects nothing readable. The description line
+    changes either way, while the adverts that rotate in the banner change
+    neither.
     """
     foot = footer(items)
     return (
-        tuple(it.text for it in items if it.highlighted),
+        tuple(it.text for it in items if it.selected),
         foot.text if foot else None,
     )
+
+
+def _where(it: TextItem):
+    return (round(it.x), round(it.y), it.text)
 
 
 def landed_on(before: list[TextItem], after: list[TextItem]) -> list[str]:
     """What to say for a move from the `before` screen to the `after` one.
 
-    The gold text if there is any. Otherwise the text that changed with the
-    move, which is how an icon gets its name: the banner switches to OPTIONS
-    or EXIT as the icon is reached. Failing that, the description line.
+    The selected text if there is any, preceded by anything that has just
+    appeared alongside a group of buttons, which is how a dialog's question
+    gets read as it opens. The other buttons in the group are left out even
+    though they move: a button's label shifts as it loses the selection.
+    Otherwise the text that changed with the move, which is how an icon gets
+    its name: the banner switches to OPTIONS or EXIT as the icon is reached.
+    Failing that, the description line, but only if it changed. Between one
+    button losing the selection and the next gaining it, neither label exists
+    for a moment, and that is not worth saying anything about.
     """
-    lit = [it.text for it in after if it.highlighted]
+    old = {_where(it) for it in before}
+    lit = [it for it in after if it.selected]
     if lit:
-        return lit
+        groups = {it.group for it in lit if it.group}
+        panels = set()
+        for it in lit:
+            if it.group in it.chain:
+                at = it.chain.index(it.group)
+                if at + 1 < len(it.chain):
+                    panels.add(it.chain[at + 1])
+        intro = [
+            it.text
+            for it in after
+            if not it.selected
+            and _where(it) not in old
+            and panels.intersection(it.chain)
+            and not groups.intersection(it.chain)
+        ]
+        return intro + [it.text for it in lit]
     foot = footer(after)
-    old = {(round(it.x), round(it.y), it.text) for it in before}
-    changed = [
-        it.text
-        for it in after
-        if it is not foot and (round(it.x), round(it.y), it.text) not in old
-    ]
+    changed = [it.text for it in after if it is not foot and _where(it) not in old]
     if 0 < len(changed) <= MOVE_TEXT_LIMIT:
         return changed
-    return [foot.text] if foot else []
+    was = footer(before)
+    if foot and (was is None or was.text != foot.text):
+        return [foot.text]
+    return []
 
 
 def _compose(outer, inner):
@@ -238,36 +285,67 @@ class ScaleformText:
         flags = struct.unpack_from("<H", raw, NODE_FLAGS)[0]
         m = struct.unpack_from("<8f", raw, NODE_MATRIX)
         cx = struct.unpack_from("<4f", raw, NODE_CXFORM)
-        values = m + cx
-        if not all(math.isfinite(v) and abs(v) < 1e7 for v in values):
+        if not all(math.isfinite(v) and abs(v) < 1e7 for v in m + cx):
             return None
-        return flags, (m[0], m[1], m[3], m[4], m[5], m[7]), cx
+        return (m[0], m[1], m[3], m[4], m[5], m[7]), cx, flags
 
     def place(self, docview: int):
-        """Depth, visibility, stage position and tint of a DocView's field."""
+        """The owner chain, stage position, tint and hiddenness of a DocView's field."""
         listener = self.pm.ptr(docview + DOCVIEW_LISTENER)
         obj = self.pm.ptr(listener + LISTENER_OWNER) if listener else None
         if not obj:
             return None
+        nodes = []
         chain = []
-        seen = set()
-        while obj and obj not in seen and len(chain) < MAX_DEPTH:
-            seen.add(obj)
+        while obj and obj not in chain and len(chain) < MAX_DEPTH:
             node = self._node(obj)
             if node is None:
                 break
-            chain.append(node)
+            nodes.append(node)
+            chain.append(obj)
             obj = self.pm.ptr(obj + DISPLAY_PARENT)
         if not chain:
             return None
         world = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
         tint = [1.0, 1.0, 1.0, 1.0]
-        visible = True
-        for flags, matrix, cx in reversed(chain):
+        for matrix, cx, _flags in reversed(nodes):
             world = _compose(world, matrix)
             tint = [t * c for t, c in zip(tint, cx)]
-            visible = visible and bool(flags & NODE_VISIBLE)
-        return len(chain), visible, world[2] / TWIPS_PER_PIXEL, world[5] / TWIPS_PER_PIXEL, tuple(tint)
+        hidden = any(not flags & NODE_VISIBLE for _m, _cx, flags in nodes[1:])
+        x, y = world[2] / TWIPS_PER_PIXEL, world[5] / TWIPS_PER_PIXEL
+        return tuple(chain), x, y, tuple(tint), hidden
+
+    # ------------------------------------------------------------- selection
+    def mark_choices(self, items: list[TextItem]) -> None:
+        """Find the selected button in a group of buttons with plain labels.
+
+        Only when nothing is tinted gold, so it never second-guesses a menu.
+        A group is a container whose children each hold exactly one short
+        label. The selected child has more children of its own than any other,
+        the outline and fill that mark it, and its label sits deeper inside it.
+        Both must hold, and for exactly one child, before anything is marked.
+        """
+        shown = [it for it in items if it.shown]
+        if any(it.highlighted for it in shown):
+            return
+        groups: dict[int, dict[int, list]] = defaultdict(lambda: defaultdict(list))
+        for it in shown:
+            for level in range(1, len(it.chain)):
+                groups[it.chain[level]][it.chain[level - 1]].append((it, level - 1))
+        for container, slots in groups.items():
+            if len(slots) < 2 or any(len(held) != 1 for held in slots.values()):
+                continue
+            if any(len(held[0][0].text.strip()) > CHOICE_TEXT_LIMIT for held in slots.values()):
+                continue
+            layers = {slot: self.pm.u32(slot + DISPLAY_CHILD_COUNT) or 0 for slot in slots}
+            most = max(layers.values())
+            if list(layers.values()).count(most) != 1:
+                continue
+            winner = next(slot for slot, n in layers.items() if n == most)
+            (item, nesting), = slots[winner]
+            if all(nesting > held[0][1] for slot, held in slots.items() if slot != winner):
+                item.chosen = True
+                item.group = container
 
     # ----------------------------------------------------------------- reads
     def items(self, everything: bool = False) -> list[TextItem]:
@@ -280,12 +358,13 @@ class ScaleformText:
             placed = self.place(dv)
             if placed is None:
                 if everything:
-                    out.append(TextItem(text, -1, -1, (0, 0, 0, 0), False, 0, dv))
+                    out.append(TextItem(text, -1, -1, (0, 0, 0, 0), 0, dv))
                 continue
-            depth, visible, x, y, tint = placed
-            item = TextItem(text, x, y, tint, visible, depth, dv)
+            chain, x, y, tint, hidden = placed
+            item = TextItem(text, x, y, tint, len(chain), dv, chain, hidden=hidden)
             if everything or item.shown:
                 out.append(item)
+        self.mark_choices(out)
         out.sort(key=lambda it: (round(it.y), it.x))
         return out
 
