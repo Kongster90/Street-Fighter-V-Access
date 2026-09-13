@@ -285,6 +285,18 @@ about 40 ms. The address space walk that finds them runs on a background
 thread once a second. The watch mode counts a prompt as open while its panel
 shows anything, so the gap between answers does not reopen it.
 
+**Grids mark the selection by brightness, not gold.** The Favorite Character
+grid dims every name to 0.75 and leaves the selected one at 1.0, as the voice
+language grid does, and a large label under the grid repeats the name.
+`_mark_by_brightness` takes the one clearly brighter label in a group of three
+or more, provided the rest mostly share a tint and its text box is the same
+size as theirs. Text boxes record their width and height at DocView `+0x88`;
+without that check a heading drawn brighter above dim entries would read as a
+selection. The Favorite Stage grid is different again: its tiles are pictures
+with no text, and the only sign of the selection is the label under the grid
+naming the stage. That one is not solved; `tools/record_scaleform.py` is for
+capturing it.
+
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but
 their render state looks exactly like the question's, so they are recognised

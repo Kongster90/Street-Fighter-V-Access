@@ -69,6 +69,7 @@ STYLED_TEXT_VTABLE = 0x34C8530
 # Field offsets, 64-bit.
 DOCVIEW_TEXT = 0x10          # StyledText*
 DOCVIEW_LISTENER = 0x20      # listener belonging to the owning text field
+DOCVIEW_SIZE = 0x88          # two floats, the text box's width and height in twips
 LISTENER_OWNER = -0x98       # pointer to that field, relative to the listener
 TEXT_PARAGRAPHS = 0x18       # array of Paragraph*
 TEXT_PARAGRAPH_COUNT = 0x20
@@ -90,6 +91,12 @@ TINT_TOLERANCE = 0.05
 # Labels longer than this are not answers on a button. It keeps the choice rule
 # off the banner, whose date line and title sit side by side like two buttons.
 CHOICE_TEXT_LIMIT = 24
+# A grid's selected tile has to be this much brighter, as the sum of its red,
+# green and blue times its alpha, than the next brightest. The Favorite
+# Character grid gives 3.0 against 2.25. Its text box must also be the same
+# size as most of the others', which a heading above a list of entries is not.
+BRIGHT_GROUP_MIN = 3
+BRIGHTNESS_MARGIN = 0.3
 
 # Layout placeholders the game leaves in its templates, such as the run of
 # lower-case w inside every prompt and the capital Ws on the Training loading
@@ -141,6 +148,7 @@ class TextItem:
     chosen: bool = False     # the selected button of a group, by structure
     group: int = 0           # the container holding that group of buttons
     hidden: bool = False     # a parent is switched off
+    box: tuple[float, float] = (0.0, 0.0)   # the text box's width and height in pixels
 
     @property
     def highlighted(self) -> bool:
@@ -375,14 +383,14 @@ class ScaleformText:
 
     # ------------------------------------------------------------- selection
     def mark_choices(self, items: list[TextItem]) -> None:
-        """Find the selected button in a group of buttons with plain labels.
+        """Find the selected entry in a group that is not marked with gold.
 
         A group is a container whose children each hold exactly one short
-        label. The selected child has more children of its own than any other,
-        the outline and fill that mark it, and its label sits deeper inside it.
-        Both must hold, and for exactly one child, before anything is marked.
-        Gold elsewhere on screen does not stop it: a prompt opened from a menu
-        sits over that menu's gold entry.
+        label. Two ways of marking the selection are recognised: a prompt's
+        buttons, where the selected one has extra layers and its label sits
+        deeper, and a grid of tiles, where it is drawn brighter than the rest.
+        Gold elsewhere on screen does not stop either: a prompt opened from a
+        menu sits over that menu's gold entry.
         """
         shown = [it for it in items if it.shown]
         groups: dict[int, dict[int, list]] = defaultdict(lambda: defaultdict(list))
@@ -394,15 +402,54 @@ class ScaleformText:
                 continue
             if any(len(held[0][0].text.strip()) > CHOICE_TEXT_LIMIT for held in slots.values()):
                 continue
-            layers = {slot: self.pm.u32(slot + DISPLAY_CHILD_COUNT) or 0 for slot in slots}
-            most = max(layers.values())
-            if list(layers.values()).count(most) != 1:
+            if self._mark_by_layers(container, slots):
                 continue
-            winner = next(slot for slot, n in layers.items() if n == most)
-            (item, nesting), = slots[winner]
-            if all(nesting > held[0][1] for slot, held in slots.items() if slot != winner):
-                item.chosen = True
-                item.group = container
+            self._mark_by_brightness(container, slots)
+
+    def _mark_by_layers(self, container: int, slots) -> bool:
+        """A prompt's buttons: the selected one has its outline and fill as extra children."""
+        layers = {slot: self.pm.u32(slot + DISPLAY_CHILD_COUNT) or 0 for slot in slots}
+        most = max(layers.values())
+        if list(layers.values()).count(most) != 1:
+            return False
+        winner = next(slot for slot, n in layers.items() if n == most)
+        (item, nesting), = slots[winner]
+        if not all(nesting > held[0][1] for slot, held in slots.items() if slot != winner):
+            return False
+        item.chosen = True
+        item.group = container
+        return True
+
+    def _mark_by_brightness(self, container: int, slots) -> None:
+        """A grid of tiles: the one you are on is drawn brighter than the rest.
+
+        The Favorite Character grid and the voice language grid dim every
+        other name to 0.75 and leave the selected one at full brightness, the
+        reverse of a menu's gold. Only for three tiles or more, only when none
+        is gold, and only when the brightest is alone, clearly ahead of a group
+        that mostly shares one tint, and the same size as most of them, so a
+        heading above dim entries is not taken for a selection.
+        """
+        if len(slots) < BRIGHT_GROUP_MIN:
+            return
+        labels = [held[0][0] for held in slots.values()]
+        if any(it.highlighted for it in labels):
+            return
+        def brightness(it):
+            return sum(it.tint[:3]) * it.tint[3]
+        ranked = sorted(labels, key=brightness, reverse=True)
+        top, rest = ranked[0], ranked[1:]
+        if brightness(rest[0]) > brightness(top) - BRIGHTNESS_MARGIN:
+            return
+        tints = [tuple(round(c, 2) for c in it.tint) for it in rest]
+        if max(tints.count(t) for t in tints) * 2 < len(rest):
+            return
+        boxes = [tuple(round(v) for v in it.box) for it in rest]
+        usual = max(set(boxes), key=boxes.count)
+        if boxes.count(usual) * 2 < len(rest) or tuple(round(v) for v in top.box) != usual:
+            return
+        top.chosen = True
+        top.group = container
 
     # ----------------------------------------------------------------- reads
     def items(self, everything: bool = False, quick: bool = False) -> list[TextItem]:
@@ -430,7 +477,9 @@ class ScaleformText:
                     out.append(TextItem(text, -1, -1, (0, 0, 0, 0), 0, dv))
                 continue
             chain, x, y, tint, hidden = placed
-            item = TextItem(text, x, y, tint, len(chain), dv, chain, hidden=hidden)
+            raw = self.pm.read(dv + DOCVIEW_SIZE, 8)
+            box = tuple(v / TWIPS_PER_PIXEL for v in struct.unpack("<2f", raw)) if raw else (0.0, 0.0)
+            item = TextItem(text, x, y, tint, len(chain), dv, chain, hidden=hidden, box=box)
             if everything or item.shown:
                 out.append(item)
         self.mark_choices(out)

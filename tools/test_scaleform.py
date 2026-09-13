@@ -90,7 +90,7 @@ def display_object(mem, parent, x, y, tint, flags=1, children=0):
     return obj
 
 
-def text_field(mem, parent, x, y, paragraphs, tint=WHITE, flags=1, separate=False):
+def text_field(mem, parent, x, y, paragraphs, tint=WHITE, flags=1, separate=False, box=(2000, 400)):
     """A text field with its DocView and text.
 
     The listener lives inside the field on the main menu, and in its own
@@ -110,6 +110,7 @@ def text_field(mem, parent, x, y, paragraphs, tint=WHITE, flags=1, separate=Fals
     mem.put(docview, "<Q", MODULE + sf.DOCVIEW_VTABLE)
     mem.put(docview + sf.DOCVIEW_TEXT, "<Q", styled)
     mem.put(docview + sf.DOCVIEW_LISTENER, "<Q", listener)
+    mem.put(docview + sf.DOCVIEW_SIZE, "<2f", *box)
     mem.put(styled, "<Q", MODULE + sf.STYLED_TEXT_VTABLE)
     mem.put(styled + sf.TEXT_PARAGRAPHS, "<Q", array)
     mem.put(styled + sf.TEXT_PARAGRAPH_COUNT, "<Q", len(paragraphs))
@@ -284,6 +285,35 @@ check("a read between the answers does not reopen the prompt",
       sf.landed_on(gap, t_no, groups) == ["No"], repr(sf.landed_on(gap, t_no, groups)))
 check("nor does anything get said for that read", sf.landed_on(t_yes, gap, groups) == [],
       repr(sf.landed_on(t_yes, gap, groups)))
+
+# The Favorite Character grid: every name dimmed to 0.75 but the one you are on.
+DIM = (0.75, 0.75, 0.75, 1.0)
+ROSTER = ["RYU", "KEN", "CHUN-LI", "CAMMY", "NASH", "M. BISON", "VEGA", "BIRDIE"]
+
+
+def character_grid(on, heading=None, gold=None):
+    mem = FakeMemory()
+    root = display_object(mem, 0, 0, 0, WHITE)
+    grid = display_object(mem, root, 1000, 300, WHITE)
+    if heading:
+        text_field(mem, display_object(mem, grid, 0, -60, WHITE), 0, 0, [heading], box=(9000, 800))
+    for i, name in enumerate(ROSTER):
+        tint = GOLD if name == gold else (WHITE if name == on else DIM)
+        tile = display_object(mem, grid, 164 * (i % 4), 52 * (i // 4), WHITE)
+        text_field(mem, tile, 37, 26, [name], tint=tint)
+    text_field(mem, root, 1041, 857, [on or "RYU"], box=(6000, 900))
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+on_ryu, on_ken = character_grid("RYU"), character_grid("KEN")
+check("the brighter tile in a grid is the selected one",
+      [it.text for it in on_ken if it.chosen] == ["KEN"], repr([it.text for it in on_ken if it.chosen]))
+check("moving in the grid says the name once, not the label that repeats it",
+      sf.landed_on(on_ryu, on_ken) == ["KEN"], repr(sf.landed_on(on_ryu, on_ken)))
+check("a heading brighter than dim entries is not a selection",
+      not any(it.chosen for it in character_grid(None, heading="Favorite Character")))
+check("gold in the group leaves it to the gold",
+      [it.text for it in character_grid("RYU", gold="VEGA") if it.selected] == ["VEGA"])
 
 # Quick reads sweep only blocks shaped like Scaleform's own.
 qmem = FakeMemory()
