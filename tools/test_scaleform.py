@@ -318,13 +318,14 @@ check("gold in the group leaves it to the gold",
 # The Favorite Stage grid, as recorded: tiles of seven parts, the selected one
 # with its outline switched on and its picture undimmed, and a label five
 # levels away naming the stage, where the category tab is seven.
-def stage_screen(selected=1, names=("???", "The Grid", "Dojo", "Ring of Pride", "Ring of Destiny", "Ring of Power")):
+def stage_screen(selected=1, names=("???", "The Grid", "Dojo", "Ring of Pride", "Ring of Destiny", "Ring of Power"),
+                 first_tile=1000):
     tree = {}
     def node(obj, kids=(), cx=(1, 1, 1, 1), flags=1):
         tree[obj] = {"kids": list(kids), "cx": cx, "flags": flags}
     tiles = []
     for i in range(len(names)):
-        tile = 1000 + i * 10
+        tile = first_tile + i * 10
         parts = [tile + p for p in range(1, 8)]
         on = i == selected
         node(parts[0], flags=1 if on else 0)                                      # outline
@@ -369,6 +370,11 @@ tree2, _, _ = stage_screen(selected=None)
 check("a grid with nothing standing out selects nothing",
       sf.selected_tile(lambda o: tree2.get(o, {}).get("kids", []),
                        lambda o: (tree2[o]["cx"], tree2[o]["flags"]) if o in tree2 else None, grids[900]) is None)
+scrolled, _, _ = stage_screen(selected=4, first_tile=5000)
+skids = lambda o: scrolled.get(o, {}).get("kids", [])
+slook = lambda o: (scrolled[o]["cx"], scrolled[o]["flags"]) if o in scrolled else None
+check("a grid that scrolled to new tiles is read from its tiles as they are now",
+      sf.selected_tile(skids, slook, sf.grid_tiles(skids, 900)) == 5040)
 locked_a = [sf.TextItem("???", 1058, 811, WHITE, 5, chosen=True, slot=1000)]
 locked_b = [sf.TextItem("???", 1058, 811, WHITE, 5, chosen=True, slot=1010)]
 check("moving between two locked stages of the same name is still a move",

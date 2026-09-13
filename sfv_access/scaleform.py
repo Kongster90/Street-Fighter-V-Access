@@ -290,15 +290,32 @@ GRID_SEARCH_LIMIT = 6000
 GRID_NAME_REACH = 6
 
 
-def find_grids(children, roots, limit: int = GRID_SEARCH_LIMIT) -> dict[int, list[int]]:
-    """Containers holding four or more tiles built alike, by number of parts."""
-    kids_of: dict[int, list[int]] = {}
+def _remembering(children):
+    """`children`, reading each object's list once however often it is asked."""
+    known: dict[int, list[int]] = {}
 
     def kids(obj):
-        if obj not in kids_of:
-            kids_of[obj] = children(obj)
-        return kids_of[obj]
+        if obj not in known:
+            known[obj] = children(obj)
+        return known[obj]
 
+    return kids
+
+
+def grid_tiles(children, obj) -> list[int]:
+    """The tiles of `obj` if it is a grid: four or more children with the same number of parts."""
+    inside = children(obj)
+    if len(inside) < GRID_MIN_TILES:
+        return []
+    parts = [len(children(k)) for k in inside]
+    usual = max(set(parts), key=parts.count)
+    tiles = [k for k, n in zip(inside, parts) if n == usual]
+    return tiles if usual >= 2 and len(tiles) >= GRID_MIN_TILES else []
+
+
+def find_grids(children, roots, limit: int = GRID_SEARCH_LIMIT) -> dict[int, list[int]]:
+    """Containers holding four or more tiles built alike, by number of parts."""
+    kids = _remembering(children)
     grids = {}
     stack = list(roots)
     seen = set()
@@ -307,14 +324,9 @@ def find_grids(children, roots, limit: int = GRID_SEARCH_LIMIT) -> dict[int, lis
         if obj in seen:
             continue
         seen.add(obj)
-        inside = kids(obj)
-        stack.extend(inside)
-        if len(inside) < GRID_MIN_TILES:
-            continue
-        parts = [len(kids(k)) for k in inside]
-        usual = max(set(parts), key=parts.count)
-        tiles = [k for k, n in zip(inside, parts) if n == usual]
-        if usual >= 2 and len(tiles) >= GRID_MIN_TILES:
+        stack.extend(kids(obj))
+        tiles = grid_tiles(kids, obj)
+        if tiles:
             grids[obj] = tiles
     return grids
 
@@ -545,17 +557,25 @@ class ScaleformText:
         self._mark_picture_grids(shown)
 
     def _mark_picture_grids(self, shown: list[TextItem]) -> None:
-        """Name the selected tile of a grid of pictures by the label nearest it."""
+        """Name the selected tile of a grid of pictures by the label nearest it.
+
+        The grids come from the last walk of the tree, but their tiles are
+        listed afresh on every read. Moving down a row scrolls the stage grid
+        and changes its tiles, and a list kept from the walk left the new row's
+        stage unnamed for up to two seconds.
+        """
         def appearance(obj):
             node = self._node(obj)
             return None if node is None else (node[1], node[2])
 
-        for grid, tiles in list(self._grids.items()):
-            if not tiles or self.pm.ptr(tiles[0] + DISPLAY_PARENT) != grid:
-                continue  # gone since the last walk
+        kids = _remembering(self.children)
+        for grid in list(self._grids):
             if any(grid in it.chain for it in shown):
                 continue  # its tiles carry text, which the other rules read
-            tile = selected_tile(self.children, appearance, tiles)
+            tiles = grid_tiles(kids, grid)
+            if not tiles:
+                continue  # gone since the last walk
+            tile = selected_tile(kids, appearance, tiles)
             if tile is None:
                 continue
             up = [grid]
