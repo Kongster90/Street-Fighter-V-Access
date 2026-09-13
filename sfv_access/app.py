@@ -8,7 +8,7 @@ text field's exact text and which one is selected, which needs no recognition
 and no game in front. When memory cannot be read, the pixel reader takes over:
 menus are recognised and the highlighted entry found by its gold colour. The
 gauges carry no text at all, so they are measured directly from the pixels on a
-hotkey. Alt W switches between memory and the screen by hand.
+hotkey. F9 switches between memory and the screen by hand.
 """
 
 from __future__ import annotations
@@ -28,8 +28,9 @@ from .speech import Speaker
 SNAPSHOT_DIR = Path(__file__).resolve().parent.parent / "snapshots"
 
 # Plain Alt, at the user's request: fewer keys to press, and Windows claims some
-# Control Alt combinations for itself. Every one was checked as free on this
-# machine. Registered globally, these keys are taken from every program while
+# Control Alt combinations for itself. Quit is F10 and the memory or screen
+# switch F9, also their choice; the watch mode and recorder stop on F10 too.
+# Every one was checked as free on this machine. Registered globally, these keys are taken from every program while
 # the mod runs, so browser and menu shortcuts such as Alt D stop working there.
 # Under Control Alt, c, e, l, n, t, space, slash, minus, equals and backslash
 # were claimed by other software.
@@ -45,12 +46,12 @@ HOTKEYS = {
     "repeat_line":   ("alt+period", "repeat the current line"),
     "read_all":      ("alt+a",      "read the whole screen"),
     "toggle_watch":  ("alt+m",      "turn menu narration on or off"),
-    "switch_source": ("alt+w",      "switch between reading memory and reading the screen"),
+    "switch_source": ("f9",         "switch between reading memory and reading the screen"),
     "snapshot":      ("alt+s",      "save a snapshot for calibration"),
     "status":        ("alt+g",      "status"),
     "stop_speech":   ("alt+x",      "stop speaking"),
     "list_keys":     ("alt+k",      "list the keys"),
-    "quit":          ("alt+q",      "quit"),
+    "quit":          ("f10",        "quit"),
 }
 
 WATCH_INTERVAL = 0.12
@@ -712,7 +713,7 @@ class App:
     def _narrate_memory(self, items) -> None:
         """Speak whatever the memory narrator decides this reading lands on."""
         said = self.narrator.step(items, time.monotonic())
-        # Alt W can land between the read and this point; once the
+        # F9 can land between the read and this point; once the
         # screen has been chosen, memory must not get the last word.
         if not said or not self.use_memory:
             return

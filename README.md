@@ -165,12 +165,12 @@ These work while the game has focus, including in fullscreen.
 - Alt Period: repeat the current line
 - Alt A: read the whole screen
 - Alt M: turn menu narration on or off
-- Alt W: switch between reading the game's memory and reading the screen
+- F9: switch between reading the game's memory and reading the screen
 - Alt S: save a snapshot for calibration
 - Alt G: status
 - Alt X: stop speaking
 - Alt K: list these keys
-- Alt Q: quit
+- F10: quit
 
 Menu narration is on at startup. It announces the selected entry whenever it
 moves, read from the game's memory: exact text, whether a song is ticked or
@@ -181,7 +181,7 @@ When memory cannot be read, narration falls back to the screen. That stands
 down during a match, where speech cannot keep pace and the gauges are on a
 hotkey instead, and whenever the game is not the window in front, since capture
 covers the whole screen and would otherwise narrate whatever you had switched
-to. Alt W chooses between the two by hand, for a screen one of them
+to. F9 chooses between the two by hand, for a screen one of them
 reads and the other does not. The read keys use memory when it has a reading,
 and the screen otherwise.
 

@@ -33,7 +33,7 @@ against the game's own words.
 This is now how the mod narrates menus: exact text, and which entry is
 selected, read out of Scaleform. See "Reading the interface from memory" below.
 The pixel reader is the fallback, used while memory cannot be read or when the
-user switches to it with Alt W. Character select is still read from
+user switches to it with F9. Character select is still read from
 Unreal's objects by `live.py`.
 
 ## What works
@@ -517,7 +517,7 @@ What follows is roughly in order of value.
    screens memory has not been heard on: character select (does the `live.py`
    readout still come through, and does Scaleform select anything there that
    would stop it), the real stage select, the voice language grid, the
-   Training pause menu mid-match. Where memory is silent, Alt W
+   Training pause menu mid-match. Where memory is silent, F9
    switches to the screen, which tells you whether the gap is memory's.
 
    Two things the user asked for next and were agreed but not started: reading
@@ -582,12 +582,14 @@ For memory narration the loop was: they play with narration on and say what
 sounded wrong, you read `snapshots/scaleform-log.txt`, which has every screen
 and everything said. When a screen marks its selection in a way nobody knows
 yet, `tools/record_scaleform.py <name>` keeps everything plus a screenshot per
-record until Alt Q; ask them to hold each state for a few seconds and
+record until F10; ask them to hold each state for a few seconds and
 to do the thing in question (tick, untick, move a row) more than once. Only
 one of the watch mode, the recorder and the mod can hold the keys at a time.
 
 Shortcuts are plain Alt plus a key, at their request: fewer keys to press, and
-Windows claims some Control Alt combinations. They are also happy with F keys.
+Windows claims some Control Alt combinations. They chose F10 for quit (and for
+stopping the watch mode and recorder) and F9 for switching between memory and
+the screen, and are happy with F keys generally.
 Before adding a key, check it registers (every current one was free), and
 remember a global hotkey is taken from every program while the mod runs.
 

@@ -11,7 +11,7 @@ which entry was really selected can be checked by eye afterwards.
 A record is written whenever the text changes or anything in the display
 tree is switched on or off or changes brightness, at most every 0.3 seconds.
 Watching the text alone missed ticking a song in the menu music list, which
-changes only a picture. It speaks when ready and stops on Alt Q,
+changes only a picture. It speaks when ready and stops on F10,
 rather than guessing when you are done; the prompt work showed that
 recorders which decided in advance what to keep, or when to stop, caught
 nothing useful.
@@ -100,11 +100,11 @@ def main() -> None:
     stop = threading.Event()
     reader.keep_pages_current(stop)
     keys = Hotkeys()
-    keys.bind("alt+q", stop.set)
+    keys.bind("f10", stop.set)
     keys.start()
     if keys.failed:
         print(f"could not register {keys.failed}; is the mod or the watch mode running?")
-    speech.say("Recorder ready. Alt Q when you are done.")
+    speech.say("Recorder ready. F10 when you are done.")
 
     last_sig = None
     last_write = 0.0
