@@ -403,6 +403,21 @@ select's names turn up under "parent hidden" or "transparent", the visibility
 rules are wrong for that screen; if under a wide sweep region, Scaleform had
 put them outside its usual small pages.
 
+**It was the visibility rule.** The next run logged "STAGE SELECT" under
+"parent hidden" while blind, and the wide sweep found nothing elsewhere. Stage
+select and character select are panels of one movie; each panel's container
+has the visible bit, and on returning from character select stage select's
+container kept its bit clear, sometimes for a minute, until the stage was
+changed a few times. `_show_hidden_stage_select` counts text under the hidden
+containers above stage select's conditions as showing, but only when nothing
+at all is showing, which is never true while character select really is on
+screen, and only for text hidden by those containers and nothing else, so
+character select's leftovers under their own container stay hidden. It will
+also read the chosen stage during the loading screen after character select,
+which seemed harmless. The general lesson: the render node's visible bit can
+lag behind the screen, so other screens may go blind the same way, and the
+"blind:" log lines will say so.
+
 **Reads slow as a session goes on.** Scaleform's blocks grew from 72 MB to
 119 MB over an evening of screens, and a quick read from about 40 ms to about
 110 ms, most of it the sweep and placing leftover text from closed screens.

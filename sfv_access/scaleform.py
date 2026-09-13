@@ -924,6 +924,42 @@ class ScaleformText:
         top.chosen = True
         top.group = container
 
+    def _hidden_ancestors(self, chain: tuple[int, ...]) -> list[int]:
+        """The objects above a field whose render node has its visible bit clear."""
+        hidden = []
+        for obj in chain[1:]:
+            node = self._node(obj)
+            if node is not None and not node[2] & NODE_VISIBLE:
+                hidden.append(obj)
+        return hidden
+
+    def _show_hidden_stage_select(self, every: list[TextItem]) -> None:
+        """Read stage select's panel even while its container is marked hidden.
+
+        Stage select and character select are panels of one movie. Backing out
+        of character select, stage select is back on screen but its panel's
+        container can keep its visible bit clear until the stage is changed a
+        few times, and for up to a minute nothing counted as showing: the log
+        grouped "STAGE SELECT" under "parent hidden". Only when nothing at all
+        is showing, which is never true while character select really is on
+        screen, is text under the same hidden containers as stage select's
+        conditions counted as showing.
+        """
+        conditions = [it for it in every if it.hidden and it.depth >= 2 and stage_condition(it.text)]
+        if len({stage_condition(it.text)[0] for it in conditions}) < 2:
+            return
+        panels = set()
+        for it in conditions:
+            panels.update(self._hidden_ancestors(it.chain))
+        if not panels:
+            return
+        for it in every:
+            # Only text hidden by those containers and nothing else, so character
+            # select's leftovers under their own hidden panel stay hidden.
+            if it.hidden and panels.intersection(it.chain):
+                if set(self._hidden_ancestors(it.chain)) <= panels:
+                    it.hidden = False
+
     # ----------------------------------------------------------------- reads
     def items(self, everything: bool = False, quick: bool = False) -> list[TextItem]:
         """Text on screen in reading order. `everything` keeps the leftovers.
@@ -940,22 +976,22 @@ class ScaleformText:
         else:
             docviews = self.docviews(self.heap_pages() + self.extra_pages)
         roots_before = set(self._roots)
-        out = []
+        every = []
         for dv in docviews:
             text = self.field_text(dv)
             if text is None:
                 continue
             placed = self.place(dv)
             if placed is None:
-                if everything:
-                    out.append(TextItem(text, -1, -1, (0, 0, 0, 0), 0, dv))
+                every.append(TextItem(text, -1, -1, (0, 0, 0, 0), 0, dv))
                 continue
             chain, x, y, tint, hidden = placed
             raw = self.pm.read(dv + DOCVIEW_SIZE, 8)
             box = tuple(v / TWIPS_PER_PIXEL for v in struct.unpack("<2f", raw)) if raw else (0.0, 0.0)
-            item = TextItem(text, x, y, tint, len(chain), dv, chain, hidden=hidden, box=box)
-            if everything or item.shown:
-                out.append(item)
+            every.append(TextItem(text, x, y, tint, len(chain), dv, chain, hidden=hidden, box=box))
+        if not any(it.shown for it in every):
+            self._show_hidden_stage_select(every)
+        out = every if everything else [it for it in every if it.shown]
         self._roots = {it.chain[-1] for it in out if it.shown and it.chain}
         if not quick and self._roots != roots_before:
             self.refresh_grids()

@@ -477,9 +477,17 @@ check("a list whose rows are empty mid-scroll is not named after its tab",
 
 # Stage select, as logged: nothing selected, the heading drawn above, the stage
 # name drawn twice, and conditions each a label and value in one text.
-def stage_select(stage, temperature="77°F", weather="Clear", time_of_day="10:30", conditions=True):
+def stage_select(stage, temperature="77°F", weather="Clear", time_of_day="10:30", conditions=True,
+                 panel_hidden=False, character_select=None):
+    """`panel_hidden` marks stage select's panel hidden, as on returning from
+    character select. `character_select` adds that panel with a name, shown
+    or hidden by its own container."""
     mem = FakeMemory()
-    root = display_object(mem, 0, 0, 0, WHITE)
+    movie = display_object(mem, 0, 0, 0, WHITE)
+    root = display_object(mem, movie, 0, 0, WHITE, flags=0 if panel_hidden else 1)
+    if character_select is not None:
+        chara = display_object(mem, movie, 0, 0, WHITE, flags=1 if character_select == "shown" else 0)
+        text_field(mem, display_object(mem, chara, 960, 87, WHITE), 0, 0, ["BLUE TEAM"])
     header = display_object(mem, root, 0, 100, WHITE)
     text_field(mem, header, 960, 2, ["STAGE SELECT"])
     text_field(mem, display_object(mem, header, 2, 3, WHITE), 0, 0, ["STAGE SELECT"])
@@ -505,6 +513,13 @@ check("stage conditions read as words, unknown ones left out",
       and sf.stage_details(on_ring) == [], repr(sf.stage_details(on_dojo)))
 check("without conditions it is not stage select",
       not any(it.selected for it in stage_select("Dojo", conditions=False)))
+returned = stage_select("Dojo", panel_hidden=True, character_select="hidden")
+check("back from character select, a panel still marked hidden is read when nothing else shows",
+      {it.text for it in returned if it.selected} == {"Dojo"}
+      and "BLUE TEAM" not in {it.text for it in returned}, repr([it.text for it in returned]))
+covered = stage_select("Dojo", panel_hidden=True, character_select="shown")
+check("but not while character select is really showing",
+      [it.text for it in covered] == ["BLUE TEAM"], repr([it.text for it in covered]))
 
 # A screen being torn down: an object whose child list points at garbage that
 # does not name it as parent, and claims a great many entries.
