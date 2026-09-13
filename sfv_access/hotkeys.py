@@ -48,7 +48,7 @@ for _i in range(10):
 
 
 def parse(combo: str) -> tuple[int, int]:
-    """'ctrl+alt+r' -> (modifier mask, virtual key code)."""
+    """'alt+r' -> (modifier mask, virtual key code)."""
     parts = [p.strip().lower() for p in combo.split("+") if p.strip()]
     if not parts:
         raise ValueError(f"empty hotkey: {combo!r}")

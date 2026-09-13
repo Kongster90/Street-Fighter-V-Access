@@ -8,7 +8,7 @@ text field's exact text and which one is selected, which needs no recognition
 and no game in front. When memory cannot be read, the pixel reader takes over:
 menus are recognised and the highlighted entry found by its gold colour. The
 gauges carry no text at all, so they are measured directly from the pixels on a
-hotkey. Control Alt W switches between memory and the screen by hand.
+hotkey. Alt W switches between memory and the screen by hand.
 """
 
 from __future__ import annotations
@@ -27,26 +27,30 @@ from .speech import Speaker
 
 SNAPSHOT_DIR = Path(__file__).resolve().parent.parent / "snapshots"
 
-# Every combo was checked as free on this machine; ctrl+alt+c, e, l, n, t,
-# space, slash, minus, equals and backslash are already claimed by other software.
+# Plain Alt, at the user's request: fewer keys to press, and Windows claims some
+# Control Alt combinations for itself. Every one was checked as free on this
+# machine. Registered globally, these keys are taken from every program while
+# the mod runs, so browser and menu shortcuts such as Alt D stop working there.
+# Under Control Alt, c, e, l, n, t, space, slash, minus, equals and backslash
+# were claimed by other software.
 HOTKEYS = {
-    "read_screen":   ("ctrl+alt+r",      "read what is selected"),
-    "read_hud":      ("ctrl+alt+h",      "read health and meters"),
-    "read_live":     ("ctrl+alt+p",      "read the game's own state"),
-    "describe":      ("ctrl+alt+d",      "describe the selected entry"),
-    "next_line":     ("ctrl+alt+down",   "next line"),
-    "prev_line":     ("ctrl+alt+up",     "previous line"),
-    "first_line":    ("ctrl+alt+home",   "first line"),
-    "last_line":     ("ctrl+alt+end",    "last line"),
-    "repeat_line":   ("ctrl+alt+period", "repeat the current line"),
-    "read_all":      ("ctrl+alt+a",      "read the whole screen"),
-    "toggle_watch":  ("ctrl+alt+m",      "turn menu narration on or off"),
-    "switch_source": ("ctrl+alt+w",      "switch between reading memory and reading the screen"),
-    "snapshot":      ("ctrl+alt+s",      "save a snapshot for calibration"),
-    "status":        ("ctrl+alt+g",      "status"),
-    "stop_speech":   ("ctrl+alt+x",      "stop speaking"),
-    "list_keys":     ("ctrl+alt+k",      "list the keys"),
-    "quit":          ("ctrl+alt+q",      "quit"),
+    "read_screen":   ("alt+r",      "read what is selected"),
+    "read_hud":      ("alt+h",      "read health and meters"),
+    "read_live":     ("alt+p",      "read the game's own state"),
+    "describe":      ("alt+d",      "describe the selected entry"),
+    "next_line":     ("alt+down",   "next line"),
+    "prev_line":     ("alt+up",     "previous line"),
+    "first_line":    ("alt+home",   "first line"),
+    "last_line":     ("alt+end",    "last line"),
+    "repeat_line":   ("alt+period", "repeat the current line"),
+    "read_all":      ("alt+a",      "read the whole screen"),
+    "toggle_watch":  ("alt+m",      "turn menu narration on or off"),
+    "switch_source": ("alt+w",      "switch between reading memory and reading the screen"),
+    "snapshot":      ("alt+s",      "save a snapshot for calibration"),
+    "status":        ("alt+g",      "status"),
+    "stop_speech":   ("alt+x",      "stop speaking"),
+    "list_keys":     ("alt+k",      "list the keys"),
+    "quit":          ("alt+q",      "quit"),
 }
 
 WATCH_INTERVAL = 0.12
@@ -179,7 +183,7 @@ def announce(bgra, rgb, with_description: bool = True) -> tuple[str, list, int |
         # The description is worth having but it is a whole sentence, and
         # hearing one on every press while moving down a list is exhausting.
         # Moving through a menu leaves it out; asking for a reading includes it,
-        # and Control Alt D says it on its own.
+        # and Alt D says it on its own.
         if footer and with_description:
             said += f" {footer}"
         return said, body, idx, footer
@@ -292,7 +296,7 @@ class App:
         banner = (
             f"Street Fighter 5 access ready. Speech through {self.speech.backend}. "
             f"{where}. Menu narration on, reading the game's memory. "
-            "Control alt K lists the keys."
+            "Alt K lists the keys."
         )
         print(banner)
         failed = self.keys.failed
@@ -355,7 +359,7 @@ class App:
 
     def _speak_cursor(self) -> None:
         if not self.lines:
-            self.speech.say("Nothing read yet. Press control alt R.")
+            self.speech.say("Nothing read yet. Press alt R.")
             return
         item = self.lines[self.cursor]
         # Text read from memory is already exact; correcting it could only harm it.
@@ -708,7 +712,7 @@ class App:
     def _narrate_memory(self, items) -> None:
         """Speak whatever the memory narrator decides this reading lands on."""
         said = self.narrator.step(items, time.monotonic())
-        # Control Alt W can land between the read and this point; once the
+        # Alt W can land between the read and this point; once the
         # screen has been chosen, memory must not get the last word.
         if not said or not self.use_memory:
             return

@@ -29,7 +29,7 @@ Everything is spoken, because this runs with the game in front.
 
     python tools/learn_names.py
 
-Hover from character to character. Control Alt J stops; the table saves as it
+Hover from character to character. Alt J stops; the table saves as it
 goes, and every observation is logged to snapshots/learn-log.txt for diagnosis.
 """
 
@@ -381,15 +381,15 @@ def main() -> None:
 
     stop = threading.Event()
     keys = Hotkeys()
-    keys.bind("ctrl+alt+j", stop.set)
+    keys.bind("alt+j", stop.set)
     keys.start()
 
     speech.say(
         f"Learning character names. {len(learner.names)} known. Bring the game to "
         "the front on character select, then move from one character to the next. "
-        "Control alt J stops."
+        "Alt J stops."
     )
-    print(f"{len(learner.names)} known. Control Alt J to stop.")
+    print(f"{len(learner.names)} known. Alt J to stop.")
 
     cap = Capture()
     warned = False

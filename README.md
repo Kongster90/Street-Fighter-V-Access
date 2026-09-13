@@ -154,23 +154,23 @@ says so at startup instead of leaving its keys quietly dead.
 
 These work while the game has focus, including in fullscreen.
 
-- Control Alt R: read what is selected, or the gauges during a match
-- Control Alt H: read health and meters
-- Control Alt P: read the game's own state, currently character select
-- Control Alt D: describe the selected entry
-- Control Alt Down: next line
-- Control Alt Up: previous line
-- Control Alt Home: first line
-- Control Alt End: last line
-- Control Alt Period: repeat the current line
-- Control Alt A: read the whole screen
-- Control Alt M: turn menu narration on or off
-- Control Alt W: switch between reading the game's memory and reading the screen
-- Control Alt S: save a snapshot for calibration
-- Control Alt G: status
-- Control Alt X: stop speaking
-- Control Alt K: list these keys
-- Control Alt Q: quit
+- Alt R: read what is selected, or the gauges during a match
+- Alt H: read health and meters
+- Alt P: read the game's own state, currently character select
+- Alt D: describe the selected entry
+- Alt Down: next line
+- Alt Up: previous line
+- Alt Home: first line
+- Alt End: last line
+- Alt Period: repeat the current line
+- Alt A: read the whole screen
+- Alt M: turn menu narration on or off
+- Alt W: switch between reading the game's memory and reading the screen
+- Alt S: save a snapshot for calibration
+- Alt G: status
+- Alt X: stop speaking
+- Alt K: list these keys
+- Alt Q: quit
 
 Menu narration is on at startup. It announces the selected entry whenever it
 moves, read from the game's memory: exact text, whether a song is ticked or
@@ -181,7 +181,7 @@ When memory cannot be read, narration falls back to the screen. That stands
 down during a match, where speech cannot keep pace and the gauges are on a
 hotkey instead, and whenever the game is not the window in front, since capture
 covers the whole screen and would otherwise narrate whatever you had switched
-to. Control Alt W chooses between the two by hand, for a screen one of them
+to. Alt W chooses between the two by hand, for a screen one of them
 reads and the other does not. The read keys use memory when it has a reading,
 and the screen otherwise.
 
@@ -314,7 +314,7 @@ the time it takes to move from one entry to the next.
 
 Moving through a menu leaves the description out, since hearing a whole
 sentence on every press is exhausting. Asking for a reading includes it, and
-Control Alt D says it alone.
+Alt D says it alone.
 
 Everything announced is written to `snapshots/spoken-log.txt`, so a reading
 that comes out wrong in play can be looked at afterwards rather than recalled.
@@ -335,7 +335,7 @@ that comes out wrong in play can be looked at afterwards rather than recalled.
 
 ## Calibration
 
-`Control Alt S` writes a PNG and a matching text file into `snapshots/`. The
+`Alt S` writes a PNG and a matching text file into `snapshots/`. The
 text file lists every recognised line with its position. `tools/replay.py`
 then replays any snapshot through the live announcement code, which is how
 this was built and how a regression gets caught.
@@ -446,7 +446,7 @@ and that model knows exactly what it is:
 - `CharaCode`, the internal character code
 - `CostumeId` and `ColorId`, which the pixel reader cannot read at all
 
-`sfv_access/live.py` serves this. Control Alt P speaks it on demand, and menu
+`sfv_access/live.py` serves this. Alt P speaks it on demand, and menu
 narration falls back to it automatically whenever no highlighted text can be
 found, which is exactly the character select case.
 

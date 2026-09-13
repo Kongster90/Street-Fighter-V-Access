@@ -62,7 +62,7 @@ this only needs running for the ones still missing.
 .venv\Scripts\python.exe run.py
 ```
 
-Or double-click `Start SFV Access.bat`. Control Alt K lists the keys.
+Or double-click `Start SFV Access.bat`. Alt K lists the keys.
 
 ## Checking it works
 
@@ -73,7 +73,7 @@ Or double-click `Start SFV Access.bat`. Control Alt K lists the keys.
 The other suites under `tools/` need no game running, except
 `tools/test_screens.py`, which replays captured screens. Those captures are not
 in the repository because they carry the game's artwork and whatever profile
-name is on screen, so take your own with Control Alt S and add the expected
+name is on screen, so take your own with Alt S and add the expected
 readings to that file.
 
 ## Building the native part

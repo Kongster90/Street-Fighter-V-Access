@@ -12,8 +12,8 @@ The watch mode speaks through the same narration the mod uses,
 `sfv_access.memory_narration`, without the mod's pixel fallback or its other
 keys. It is the quickest way to try a change to memory narration in play. Every
 change of what is showing is written to `snapshots/scaleform-log.txt`, as the
-mod does too. Control Alt R repeats the last thing said, Control Alt A reads
-everything showing, Control Alt Q stops. Run it instead of the mod, not
+mod does too. Alt R repeats the last thing said, Alt A reads
+everything showing, Alt Q stops. Run it instead of the mod, not
 alongside it, or the two talk over each other and fight over the keys.
 """
 
@@ -52,14 +52,14 @@ def watch() -> None:
     narrator = memory_narration.Narrator()
 
     keys = Hotkeys()
-    keys.bind("ctrl+alt+q", stop.set)
-    keys.bind("ctrl+alt+r", lambda: speech.say(narrator.said or "Nothing yet."))
-    keys.bind("ctrl+alt+a", lambda: speech.say_lines([it.text for it in session.items]))
+    keys.bind("alt+q", stop.set)
+    keys.bind("alt+r", lambda: speech.say(narrator.said or "Nothing yet."))
+    keys.bind("alt+a", lambda: speech.say_lines([it.text for it in session.items]))
     keys.start()
     if keys.failed:
         print(f"could not register {keys.failed}; is the mod running?")
 
-    speech.say("Reading from memory. Control Alt Q stops.")
+    speech.say("Reading from memory. Alt Q stops.")
     session.note(f"=== {_dt.datetime.now():%Y-%m-%d} watch started")
     started = time.time()
     while not stop.is_set() and time.time() - started < TIME_LIMIT:

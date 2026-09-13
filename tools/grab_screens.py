@@ -1,6 +1,6 @@
 """Save snapshots while you move through the menus.
 
-Control Alt S saves one screen at a time, which is the right tool when you know
+Alt S saves one screen at a time, which is the right tool when you know
 which screen is wrong. It is the wrong tool for a calibration pass, where the
 point is to cover a lot of screens and the interesting frame is often one you
 could not have known to ask for.
@@ -11,7 +11,7 @@ duplicates of a screen you sat on, and nothing to time. Pass an interval to get
 the older behaviour of a frame every so many seconds instead, which is what to
 use when a single screen misbehaves on its own.
 
-Each frame is written the same way Control Alt S writes it, a PNG beside a text
+Each frame is written the same way Alt S writes it, a PNG beside a text
 dump of every recognised line, so `replay.py`, `show_bands.py` and
 `test_screens.py` all read them unchanged.
 

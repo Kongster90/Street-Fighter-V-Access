@@ -29,7 +29,7 @@ names.json
 
 # Captures of the game. These carry its artwork and your profile name, rank and
 # league points, so they stay local. tools/test_screens.py needs them, so take
-# your own with Control Alt S.
+# your own with Alt S.
 snapshots/
 
 # Speech libraries from before the move to Prism, which may still sit in an
