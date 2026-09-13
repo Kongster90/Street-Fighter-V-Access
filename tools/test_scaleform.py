@@ -421,6 +421,60 @@ check("ticking the song you are on says only the new state",
       sf.selection_key(on_song) != sf.selection_key(on_unticked)
       and sf.landed_on(on_song, on_unticked) == ["Not ticked"], repr(sf.landed_on(on_song, on_unticked)))
 
+# The Custom tab of the menu music list: rows of the same parts, the highlight
+# bar switched on only on the row the cursor is on, and no gold, since the
+# songs there cannot be chosen and are drawn in 0.6 grey.
+GREY60 = (0.6, 0.6, 0.6, 1.0)
+
+
+def set_children(mem, obj, kids):
+    array = mem.alloc(sf.DISPLAY_CHILD_STRIDE * max(len(kids), 1))
+    for i, kid in enumerate(kids):
+        mem.put(array + i * sf.DISPLAY_CHILD_STRIDE, "<Q", kid)
+    mem.put(obj + sf.DISPLAY_CHILDREN, "<Q", array)
+    mem.put(obj + sf.DISPLAY_CHILD_COUNT, "<I", len(kids))
+
+
+def custom_list(cursor, songs=("Hillside Plaza", "Air Force Base", "Kanzuki Beach", "Ring of Destiny"), gold=None):
+    mem = FakeMemory()
+    root = display_object(mem, 0, 0, 0, WHITE)
+    panel = display_object(mem, root, 300, 250, WHITE)
+    title_field = text_field(mem, panel, -75, -1, ["BGM LIST"])
+    listing = display_object(mem, panel, 0, 60, WHITE)
+    rows, labels = [], []
+    for i, song in enumerate(songs):
+        row = display_object(mem, listing, 0, 43 * i, WHITE)
+        bar = display_object(mem, row, 0, 0, WHITE, flags=1 if i == cursor else 0)
+        holder = display_object(mem, row, 244, 0, GOLD if song == gold else GREY60)
+        labels.append(text_field(mem, holder, 0, 0, [song]))
+        set_children(mem, row, [bar, holder])
+        set_children(mem, holder, [mem.ptr(mem.ptr(labels[-1] + sf.DOCVIEW_LISTENER) + sf.LISTENER_OWNER)])
+        rows.append(row)
+    set_children(mem, listing, rows)
+    set_children(mem, panel, [listing])
+    set_children(mem, root, [panel])
+    return mem, sf.ScaleformText(mem, MODULE), labels
+
+
+mem_c, reader_c, labels_c = custom_list(cursor=3)
+read_c = reader_c.items()
+check("the row with its highlight bar on is the selected one, with no gold anywhere",
+      [it.text for it in read_c if it.selected] == ["Ring of Destiny"], repr([it.text for it in read_c if it.selected]))
+check("a song drawn in 0.6 grey is said to be unavailable, and its tick is not",
+      sf.landed_on([], read_c) == ["Ring of Destiny", "Unavailable"], repr(sf.landed_on([], read_c)))
+_, _, _ = custom_list(cursor=None)
+check("a list with no bar on selects nothing",
+      not any(it.selected for it in custom_list(cursor=None)[1].items()))
+check("gold in the list is trusted over the bar",
+      [it.text for it in custom_list(cursor=1, gold="Kanzuki Beach")[1].items() if it.selected] == ["Kanzuki Beach"])
+# Scrolling empties the rows for a moment. The list must not then be taken for
+# a grid of pictures and named after the nearest text, the tab above it.
+for label in labels_c:
+    mem_c.put(label, "<Q", 0)
+emptied = reader_c.items()
+check("a list whose rows are empty mid-scroll is not named after its tab",
+      not any(it.selected for it in emptied), repr([it.text for it in emptied if it.selected]))
+
 # Quick reads sweep only blocks shaped like Scaleform's own.
 qmem = FakeMemory()
 qroot = display_object(qmem, 0, 0, 0, WHITE)

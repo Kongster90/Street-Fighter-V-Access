@@ -321,6 +321,19 @@ then read every song correctly and nothing else. Two recordings were needed:
 the first recorder saved only when text changed, and ticking changes no text.
 After Deselect All the game leaves the song you are on ticked.
 
+**Unavailable entries are never gold.** The menu music list's Custom tab
+shows songs that cannot be chosen in plain 0.6 grey, the same grey as Replay
+Saved Status in the Training pause menu, and the cursor on them lights no text.
+Each row has the same parts, and the second, the highlight bar, is visible only
+on the row the cursor is on; `highlighted_row` compares visibility part by part
+(not tint, since grey and ordinary names mix in one list) and is used only for
+lists with no gold. Such an entry is said with "Unavailable" and without its
+tick. The same session showed the tab name, "BGM LIST", and the popup title,
+"Menu BGM List", read out on every scroll: rows empty for a moment while a
+list scrolls, and the picture grid rule then took the list for a grid of
+pictures and named it after the nearest text. Grids seen holding text are now
+never treated as pictures.
+
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but
 their render state looks exactly like the question's, so they are recognised

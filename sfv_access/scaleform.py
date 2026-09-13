@@ -90,6 +90,7 @@ STAGE_WIDTH, STAGE_HEIGHT = 1920, 1080
 
 HIGHLIGHT_TINT = (1.0, 0.89, 0.549)
 TINT_TOLERANCE = 0.05
+UNAVAILABLE_GREY = 0.6
 
 # Labels longer than this are not answers on a button. It keeps the choice rule
 # off the banner, whose date line and title sit side by side like two buttons.
@@ -165,6 +166,14 @@ class TextItem:
     @property
     def selected(self) -> bool:
         return self.highlighted or self.chosen
+
+    @property
+    def unavailable(self) -> bool:
+        """Drawn in the plain 0.6 grey this interface gives what cannot be chosen:
+        songs in the menu music list that are not yours, and Replay Saved
+        Status in the Training pause menu before there is a replay."""
+        r, g, b, _a = self.tint
+        return abs(r - UNAVAILABLE_GREY) <= TINT_TOLERANCE and abs(r - g) < 0.02 and abs(r - b) < 0.02
 
     @property
     def on_stage(self) -> bool:
@@ -273,7 +282,9 @@ def landed_on(
                 continue
             seen.add(it.text)
             named.append(it.text)
-            if it.ticked is not None:
+            if it.unavailable:
+                named.append("Unavailable")   # its tick cannot be changed, so it goes unsaid
+            elif it.ticked is not None:
                 named.append(tick_word(it.ticked))
         return _unique(intro) + named
     if lit or recent_groups or any(it.chosen for it in before):
@@ -442,6 +453,34 @@ def selected_tile(children, appearance, tiles) -> int | None:
     return next(tile for tile, look in looks.items() if look == odd)
 
 
+def highlighted_row(children, appearance, rows) -> int | None:
+    """The one row of a list whose highlight bar is switched on.
+
+    In the menu music list every row has the same parts, and the second, the
+    highlight bar, is visible on the row the cursor is on and hidden on every
+    other. The songs that cannot be chosen are never gold, so this is the only
+    sign of the cursor on them. Only visibility is compared, part by part,
+    since the rows also differ in tint: some names are grey and some are not.
+    """
+    if len(rows) < GRID_MIN_TILES:
+        return None
+    parts = [children(row) for row in rows]
+    width = len(parts[0])
+    if width < 2 or any(len(p) != width for p in parts):
+        return None
+    for index in range(width):
+        shown = []
+        for row, row_parts in zip(rows, parts):
+            seen = appearance(row_parts[index])
+            if seen is None:
+                break
+            shown.append(bool(seen[1] & NODE_VISIBLE))
+        else:
+            if shown.count(True) == 1:
+                return rows[shown.index(True)]
+    return None
+
+
 def name_for_grid(grid_and_parents: list[int], items: list[TextItem]) -> TextItem | None:
     """The shown text nearest a grid in the display tree, within reach."""
     best = None
@@ -488,6 +527,7 @@ class ScaleformText:
         # display tree, which is too slow to do on every read. Only the
         # selected tile is checked each read.
         self._grids: dict[int, list[int]] = {}
+        self._text_grids: set[int] = set()   # grids seen holding text, never pictures
         self._roots: set[int] = set()
 
     # ------------------------------------------------------------- discovery
@@ -514,6 +554,9 @@ class ScaleformText:
     def refresh_grids(self) -> None:
         """Walk the display tree under the movies last seen showing text for picture grids."""
         self._grids = find_grids(self.children, set(self._roots))
+        # Forget grids that have gone, so a new object at a reused address is
+        # not taken for a list it happens to share an address with.
+        self._text_grids &= set(self._grids)
 
     def refresh_pages(self) -> None:
         """Walk the address space for Scaleform's blocks, for quick reads to sweep."""
@@ -640,8 +683,33 @@ class ScaleformText:
             if self._mark_by_layers(container, slots):
                 continue
             self._mark_by_brightness(container, slots)
+        self._mark_highlighted_rows(shown, groups)
         self._mark_picture_grids(shown)
         self._mark_ticks(shown)
+
+    def _mark_highlighted_rows(self, shown: list[TextItem], groups) -> None:
+        """Mark the text on a list row whose highlight bar is on, when the list has no gold.
+
+        Unlike a prompt's buttons, the row is not recorded as a group: a list
+        coming into view is not a prompt opening, and should not have the text
+        around it read out as though it were a question.
+        """
+        def appearance(obj):
+            node = self._node(obj)
+            return None if node is None else (node[1], node[2])
+
+        kids = _remembering(self.children)
+        for container, slots in groups.items():
+            if len(slots) < GRID_MIN_TILES:
+                continue
+            if any(it.highlighted for held in slots.values() for it, _level in held):
+                continue
+            row = highlighted_row(kids, appearance, grid_tiles(kids, container))
+            if row is None:
+                continue
+            for it in shown:
+                if row in it.chain:
+                    it.chosen = True
 
     def _mark_ticks(self, shown: list[TextItem]) -> None:
         """Whether each selected checklist entry is ticked. Only the selected
@@ -669,8 +737,15 @@ class ScaleformText:
 
         kids = _remembering(self.children)
         for grid in list(self._grids):
+            if grid in self._text_grids:
+                continue
             if any(grid in it.chain for it in shown):
-                continue  # its tiles carry text, which the other rules read
+                # Its tiles carry text, which the other rules read. Remember
+                # that: a list scrolling empties its rows for a moment, and a
+                # list taken for a grid of pictures then was named after the
+                # nearest text, which read out "BGM LIST" with every scroll.
+                self._text_grids.add(grid)
+                continue
             tiles = grid_tiles(kids, grid)
             if not tiles:
                 continue  # gone since the last walk
