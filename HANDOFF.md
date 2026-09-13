@@ -30,11 +30,31 @@ entry by the gold the game marks it with, then correct the recognised text
 against the game's own words.
 
 **From the running game.** Read its memory from outside with ReadProcessMemory.
-Used where the screen cannot help, which today means character select, and now
-able to read the whole interface's text, position and highlight exactly. See
-"Reading the interface from memory" below; it is not yet wired into narration.
+This is now how the mod narrates menus: exact text, and which entry is
+selected, read out of Scaleform. See "Reading the interface from memory" below.
+The pixel reader is the fallback, used while memory cannot be read or when the
+user switches to it with Control Alt W. Character select is still read from
+Unreal's objects by `live.py`.
 
 ## What works
+
+From memory, tried in play by the user through the watch mode, which runs the
+same narration the mod now does:
+
+- The main menu, its icon row (Options, Gallery, Message Log, Login, Exit),
+  and submenus, with setting values.
+- Prompts: the Exit prompt, the browser prompt, and Training's return to menu
+  prompt, reading the question once and then each answer.
+- Grids: Favorite Character (by brightness), Favorite Stage (pictures, by the
+  outline on the selected tile), including rows that scroll.
+- The menu music list, saying whether each song is ticked, and on its Custom
+  tab which songs are unavailable.
+- Speed: a move is heard within about a tenth of a second.
+
+The mod was only dry run with this wired in, silently against the live game,
+not played; see "Where it stands".
+
+From the screen, the older path, now the fallback:
 
 - Menu narration, automatic, as the cursor moves. Main menu including its icon
   column, the story, versus, challenges and settings submenus, Battle Settings,
@@ -351,8 +371,26 @@ each record, and stopped on a hotkey rather than guessing when the user was
 done. Also: a file being written reports its old size in a directory listing
 on Windows, so open it before concluding a recorder wrote nothing.
 
-Known gaps. The clock sits one object further down and is not resolved. The
-voice grid, which needed its own pixel reader, has not been looked at. Pixel-level things such as the health bars are untouched.
+**How the mod uses it.** `sfv_access/memory_narration.py` holds what the watch
+mode used to: `Narrator` decides read by read whether the screen moved and what
+to say (with the clock passed in, so `test_scaleform.py` replays sequences
+through it), and `Session` stays attached across the game closing and
+reopening and writes `snapshots/scaleform-log.txt`, rotated past 5 MB. The
+mod's `_watch_loop` asks the session each tick; if it returns a reading the
+narrator speaks and the pixel tick is skipped, otherwise the pixel tick runs.
+`Session.read` returns None until it has seen text at least once, so a game
+update that moves the offsets falls back to the screen rather than going
+silent. Character select's `live.py` readout runs on its own thread, and only
+while nothing in the memory reading is selected, since away from character
+select each of its checks scans every object for half a second. The read
+keys (R, D, A) and the snapshot key use the memory reading when there is one;
+a snapshot saves it beside the frame as `sfv-<stamp>-memory.txt`.
+
+Known gaps. The clock sits one object further down and is not resolved. Not
+yet heard from memory in play: character select, the real stage select, the
+voice language grid (the brightness rule may cover it; its EN and JA badges
+are pictures and are not read), and anything in a match. Pixel-level things
+such as the health bars are untouched.
 
 ### Where UE4SS got to, and why it is not installed
 
@@ -418,7 +456,10 @@ caught it. Run it after every change to reading behaviour.
 improved lived in `announce`, which only ran when a key was pressed, while the
 narration the user actually hears went through a cruder rule. All the tests
 passed and the mod still read the wrong thing. They share a path now. Do not
-reintroduce a second one.
+reintroduce a second one. The same goes for memory narration: `Narrator` in
+`memory_narration.py` is the only place it is decided, and both the mod and
+`tools/read_scaleform.py --watch` call it. A fix tried in the watch mode is a
+fix in the mod.
 
 **Never let a test write to real data.** One version of `test_learning.py` wrote
 to and then deleted `character_names.json`, destroying a table that had taken a
@@ -464,9 +505,29 @@ a better algorithm.
 
 ## Where it stands, and what to do next
 
-The menus are in good shape and were tested in play. The user's own words after
-the last pass were that it works "for the most part, maybe 95 per cent of the
-time". What follows is roughly in order of value.
+The pixel-read menus were judged "for the most part, maybe 95 per cent of the
+time" by the user. The memory reader then took over narration, and every screen
+the user tried with it in the watch mode ended with "it works as it should".
+What follows is roughly in order of value.
+
+0. **Play the mod itself with memory narration on.** It was wired in at the
+   end of a session and only dry run silently. Start it with `run.py`, have
+   the user go through the screens listed under "What works", and read both
+   `snapshots/spoken-log.txt` and `snapshots/scaleform-log.txt`. Then the
+   screens memory has not been heard on: character select (does the `live.py`
+   readout still come through, and does Scaleform select anything there that
+   would stop it), the real stage select, the voice language grid, the
+   Training pause menu mid-match. Where memory is silent, Control Alt W
+   switches to the screen, which tells you whether the gap is memory's.
+
+   Two things the user asked for next and were agreed but not started: reading
+   the challenge notices the game opens with at startup (the reader already
+   sees their text, "Perform a combo 10 time(s)!" with a deadline, reward and
+   Close button, so this is probably a prompt-like panel to name), and
+   starting the mod automatically with the game. For the latter, Steam launch
+   options running a small launcher were recommended over starting with
+   Windows; the user has not chosen, and changing their Steam settings needs
+   their go-ahead.
 
 1. **Screens nobody has ever captured.** This is the highest value work and it
    is cheap. Everything verified so far came from a capture pass, and each new
@@ -486,14 +547,13 @@ time". What follows is roughly in order of value.
    know what to call it. Small, and it needs no game in front since it reads
    from memory.
 
-3. **Put the memory reader behind narration.** The reader works; nothing uses
-   it yet. First run `tools/read_scaleform.py --watch` across the screens the
-   user cares about and read `snapshots/scaleform-log.txt`, to learn which
-   screens highlight with the gold tint and which do not. Then feed the same
-   announcement code the pixel path uses, keeping to one code path as the
-   trap below insists. The test suite replays pixels, so save the memory
-   reading beside each capture and replay that too. Stage names, which the
-   pixel reader gets wrong, should come out exact.
+3. **A replay suite for memory readings.** `test_screens.py` replays pixels;
+   memory narration is tested only against hand-built fakes of memory. The
+   recordings in `snapshots/scaleform-*/records.jsonl` hold every text field
+   and the display tree, and replaying them through `ScaleformText`'s rules and
+   `Narrator` would catch a change that breaks one screen while fixing
+   another, as `test_screens.py` does for pixels. The analysis in this session
+   already replayed several of them by hand.
 
 4. **Combat.** Deliberately deferred and completely unstarted. Speech cannot
    follow a round, so this wants continuous audio cues rather than words: pitch
@@ -517,6 +577,17 @@ They are blind, they cannot see the screen for you, and the loop that works is
 this. They play, the capture tool writes frames, you read the frames, you
 change the code, they play again. Ask for what you need in one message rather
 than several, since every round trip costs them a pass through the game.
+
+For memory narration the loop was: they play with narration on and say what
+sounded wrong, you read `snapshots/scaleform-log.txt`, which has every screen
+and everything said. When a screen marks its selection in a way nobody knows
+yet, `tools/record_scaleform.py <name>` keeps everything plus a screenshot per
+record until Control Alt Q; ask them to hold each state for a few seconds and
+to do the thing in question (tick, untick, move a row) more than once. Only
+one of the watch mode, the recorder and the mod can hold the keys at a time.
+
+They are happy for new keys to use the F keys as well as Control Alt
+combinations.
 
 Two things they have asked for that are easy to forget. Do not make them
 navigate by screen position: they cannot know what is on the left or the right
@@ -546,4 +617,12 @@ before anything is committed. `tools/show_bands.py <snapshot>` explains why a sc
 way it was, and is the first thing to reach for when one reads wrongly.
 
 Memory reading does not need the game in front, and does not care if it is
-minimised. Reading the screen does.
+minimised. Reading the screen does. So the mod narrates from memory whether or
+not the game has focus, while the pixel fallback stays quiet unless it does.
+
+```bash
+.venv\Scripts\python.exe tools\read_scaleform.py --watch
+```
+
+The watch mode: memory narration alone, for trying changes without the rest
+of the mod. Close the mod first.

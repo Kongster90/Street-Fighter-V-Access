@@ -1,13 +1,14 @@
 """The running tool: hotkeys, menu narration, HUD readout, and a review cursor.
 
-Street Fighter V draws its interface with Unreal's Slate renderer straight to
-the GPU, so there is no window, control or accessibility tree for NVDA to see.
-This reads the pixels instead.
+Street Fighter V draws its interface with Scaleform straight to the GPU, so
+there is no window, control or accessibility tree for NVDA to see.
 
-Two different things are happening. Menus are text, so they are recognised and
-the highlighted entry is found by its gold colour. The gauges carry no text at
-all, so they are measured directly from the pixels. Which of the two applies is
-decided by looking for real health bars on screen.
+Menus are narrated from the game's memory first: `memory_narration` reads each
+text field's exact text and which one is selected, which needs no recognition
+and no game in front. When memory cannot be read, the pixel reader takes over:
+menus are recognised and the highlighted entry found by its gold colour. The
+gauges carry no text at all, so they are measured directly from the pixels on a
+hotkey. Control Alt W switches between memory and the screen by hand.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ import time
 from pathlib import Path
 
 from . import capture as _capture
-from . import game, hud, menu, ocr, screens, strings
+from . import game, hud, memory_narration, menu, ocr, scaleform, screens, strings
 from .capture import Capture
 from .hotkeys import Hotkeys
 from .speech import Speaker
@@ -40,6 +41,7 @@ HOTKEYS = {
     "repeat_line":   ("ctrl+alt+period", "repeat the current line"),
     "read_all":      ("ctrl+alt+a",      "read the whole screen"),
     "toggle_watch":  ("ctrl+alt+m",      "turn menu narration on or off"),
+    "switch_source": ("ctrl+alt+w",      "switch between reading memory and reading the screen"),
     "snapshot":      ("ctrl+alt+s",      "save a snapshot for calibration"),
     "status":        ("ctrl+alt+g",      "status"),
     "stop_speech":   ("ctrl+alt+x",      "stop speaking"),
@@ -269,6 +271,10 @@ class App:
         self._last_spoken = ""
         self._last_memory_poll = 0.0
         self._last_memory_lines: list[str] = []
+        # Narration from memory, preferred whenever the game can be read.
+        self.use_memory = True
+        self.session = memory_narration.Session()
+        self.narrator = memory_narration.Narrator()
 
     # -------------------------------------------------------------- lifecycle
     def run(self) -> None:
@@ -285,7 +291,8 @@ class App:
             where = "game not running"
         banner = (
             f"Street Fighter 5 access ready. Speech through {self.speech.backend}. "
-            f"{where}. Menu narration on. Control alt K lists the keys."
+            f"{where}. Menu narration on, reading the game's memory. "
+            "Control alt K lists the keys."
         )
         print(banner)
         failed = self.keys.failed
@@ -302,8 +309,10 @@ class App:
             print(extra)
             banner += " " + extra
         self.speech.say(banner)
+        self.session.note(f"=== {_dt.datetime.now():%Y-%m-%d} mod started")
 
         threading.Thread(target=self._watch_loop, daemon=True).start()
+        threading.Thread(target=self._character_select_loop, daemon=True).start()
 
         try:
             while not self._stop.wait(0.25):
@@ -313,6 +322,7 @@ class App:
         finally:
             self.keys.stop()
             self.capture.close()
+            self.session.close()
 
     def _log(self, said: str) -> None:
         """Keep a record of everything announced, for diagnosing later.
@@ -348,10 +358,40 @@ class App:
             self.speech.say("Nothing read yet. Press control alt R.")
             return
         item = self.lines[self.cursor]
-        self.speech.say(f"{clean(item.text)}. {self.cursor + 1} of {len(self.lines)}")
+        # Text read from memory is already exact; correcting it could only harm it.
+        text = item.text if isinstance(item, scaleform.TextItem) else clean(item.text)
+        self.speech.say(f"{text}. {self.cursor + 1} of {len(self.lines)}")
+
+    def _memory_items(self) -> list | None:
+        """The text on screen from memory, or None to use the pixel reader instead.
+
+        While narration runs, its latest reading is used rather than reading
+        again from this thread. With narration off nothing else is reading, so
+        a fresh read is safe.
+        """
+        if not self.use_memory:
+            return None
+        if self.watching:
+            return self.session.items if self.session.available else None
+        return self.session.read()
 
     # --------------------------------------------------------------- handlers
     def on_read_screen(self) -> None:
+        items = self._memory_items()
+        if items is not None:
+            said = memory_narration.selection_phrase(items)
+            foot = scaleform.footer(items)
+            if foot is not None and not foot.selected:
+                said = memory_narration.phrase([said, foot.text])
+            if said:
+                self.lines, self.footer = items, foot.text if foot else ""
+                self.cursor = next((i for i, it in enumerate(items) if it.selected), 0)
+                print(f"[read] {said}")
+                self.speech.say(said)
+                return
+            # Nothing selected that memory can see, such as stage select: let
+            # the pixel reader have a go.
+
         bgra, rgb = self._frames()
         if rgb is None:
             self.speech.say("Capture failed.")
@@ -394,6 +434,14 @@ class App:
             self.speech.say("Nothing readable from the game on this screen yet.")
 
     def on_describe(self) -> None:
+        items = self._memory_items()
+        if items is not None:
+            foot = scaleform.footer(items)
+            if foot is not None:
+                self.footer = foot.text
+                self.speech.say(foot.text)
+                return
+
         bgra, _rgb = self._frames()
         if bgra is None:
             self.speech.say("Capture failed.")
@@ -402,6 +450,12 @@ class App:
         self.speech.say(self.footer or "No description shown.")
 
     def on_read_all(self) -> None:
+        items = self._memory_items()
+        if items:
+            self.lines, self.cursor = items, 0
+            self.speech.say_lines([it.text for it in items])
+            return
+
         bgra, _rgb = self._frames()
         if bgra is None:
             self.speech.say("Capture failed.")
@@ -467,9 +521,15 @@ class App:
         _bgra, rgb = self._frames()
         where = "in a match" if (rgb is not None and hud.looks_like_match(rgb)) else "in menus"
         focus = "in focus" if gw.is_foreground else "not in focus"
+        if not self.use_memory:
+            source = "reading the screen"
+        elif self.session.available:
+            source = "reading memory"
+        else:
+            source = "reading the screen until memory can be read"
         self.speech.say(
             f"Street Fighter 5, {gw.width} by {gw.height}, {focus}, {where}. "
-            f"Narration {'on' if self.watching else 'off'}."
+            f"Narration {'on' if self.watching else 'off'}, {source}."
         )
 
     def on_snapshot(self) -> None:
@@ -489,6 +549,12 @@ class App:
             fh.write(f"frame {bgra.shape[1]}x{bgra.shape[0]}\n")
             for it in items:
                 fh.write(f"{it.x:7.0f} {it.y:7.0f} {it.w:6.0f} {it.h:5.0f}  {it.text}\n")
+        # The memory reading of the same moment, for comparing the two readers.
+        remembered = self._memory_items()
+        if remembered:
+            with (SNAPSHOT_DIR / f"sfv-{stamp}-memory.txt").open("w", encoding="utf-8") as fh:
+                for it in remembered:
+                    fh.write(memory_narration.describe(it) + "\n")
 
         print(f"[snapshot] {png}")
         self.speech.say(f"Snapshot saved, {len(items)} lines of text.")
@@ -496,7 +562,21 @@ class App:
     def on_toggle_watch(self) -> None:
         self.watching = not self.watching
         self._last_key = None
+        self.narrator.reset()
         self.speech.say(f"Menu narration {'on' if self.watching else 'off'}.")
+
+    def on_switch_source(self) -> None:
+        """Choose memory or the screen by hand, for screens one reads and the other does not."""
+        self.use_memory = not self.use_memory
+        self._last_key = None
+        self._last_spoken = ""
+        self.narrator.reset()
+        if not self.use_memory:
+            self.speech.say("Reading the screen.")
+        elif self.session.available:
+            self.speech.say("Reading memory.")
+        else:
+            self.speech.say("Reading memory once the game can be read, the screen until then.")
 
     def on_quit(self) -> None:
         self.watching = False
@@ -600,47 +680,97 @@ class App:
         gold is largest. That is why the tests all passed and the mod still read
         the wrong thing. The scan now only detects that something moved; the
         tested path decides what it is.
+
+        Memory narration now comes first and the pixel path is the fallback,
+        used only while memory cannot be read or when switched to by hand. Each
+        tick runs one or the other, never both, so they cannot talk over each
+        other.
         """
         while not self._stop.is_set():
-            time.sleep(WATCH_INTERVAL)
             if not self.watching:
+                time.sleep(WATCH_INTERVAL)
                 continue
             try:
-                # Capture is whole-screen, so without this the narrator reads
-                # whatever is in front when the game is behind or minimised.
-                win = game.find_window()
-                if win is None or not win.is_foreground:
-                    self._last_key = None
-                    time.sleep(0.4)
-                    continue
-
-                bgra, rgb = self._frames(max_age=WATCH_INTERVAL / 2)
-                if rgb is None:
-                    continue
-
-                # Speech cannot keep pace with a round, and the gauges are on a
-                # hotkey instead, so narration stands down during a match.
-                if hud.looks_like_match(rgb):
-                    self._last_key = None
-                    continue
-
-                # About three milliseconds of the hundred and twenty between
-                # ticks. See `change_key` for why it watches the dark rather
-                # than the gold.
-                key = change_key(rgb)
-                if key == self._last_key:
-                    continue
-                self._last_key = key
-
-                if not self._announce_now(bgra, rgb):
-                    # Character select has no highlighted text to find: the
-                    # roster is artwork. The game knows who is picked, so ask
-                    # it instead, at a slower rate since reading memory costs
-                    # more than the colour scan does.
-                    self._narrate_from_memory()
+                if self.use_memory:
+                    items = self.session.read()
+                    if self.session.attached_now:
+                        self.narrator.reset()
+                    if items is not None:
+                        self._narrate_memory(items)
+                        time.sleep(memory_narration.POLL)
+                        continue
+                time.sleep(WATCH_INTERVAL)
+                self._pixel_tick()
             except Exception as exc:
                 print(f"[watch error] {exc}")
                 time.sleep(0.5)
+
+    def _narrate_memory(self, items) -> None:
+        """Speak whatever the memory narrator decides this reading lands on."""
+        said = self.narrator.step(items, time.monotonic())
+        # Control Alt W can land between the read and this point; once the
+        # screen has been chosen, memory must not get the last word.
+        if not said or not self.use_memory:
+            return
+        self.session.note(f"said {said!r}")
+        print(f"[memory] {said}")
+        self._log(said)
+        self.speech.say(said)
+
+    def _character_select_loop(self) -> None:
+        """Character select from the game's own objects, while narrating from memory.
+
+        The pixel path asks for this when it finds nothing to say. From memory
+        the equivalent is a screen with nothing selected. It runs on its own
+        thread because away from character select each check scans every
+        object, about half a second, which would stall the memory narration.
+        """
+        while not self._stop.wait(MEMORY_INTERVAL):
+            if not (self.watching and self.use_memory and self.session.available):
+                continue
+            if any(it.selected for it in self.session.items):
+                self._last_memory_lines = []
+                continue
+            try:
+                self._narrate_from_memory()
+            except Exception as exc:
+                print(f"[character select error] {exc}")
+                time.sleep(1.0)
+
+    def _pixel_tick(self) -> None:
+        """One tick of narration from the screen."""
+        # Capture is whole-screen, so without this the narrator reads
+        # whatever is in front when the game is behind or minimised.
+        win = game.find_window()
+        if win is None or not win.is_foreground:
+            self._last_key = None
+            time.sleep(0.4)
+            return
+
+        bgra, rgb = self._frames(max_age=WATCH_INTERVAL / 2)
+        if rgb is None:
+            return
+
+        # Speech cannot keep pace with a round, and the gauges are on a
+        # hotkey instead, so narration stands down during a match.
+        if hud.looks_like_match(rgb):
+            self._last_key = None
+            return
+
+        # About three milliseconds of the hundred and twenty between
+        # ticks. See `change_key` for why it watches the dark rather
+        # than the gold.
+        key = change_key(rgb)
+        if key == self._last_key:
+            return
+        self._last_key = key
+
+        if not self._announce_now(bgra, rgb):
+            # Character select has no highlighted text to find: the
+            # roster is artwork. The game knows who is picked, so ask
+            # it instead, at a slower rate since reading memory costs
+            # more than the colour scan does.
+            self._narrate_from_memory()
 
 
 def main() -> None:

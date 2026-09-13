@@ -475,6 +475,45 @@ emptied = reader_c.items()
 check("a list whose rows are empty mid-scroll is not named after its tab",
       not any(it.selected for it in emptied), repr([it.text for it in emptied if it.selected]))
 
+# The narrator the mod and the watch mode share, fed readings as they arrive.
+from sfv_access import memory_narration as mn  # noqa: E402
+
+
+def narrate(readings):
+    """Run (time, items) readings through a narrator; return what it said, with times."""
+    narrator = mn.Narrator()
+    out = []
+    for now, items in readings:
+        said = narrator.step(items, now)
+        if said:
+            out.append((now, said))
+    return out
+
+
+question = "Are you sure you want to close the application?"
+gap = [it for it in on_yes if it.text.strip() not in ("Yes", "No")]
+said = narrate([
+    (0.0, menu_only), (0.3, menu_only),        # the menu behind, settling on its description
+    (0.4, question_first), (0.5, on_no),       # the question shows a beat before the buttons
+    (0.6, gap), (0.9, gap),                    # between answers, longer than the settle time
+    (1.0, on_yes), (1.1, gap), (1.15, on_no), (1.2, on_no),
+])
+check("a prompt reads its question once, then each answer as it is reached",
+      [s for _, s in said] == ["The application will close.", f"{question} No", "Yes", "No"], repr(said))
+
+arcade_mid = main_menu("Fighting Chance", "The application will close.")   # description first
+said = narrate([(0.0, on_arcade), (1.0, arcade_mid), (1.05, on_exit), (1.25, on_exit), (1.3, on_exit)])
+check("an icon waits for its name to arrive, then says it once",
+      [s for _, s in said] == ["ARCADE", "EXIT"], repr(said))
+check("the name is not said before the settle time",
+      all(now >= 1.0 + mn.SETTLE for now, s in said if s == "EXIT"), repr(said))
+check("idling on one entry says nothing more", narrate([(0, on_story), (1, on_story), (2, on_story)])
+      == [(0, "STORY")])
+check("phrases join without doubled punctuation",
+      mn.phrase(["Are you sure?", "No", "Costume.", "Kenji"]) == "Are you sure? No. Costume. Kenji")
+check("the read key names a selected song with its tick",
+      mn.selection_phrase(on_next) == "Bustling Side Street. Not ticked")
+
 # Quick reads sweep only blocks shaped like Scaleform's own.
 qmem = FakeMemory()
 qroot = display_object(qmem, 0, 0, 0, WHITE)

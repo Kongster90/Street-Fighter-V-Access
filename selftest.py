@@ -48,5 +48,22 @@ if cap is not None:
 gw = game.find_window()
 print(f"INFO  Street Fighter V window: {gw if gw else 'not running'}")
 
+if game.is_running():
+    from sfv_access import memory_narration
+
+    session = memory_narration.Session(log_screens=False)
+
+    def memory_read():
+        session.read()
+        assert session.reader is not None, "could not attach to the game"
+        count = len(session.reader.items())
+        note = "" if count else "; none found, which after a game update would mean the offsets moved"
+        return f"{count} text fields on screen{note}"
+
+    check("memory reader", memory_read)
+    session.close()
+else:
+    print("INFO  memory reader: game not running, not checked")
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")

@@ -165,18 +165,25 @@ These work while the game has focus, including in fullscreen.
 - Control Alt Period: repeat the current line
 - Control Alt A: read the whole screen
 - Control Alt M: turn menu narration on or off
+- Control Alt W: switch between reading the game's memory and reading the screen
 - Control Alt S: save a snapshot for calibration
 - Control Alt G: status
 - Control Alt X: stop speaking
 - Control Alt K: list these keys
 - Control Alt Q: quit
 
-Menu narration is on at startup. It announces the highlighted entry whenever it
-moves. It stands down during a match, where speech cannot keep pace and the
-gauges are on a hotkey instead, and also whenever the game is not the window in
-front, since capture covers the whole screen and it would otherwise narrate
-whatever you had switched to. The keys above are explicit requests and always
-read what is on screen.
+Menu narration is on at startup. It announces the selected entry whenever it
+moves, read from the game's memory: exact text, whether a song is ticked or
+unavailable, a prompt's question and answer, and grids of names or pictures.
+Everything it reads and says is logged to `snapshots/scaleform-log.txt`.
+
+When memory cannot be read, narration falls back to the screen. That stands
+down during a match, where speech cannot keep pace and the gauges are on a
+hotkey instead, and whenever the game is not the window in front, since capture
+covers the whole screen and would otherwise narrate whatever you had switched
+to. Control Alt W chooses between the two by hand, for a screen one of them
+reads and the other does not. The read keys use memory when it has a reading,
+and the screen otherwise.
 
 ## What works
 
@@ -427,7 +434,8 @@ the render nodes give its position on the stage and the colour it is tinted.
 The selected menu entry is tinted with the same gold the pixel reader looks
 for, stored as the multiplier 1.0, 0.89, 0.549. `sfv_access/scaleform.py`
 does this in about a third of a second, and `tools/read_scaleform.py` prints
-or speaks it. It is not yet what narration uses.
+or speaks it. It is now what narration uses, through
+`sfv_access/memory_narration.py`, with the pixel reader as the fallback.
 
 **Character select, working from memory.** Taking the second route for one
 screen first, because it is the screen the pixel reader fails at completely.
