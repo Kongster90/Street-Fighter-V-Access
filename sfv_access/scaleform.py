@@ -91,6 +91,21 @@ TINT_TOLERANCE = 0.05
 # off the banner, whose date line and title sit side by side like two buttons.
 CHOICE_TEXT_LIMIT = 24
 
+# Layout placeholders the game leaves in its templates, such as the run of
+# lower-case w inside every prompt and the capital Ws on the Training loading
+# screen. They are never drawn, and their render state cannot tell them apart
+# from the prompt's question, whose own node is marked hidden in just the same
+# way while it shows. So they are recognised by what they say.
+PLACEHOLDER_MIN_LENGTH = 8
+PLACEHOLDER_W_SHARE = 0.8
+
+
+def is_placeholder(text: str) -> bool:
+    letters = [c for c in text if not c.isspace()]
+    if len(letters) < PLACEHOLDER_MIN_LENGTH:
+        return False
+    return sum(c in "wW" for c in letters) >= PLACEHOLDER_W_SHARE * len(letters)
+
 # The line describing the selected entry, which every menu with the shared
 # footer draws at (110, 992).
 FOOTER_TOP = 960
@@ -135,13 +150,14 @@ class TextItem:
 
     @property
     def shown(self) -> bool:
-        """Attached, not hidden, not transparent, on the stage, and not blank."""
+        """Attached, not hidden, not transparent, on the stage, and real text."""
         return (
             self.depth >= 2
             and not self.hidden
             and self.tint[3] > 0.01
             and self.on_stage
             and bool(self.text.strip())
+            and not is_placeholder(self.text)
         )
 
 
@@ -170,13 +186,24 @@ def _where(it: TextItem):
     return (round(it.x), round(it.y), it.text)
 
 
+def _unique(texts: list[str]) -> list[str]:
+    """Each text once, in order. Some screens draw a title in three layers."""
+    seen = set()
+    return [t for t in texts if not (t in seen or seen.add(t))]
+
+
 def landed_on(before: list[TextItem], after: list[TextItem]) -> list[str]:
     """What to say for a move from the `before` screen to the `after` one.
 
-    The selected text if there is any, preceded by anything that has just
-    appeared alongside a group of buttons, which is how a dialog's question
-    gets read as it opens. The other buttons in the group are left out even
-    though they move: a button's label shifts as it loses the selection.
+    Whatever has newly become selected. Only newly: a prompt opened from the
+    Training pause menu leaves Go to Main Menu gold behind it, and that is not
+    news. When a group of buttons appears that was not there before, the rest
+    of the panel holding it comes first, which is how a prompt's question gets
+    read as it opens. The question can appear a moment before its buttons, so
+    it is read whether or not it is new; the other buttons are left out.
+
+    With nothing newly selected, silence if something still is, or if a prompt
+    has just closed: the button hints that come back then are not a move.
     Otherwise the text that changed with the move, which is how an icon gets
     its name: the banner switches to OPTIONS or EXIT as the icon is reached.
     Failing that, the description line, but only if it changed. Between one
@@ -184,12 +211,15 @@ def landed_on(before: list[TextItem], after: list[TextItem]) -> list[str]:
     for a moment, and that is not worth saying anything about.
     """
     old = {_where(it) for it in before}
+    was_lit = {_where(it) for it in before if it.selected}
     lit = [it for it in after if it.selected]
-    if lit:
-        groups = {it.group for it in lit if it.group}
+    fresh = [it for it in lit if _where(it) not in was_lit]
+    if fresh:
+        old_groups = {it.group for it in before if it.chosen}
+        new_groups = {it.group for it in fresh if it.chosen and it.group not in old_groups}
         panels = set()
-        for it in lit:
-            if it.group in it.chain:
+        for it in fresh:
+            if it.group in new_groups and it.group in it.chain:
                 at = it.chain.index(it.group)
                 if at + 1 < len(it.chain):
                     panels.add(it.chain[at + 1])
@@ -197,15 +227,16 @@ def landed_on(before: list[TextItem], after: list[TextItem]) -> list[str]:
             it.text
             for it in after
             if not it.selected
-            and _where(it) not in old
             and panels.intersection(it.chain)
-            and not groups.intersection(it.chain)
+            and not new_groups.intersection(it.chain)
         ]
-        return intro + [it.text for it in lit]
+        return _unique(intro + [it.text for it in fresh])
+    if lit or any(it.chosen for it in before):
+        return []
     foot = footer(after)
     changed = [it.text for it in after if it is not foot and _where(it) not in old]
     if 0 < len(changed) <= MOVE_TEXT_LIMIT:
-        return changed
+        return _unique(changed)
     was = footer(before)
     if foot and (was is None or was.text != foot.text):
         return [foot.text]
@@ -319,15 +350,14 @@ class ScaleformText:
     def mark_choices(self, items: list[TextItem]) -> None:
         """Find the selected button in a group of buttons with plain labels.
 
-        Only when nothing is tinted gold, so it never second-guesses a menu.
         A group is a container whose children each hold exactly one short
         label. The selected child has more children of its own than any other,
         the outline and fill that mark it, and its label sits deeper inside it.
         Both must hold, and for exactly one child, before anything is marked.
+        Gold elsewhere on screen does not stop it: a prompt opened from a menu
+        sits over that menu's gold entry.
         """
         shown = [it for it in items if it.shown]
-        if any(it.highlighted for it in shown):
-            return
         groups: dict[int, dict[int, list]] = defaultdict(lambda: defaultdict(list))
         for it in shown:
             for level in range(1, len(it.chain)):

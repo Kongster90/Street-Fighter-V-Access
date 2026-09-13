@@ -224,14 +224,16 @@ check("labels vanishing mid-move say nothing", sf.landed_on(on_exit, label_gone)
 # The Exit prompt, laid out as recorded: a panel holding the question and a row
 # of two buttons. The selected button has four more children, its outline and
 # fill, and its label sits one level further down inside them.
-def exit_prompt(selected, with_menu=True):
+def exit_prompt(selected, question="Are you sure you want to close the application?",
+                behind=("The application will close.", WHITE)):
+    """The prompt over a screen. `selected` of None is the moment before either
+    button has taken the selection, with the question already showing."""
     mem = FakeMemory()
     root = display_object(mem, 0, 0, 0, WHITE)
-    if with_menu:
-        text_field(mem, root, 110, 992, ["The application will close."])
+    text_field(mem, display_object(mem, root, 110, 992, behind[1]), 0, 0, [behind[0]])
     panel = display_object(mem, root, 0, 340, WHITE)
-    text_field(mem, panel, 520, 100, ["Are you sure you want to close the application?"],
-               tint=(0.62, 0.62, 0.62, 0.5), flags=0, separate=True)
+    text_field(mem, panel, 520, 100, [question], tint=(0.62, 0.62, 0.62, 0.5), flags=0, separate=True)
+    text_field(mem, panel, 960, 274, ["wwwwwwwwwwwwwwwwwww"], flags=0)
     row = display_object(mem, panel, 960, 350, WHITE)
     for label, x in (("Yes ", -233), ("No", 233)):
         if label.strip() == selected:
@@ -245,6 +247,7 @@ def exit_prompt(selected, with_menu=True):
 
 
 menu_only = [it for it in exit_prompt("No") if it.text == "The application will close."]
+question_first = exit_prompt(None)
 on_no = exit_prompt("No")
 on_yes = exit_prompt("Yes")
 chosen = [it.text.strip() for it in on_no if it.chosen]
@@ -258,6 +261,34 @@ check("opening the prompt reads the question, then the answer",
 check("moving to the other answer reads only that answer", sf.landed_on(on_no, on_yes) == ["Yes "],
       repr(sf.landed_on(on_no, on_yes)))
 check("a dialog move is a move", sf.selection_key(on_no) != sf.selection_key(on_yes))
+check("the prompt's placeholder is never shown", not any("wwww" in it.text for it in on_no))
+check("the question is read even if it showed before the buttons",
+      sf.landed_on(question_first, on_no) == ["Are you sure you want to close the application?", "No"],
+      repr(sf.landed_on(question_first, on_no)))
+closed = [it for it in on_no if it.text == "The application will close."] + [item("  Fighter Profile", 1310, 948)]
+check("closing the prompt says nothing", sf.landed_on(on_no, closed) == [], repr(sf.landed_on(on_no, closed)))
+
+# From the Training pause menu the prompt opens over a gold entry that stays gold.
+training_question = "Exit current mode and return to Main Menu. Are you sure?"
+t_open = exit_prompt(None, training_question, ("Go to Main Menu", GOLD))
+t_yes = exit_prompt("Yes", training_question, ("Go to Main Menu", GOLD))
+t_no = exit_prompt("No", training_question, ("Go to Main Menu", GOLD))
+check("a prompt over a gold menu still finds its selection",
+      [it.text.strip() for it in t_yes if it.chosen] == ["Yes"])
+check("and reads its question, not the gold entry behind it",
+      sf.landed_on(t_open, t_yes) == [training_question, "Yes "], repr(sf.landed_on(t_open, t_yes)))
+check("moving in it reads the answer", sf.landed_on(t_yes, t_no) == ["No"], repr(sf.landed_on(t_yes, t_no)))
+
+layered = [item("VERSION SELECT", 960, 524), item("VERSION SELECT", 232, 613), item("VERSION SELECT", 232, 613)]
+check("text drawn in layers is said once", sf.landed_on([], layered) == ["VERSION SELECT"],
+      repr(sf.landed_on([], layered)))
+row_kenji = [item("Favorite Character", 100, 200, GOLD), item("Costume", 100, 300, GOLD), item("Kenji", 400, 300, GOLD)]
+row_suit = [item("Favorite Character", 100, 200, GOLD), item("Costume", 100, 300, GOLD), item("Track Suit", 400, 300, GOLD)]
+check("changing a value says only the value", sf.landed_on(row_kenji, row_suit) == ["Track Suit"],
+      repr(sf.landed_on(row_kenji, row_suit)))
+check("W placeholders are recognised", sf.is_placeholder("WWWWWWWWyWWWWWWWW")
+      and sf.is_placeholder("WWWWWWWWWWWWWWWW\n") and not sf.is_placeholder("WWE NETWORK")
+      and not sf.is_placeholder("Wow"))
 
 # The choice rule has to stay off things that merely look like two buttons.
 mem = FakeMemory()
@@ -282,11 +313,12 @@ mem = FakeMemory()
 root = display_object(mem, 0, 0, 0, WHITE)
 menu = display_object(mem, root, 0, 0, WHITE)
 text_field(mem, display_object(mem, menu, 400, 200, GOLD), 0, 0, ["ARCADE"])
-button = display_object(mem, root, 900, 600, WHITE, children=6)
+row = display_object(mem, root, 900, 600, WHITE)
+button = display_object(mem, row, 0, 0, WHITE, children=6)
 text_field(mem, display_object(mem, button, 0, 0, WHITE), 0, 0, ["Yes"])
-text_field(mem, display_object(mem, root, 1100, 600, WHITE, children=2), 0, 0, ["No"])
-check("gold on screen means no guessing from structure",
-      not any(it.chosen for it in sf.ScaleformText(mem, MODULE).items()))
+text_field(mem, display_object(mem, row, 200, 0, WHITE, children=2), 0, 0, ["No"])
+check("gold elsewhere does not stop a choice being found",
+      [it.text for it in sf.ScaleformText(mem, MODULE).items() if it.chosen] == ["Yes"])
 
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")

@@ -262,6 +262,20 @@ banner's date line has an extra layer too, and without those limits it reads
 as a selected button. Display objects keep a child array at `+0xD8`, sixteen
 bytes an entry, with the count at `+0xE0`.
 
+**Say what newly became selected, not everything selected.** The first dialog
+reader refused to look for buttons whenever anything was gold, so the prompt
+opened from Training's pause menu said nothing: Go to Main Menu stays gold
+behind it. It also read the question only if the question was new at the
+moment a button took the selection, and the question appears a beat before
+the buttons, so the Exit prompt read only "No". A prompt's question is now
+read whenever its group of buttons first appears, and a prompt closing says
+nothing, where before the button hints coming back were read as a move.
+
+**Templates hold placeholder text.** Every prompt carries a run of lower-case
+w, and Training's loading screen runs of capital W. They are never drawn, but
+their render state looks exactly like the question's, so they are recognised
+by content: `is_placeholder`.
+
 **The render node's visible bit only counts on parents.** It is clear on the
 Exit prompt's question while the question is on screen, and dropping the
 check entirely brought back a date line that never shows on the main menu,
