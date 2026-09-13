@@ -50,7 +50,6 @@ that never shows on the main menu is hidden by the container above it.
 
 from __future__ import annotations
 
-import bisect
 import math
 import struct
 from collections import defaultdict
@@ -118,6 +117,12 @@ PAGE_READWRITE = 0x04
 # Scaleform's pages are all well under this. Larger read-write regions are
 # engine and driver allocations with nothing of the interface in them.
 HEAP_PAGE_LIMIT = 0x100000
+# Scaleform takes memory from the system in whole 64 KB chunks plus one 4 KB
+# page: 0x11000, 0x21000, 0x31000. Every text field seen lives in a block of
+# that shape, and there are only several hundred, about 70 MB against 360 MB
+# for every page, so a quick read sweeps those alone.
+SCALEFORM_CHUNK = 0x10000
+SCALEFORM_EXTRA = 0x1000
 
 MAX_PARAGRAPHS = 512
 MAX_PARAGRAPH_CHARS = 4096
@@ -269,20 +274,22 @@ class ScaleformText:
     def __init__(self, pm: ProcessMemory, module_base: int) -> None:
         self.pm = pm
         self.module_base = module_base
-        # The pages that held text at the last full sweep. The sweep of every
-        # page takes a third of a second, nearly all of a read; the text lives
-        # in a few dozen of them, a couple of megabytes, which take a thousandth.
-        self._text_pages = None
+        # Scaleform's own blocks, from the last walk of the address space.
+        # Sweeping every page takes a third of a second and walking the address
+        # space a tenth, nearly all of a read. Scaleform's blocks take thirty
+        # thousandths. Sweeping only the pages that already held text is faster
+        # still, and was tried: a prompt draws each newly selected answer in a
+        # new text field, often in a block that held none, and the answer was
+        # heard a second late.
+        self._scaleform_pages = None
 
     # ------------------------------------------------------------- discovery
-    def refresh_pages(self) -> list[int]:
-        """Sweep every page, and remember which ones hold text for quick reads."""
-        pages = sorted(self.heap_pages(), key=lambda r: r.base)
-        found = self.docviews(pages)
-        starts = [r.base for r in pages]
-        holding = {bisect.bisect_right(starts, dv) - 1 for dv in found}
-        self._text_pages = [pages[i] for i in sorted(holding) if i >= 0]
-        return found
+    def refresh_pages(self) -> None:
+        """Walk the address space for Scaleform's blocks, for quick reads to sweep."""
+        self._scaleform_pages = [
+            r for r in self.heap_pages()
+            if r.size % SCALEFORM_CHUNK == SCALEFORM_EXTRA and r.size > SCALEFORM_CHUNK
+        ]
 
     def heap_pages(self):
         return [
@@ -401,15 +408,17 @@ class ScaleformText:
     def items(self, everything: bool = False, quick: bool = False) -> list[TextItem]:
         """Text on screen in reading order. `everything` keeps the leftovers.
 
-        `quick` looks only in the pages that held text at the last full sweep,
-        for polling. Something drawn in a page that had no text before is
-        missed until `refresh_pages` runs again, so a caller polling quickly
-        should keep calling that in the background.
+        `quick` sweeps only Scaleform's blocks as found by the last
+        `refresh_pages`, for polling. A block Scaleform takes after that is
+        missed until the next refresh, so a caller polling quickly should keep
+        refreshing in the background.
         """
-        if quick and self._text_pages is not None:
-            docviews = self.docviews(self._text_pages)
+        if quick:
+            if self._scaleform_pages is None:
+                self.refresh_pages()
+            docviews = self.docviews(self._scaleform_pages)
         else:
-            docviews = self.refresh_pages()
+            docviews = self.docviews()
         out = []
         for dv in docviews:
             text = self.field_text(dv)

@@ -40,7 +40,7 @@ WHITE = (1.0, 1.0, 1.0, 1.0)
 class FakeMemory:
     """One read-write heap page, with a bump allocator for laying out objects."""
 
-    def __init__(self, size=0x10000):
+    def __init__(self, size=0x11000):   # shaped like one of Scaleform's blocks
         self.buf = bytearray(size)
         self.top = 0x100
 
@@ -285,17 +285,19 @@ check("a read between the answers does not reopen the prompt",
 check("nor does anything get said for that read", sf.landed_on(t_yes, gap, groups) == [],
       repr(sf.landed_on(t_yes, gap, groups)))
 
-# Quick reads look only where text was found by the last full sweep.
-quick_reader = sf.ScaleformText(FakeMemory(), MODULE)
-check("a quick read before any sweep does a full one", quick_reader.items(quick=True) == []
-      and quick_reader._text_pages == [])
+# Quick reads sweep only blocks shaped like Scaleform's own.
 qmem = FakeMemory()
 qroot = display_object(qmem, 0, 0, 0, WHITE)
 text_field(qmem, display_object(qmem, qroot, 100, 100, WHITE), 0, 0, ["Found quickly"])
 qreader = sf.ScaleformText(qmem, MODULE)
-qreader.refresh_pages()
-check("quick reads find what the sweep found",
+check("a quick read finds text in a Scaleform block, walking first if it must",
       [it.text for it in qreader.items(quick=True)] == ["Found quickly"])
+other = FakeMemory(size=0x10000)
+oroot = display_object(other, 0, 0, 0, WHITE)
+text_field(other, display_object(other, oroot, 100, 100, WHITE), 0, 0, ["In an engine page"])
+oreader = sf.ScaleformText(other, MODULE)
+check("a quick read skips pages of another shape, a full read does not",
+      oreader.items(quick=True) == [] and [it.text for it in oreader.items()] == ["In an engine page"])
 
 layered = [item("VERSION SELECT", 960, 524), item("VERSION SELECT", 232, 613), item("VERSION SELECT", 232, 613)]
 check("text drawn in layers is said once", sf.landed_on([], layered) == ["VERSION SELECT"],

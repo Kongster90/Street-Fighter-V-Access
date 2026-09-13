@@ -31,10 +31,10 @@ from sfv_access import scaleform  # noqa: E402
 
 LOG = ROOT / "snapshots" / "scaleform-log.txt"
 TIME_LIMIT = 30 * 60
-POLL = 0.05             # a quick read takes about a hundredth of a second
-PAGE_REFRESH = 1.0      # how often the full sweep for new text pages runs
+POLL = 0.03             # a quick read takes about forty thousandths of a second
+PAGE_REFRESH = 1.0      # how often the address space is walked for new blocks
 SETTLE = 0.2            # how long a move with nothing selected waits to settle
-GROUP_MEMORY = 1.0      # how long a prompt's buttons count as recent once gone
+GROUP_MEMORY = 1.0      # how long a prompt counts as open once its panel is gone
 LOG_INTERVAL = 0.25
 
 
@@ -96,7 +96,6 @@ def watch(reader: scaleform.ScaleformText) -> None:
                 print(f"page refresh failed: {exc}")
             stop.wait(PAGE_REFRESH)
 
-    reader.refresh_pages()
     threading.Thread(target=keep_pages_current, daemon=True).start()
 
     LOG.parent.mkdir(exist_ok=True)
@@ -111,7 +110,10 @@ def watch(reader: scaleform.ScaleformText) -> None:
     # before the move. A move that selects something is said at once.
     pending = None
     changed_at = 0.0
-    recent_groups: set = set()
+    # Prompts whose buttons have been seen, each with the panel holding them.
+    # One counts as open while its panel still shows anything, such as the
+    # question, however long the gap between one answer and the next.
+    recent_groups: dict[int, int] = {}
     groups_seen_at = 0.0
     started = time.time()
 
@@ -145,13 +147,16 @@ def watch(reader: scaleform.ScaleformText) -> None:
 
             # Button groups seen before this read, so a prompt is only treated
             # as newly opened the first time its buttons turn up.
-            if recent_groups and now - groups_seen_at > GROUP_MEMORY:
+            if any(panel in it.chain for panel in recent_groups.values() for it in items):
+                groups_seen_at = now
+            elif recent_groups and now - groups_seen_at > GROUP_MEMORY:
                 recent_groups.clear()
             known = frozenset(recent_groups)
-            groups = {it.group for it in items if it.chosen}
-            if groups:
-                recent_groups |= groups
-                groups_seen_at = now
+            for it in items:
+                if it.chosen and it.group in it.chain:
+                    at = it.chain.index(it.group)
+                    recent_groups[it.group] = it.chain[at + 1] if at + 1 < len(it.chain) else it.group
+                    groups_seen_at = now
 
             key = scaleform.selection_key(items)
             if key != last_key:

@@ -274,13 +274,16 @@ nothing, where before the button hints coming back were read as a move.
 **Almost all of a read is finding the text, not reading it.** A full read took
 0.4 seconds: 0.1 listing memory regions and 0.3 sweeping 9,600 pages for
 DocViews, against a hundredth for the text and placement of sixty fields.
-The text lives in a few dozen pages, about 2 MB. `items(quick=True)` sweeps
-only those, in about 11 ms, and the watch mode refreshes the list with a full
-sweep on a background thread once a second. The user noticed the old speed
-as a lag moving between Yes and No. Faster polling also catches the instant
-between the two answers, when neither label exists; without remembering the
-prompt's button group across it (`recent_groups`), the question was read again
-on every move.
+The first fix swept only the few dozen pages that held text at the last full
+sweep, 11 ms, and was wrong for prompts: each newly selected answer is drawn
+in a new text field, often in a page that held none, so the answer arrived a
+second late and the reader forgot the prompt in the gap and read its question
+again. What works is the shape of Scaleform's blocks: whole 64 KB chunks plus
+one 4 KB page, 0x11000, 0x21000, 0x31000. Every text field seen lives in one,
+there are several hundred, about 70 MB, and `items(quick=True)` sweeps them in
+about 40 ms. The address space walk that finds them runs on a background
+thread once a second. The watch mode counts a prompt as open while its panel
+shows anything, so the gap between answers does not reopen it.
 
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but
