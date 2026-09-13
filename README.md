@@ -418,6 +418,17 @@ Two routes from here. Decoding that value type generalises to every screen at
 once, which makes it the one worth having. Reading each screen's own state is
 quicker per screen but has to be redone for each one.
 
+**Scaleform's own text, working from memory.** The general route turned out not
+to need the value type at all. Scaleform's text fields can be found directly:
+each owns a DocView whose function table sits at a fixed place in the
+executable, so one sweep of Scaleform's heap pages finds them all, and each
+leads to its paragraphs of UTF-16 text. From the field, the parent chain and
+the render nodes give its position on the stage and the colour it is tinted.
+The selected menu entry is tinted with the same gold the pixel reader looks
+for, stored as the multiplier 1.0, 0.89, 0.549. `sfv_access/scaleform.py`
+does this in about a third of a second, and `tools/read_scaleform.py` prints
+or speaks it. It is not yet what narration uses.
+
 **Character select, working from memory.** Taking the second route for one
 screen first, because it is the screen the pixel reader fails at completely.
 The roster is artwork with no text, so recognition can only ever see the two

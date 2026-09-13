@@ -30,7 +30,9 @@ entry by the gold the game marks it with, then correct the recognised text
 against the game's own words.
 
 **From the running game.** Read its memory from outside with ReadProcessMemory.
-Used where the screen cannot help, which today means character select.
+Used where the screen cannot help, which today means character select, and now
+able to read the whole interface's text, position and highlight exactly. See
+"Reading the interface from memory" below; it is not yet wired into narration.
 
 ## What works
 
@@ -189,14 +191,52 @@ outside cannot do. Two routes:
 
 1. **UE4SS.** Tried hard, abandoned one symbol short, uninstalled. See below
    before spending any time on it.
-2. **Find the text field by watching it change.** The GFx value objects are at
-   known addresses; dump one's bytes, move the menu, dump again, and keep what
-   changed. The note above already recorded that one sample reads as UTF-16, so
-   the text is in there. This needs no injection, cannot crash the game, and
-   suits the read-only approach the rest of the project takes. **Do this one.**
-   It is untried, and it addresses the two things the user reports as actually
-   broken: stage names, which the pixel reader gets wrong, and character
-   select, which is unreliable.
+2. **Find the text field by watching it change.** Done, and it worked better
+   than planned: see the next section.
+
+## Reading the interface from memory
+
+`sfv_access/scaleform.py` reads every Scaleform text field in the game: exact
+text, position on the 1920 by 1080 stage, the colour it is tinted, and whether
+it is showing. A full read takes about a third of a second and needs neither
+the game in front nor any injection. `tools/read_scaleform.py` prints it, and
+with `--watch` speaks the highlighted entry as it moves and logs every screen
+to `snapshots/scaleform-log.txt`. On the main menu it gave all eleven entries,
+the description line, the profile panel and the Fight Money total, spelled
+exactly, with the selected entry marked.
+
+How it was found, since none of it came from documentation:
+
+- **Search for the words, not the objects.** The menu words sit in memory only
+  a handful of times each. The UTF-16 copies inside Scaleform's heap are
+  paragraph buffers: text pointer, length counting the terminator, capacity.
+- **Follow pointers up** from a paragraph to its StyledText, and from there to
+  its DocView. Both have function tables at fixed places in the executable,
+  `+0x34C8530` and `+0x34C8568`, so sweeping the heap for the DocView one finds
+  every text field at once. Scaleform's pages are all small read-write regions,
+  about 360 MB, and reading all of them takes a tenth of a second. Do the
+  pattern matching in numpy; a Python loop over the bytes is what made the
+  first full scans take twenty seconds.
+- **The highlight was found by recording, not by reasoning.** A recorder read
+  the heap each time the description line changed while the user moved through
+  the menu, and kept the slots whose value followed the selection. Six floats
+  per entry switched to 1.0, 0.89, 0.549 on the selected one. That is the gold
+  RGB 255, 227, 140 as a colour multiplier, and 0.27 grey on the rest.
+  Walking pointers outward from the text fields then found it: field, `+0x38`
+  parent display object, `+0x48` render node, `+0x10` node data, `+0x50` the
+  colour transform. The same node data holds the transform at `+0x10`, so the
+  position comes free by composing up the parent chain.
+- **The gold is stored as 0.89 and 0.549**, not 227/255 and 140/255. Searching
+  for the exact fractions finds nothing.
+- **Leftovers stay in the heap.** DocViews from closed dialogs keep their text
+  until overwritten. They fail the walk to a render node, or come out
+  detached, hidden or transparent, and `TextItem.shown` drops them.
+
+Known gaps. The clock, the date and a few title-screen fields have DocViews
+whose owners do not sit at the usual distance, so they read as leftovers.
+Only the main menu has been checked; other screens may highlight differently,
+and the dialog and voice grid, which already need their own pixel readers, are
+the likeliest to. Pixel-level things such as the health bars are untouched.
 
 ### Where UE4SS got to, and why it is not installed
 
@@ -330,13 +370,14 @@ time". What follows is roughly in order of value.
    know what to call it. Small, and it needs no game in front since it reads
    from memory.
 
-3. **The Scaleform text, from memory.** The one big idea still untried, and the
-   only one that would retire the whole class of problems above. The interface
-   objects sit at known addresses and one of them already reads as UTF-16 text.
-   Dump one object's bytes, have the user move the menu, dump again, keep what
-   changed. It needs no injection, cannot crash the game, and would give exact
-   text instead of recognised pixels. See "The Scaleform text is reachable
-   after all" above for why this is now known to be possible.
+3. **Put the memory reader behind narration.** The reader works; nothing uses
+   it yet. First run `tools/read_scaleform.py --watch` across the screens the
+   user cares about and read `snapshots/scaleform-log.txt`, to learn which
+   screens highlight with the gold tint and which do not. Then feed the same
+   announcement code the pixel path uses, keeping to one code path as the
+   trap below insists. The test suite replays pixels, so save the memory
+   reading beside each capture and replay that too. Stage names, which the
+   pixel reader gets wrong, should come out exact.
 
 4. **Combat.** Deliberately deferred and completely unstarted. Speech cannot
    follow a round, so this wants continuous audio cues rather than words: pitch
@@ -383,9 +424,9 @@ Setup from a clean clone is in `SETUP.md`. Day to day:
 .venv\Scripts\python.exe tools\test_screens.py
 ```
 
-The other suites are `selftest.py`, and `test_correction.py`, `test_learning.py`
-and `test_memory.py` under `tools/`. All five should pass before anything is
-committed. `tools/show_bands.py <snapshot>` explains why a screen was read the
+The other suites are `selftest.py`, and `test_correction.py`, `test_learning.py`,
+`test_memory.py` and `test_scaleform.py` under `tools/`. All six should pass
+before anything is committed. `tools/show_bands.py <snapshot>` explains why a screen was read the
 way it was, and is the first thing to reach for when one reads wrongly.
 
 Memory reading does not need the game in front, and does not care if it is
