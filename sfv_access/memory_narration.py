@@ -30,6 +30,10 @@ SETTLE = 0.2           # how long a move with nothing selected waits to settle
 GROUP_MEMORY = 1.0     # how long a prompt counts as open once its panel is gone
 RETRY = 3.0            # how often to look for the game while not attached
 ALIVE_CHECK = 1.0      # how often to confirm the attached game is still there
+# The block list is refreshed once a second in the background. If that falls
+# this far behind, for whatever reason, refresh it here instead: a stalled
+# refresh once left stage select silent for the rest of a session.
+STALE_PAGES = 4.0
 
 
 def phrase(texts: list[str]) -> str:
@@ -198,6 +202,8 @@ class Session:
             self._next_attempt = now + RETRY
             return None
         try:
+            if time.monotonic() - self.reader.pages_refreshed_at > STALE_PAGES:
+                self.reader.refresh_pages()
             items = self.reader.items(quick=True)
         except Exception:
             self.close()

@@ -506,6 +506,26 @@ check("stage conditions read as words, unknown ones left out",
 check("without conditions it is not stage select",
       not any(it.selected for it in stage_select("Dojo", conditions=False)))
 
+# A screen being torn down: an object whose child list points at garbage that
+# does not name it as parent, and claims a great many entries.
+gmem = FakeMemory(size=0x40000 + 0x1000)
+groot = display_object(gmem, 0, 0, 0, WHITE)
+real = display_object(gmem, groot, 0, 0, WHITE)
+stray = display_object(gmem, 0, 0, 0, WHITE)          # parent is not groot
+junk = gmem.alloc(16 * 2000)
+for i in range(2000):
+    gmem.put(junk + i * 16, "<Q", stray if i % 2 else real)
+gmem.put(groot + sf.DISPLAY_CHILDREN, "<Q", junk)
+gmem.put(groot + sf.DISPLAY_CHILD_COUNT, "<I", 2000)
+greader = sf.ScaleformText(gmem, MODULE)
+check("children that do not name their parent are dropped",
+      set(greader.children(groot)) == {real}, repr(len(greader.children(groot))))
+import time as _time  # noqa: E402
+endless = lambda obj: [obj * 2 + 8, obj * 2 + 16]     # a tree that never ends
+started = _time.monotonic()
+sf.find_grids(endless, {16}, limit=10**9, seconds=0.05)
+check("the grid walk stops at its time limit", _time.monotonic() - started < 0.5)
+
 # The narrator the mod and the watch mode share, fed readings as they arrive.
 from sfv_access import memory_narration as mn  # noqa: E402
 

@@ -53,6 +53,7 @@ from __future__ import annotations
 import math
 import struct
 import threading
+import time
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -384,6 +385,12 @@ def tick_state(children, x_of, chain) -> bool | None:
 
 GRID_MIN_TILES = 4
 GRID_SEARCH_LIMIT = 6000
+# The walk runs on the thread that keeps the block list current, so it must not
+# run long. While a screen is torn down its objects can point into garbage, and
+# an unbounded walk stalled that thread: back on stage select after character
+# select, its text sat in new blocks the list never learned about, and memory
+# narration went silent.
+GRID_WALK_SECONDS = 0.25
 GRID_NAME_REACH = 6
 
 
@@ -410,13 +417,15 @@ def grid_tiles(children, obj) -> list[int]:
     return tiles if usual >= 2 and len(tiles) >= GRID_MIN_TILES else []
 
 
-def find_grids(children, roots, limit: int = GRID_SEARCH_LIMIT) -> dict[int, list[int]]:
+def find_grids(children, roots, limit: int = GRID_SEARCH_LIMIT,
+               seconds: float = GRID_WALK_SECONDS) -> dict[int, list[int]]:
     """Containers holding four or more tiles built alike, by number of parts."""
     kids = _remembering(children)
     grids = {}
     stack = list(roots)
     seen = set()
-    while stack and len(seen) < limit:
+    deadline = time.monotonic() + seconds
+    while stack and len(seen) < limit and time.monotonic() < deadline:
         obj = stack.pop()
         if obj in seen:
             continue
@@ -589,6 +598,7 @@ class ScaleformText:
         # new text field, often in a block that held none, and the answer was
         # heard a second late.
         self._scaleform_pages = None
+        self.pages_refreshed_at = 0.0   # time.monotonic() of the last walk for blocks
         # Picture grids under the movies showing text, found by walking the
         # display tree, which is too slow to do on every read. Only the
         # selected tile is checked each read.
@@ -630,6 +640,7 @@ class ScaleformText:
             r for r in self.heap_pages()
             if r.size % SCALEFORM_CHUNK == SCALEFORM_EXTRA and r.size > SCALEFORM_CHUNK
         ]
+        self.pages_refreshed_at = time.monotonic()
 
     def heap_pages(self):
         return [
@@ -714,16 +725,25 @@ class ScaleformText:
         return tuple(chain), x, y, tuple(tint), hidden
 
     def children(self, obj: int) -> list[int]:
-        """The display objects directly inside `obj`."""
+        """The display objects directly inside `obj`.
+
+        Only those that name `obj` as their parent. A real child always does,
+        and garbage left by a screen being torn down almost never will, so a
+        walk that strays into freed memory stops there instead of following a
+        made-up list of thousands of children.
+        """
         count = self.pm.u32(obj + DISPLAY_CHILD_COUNT) or 0
         data = self.pm.ptr(obj + DISPLAY_CHILDREN)
         if not data or not 0 < count <= MAX_CHILDREN:
             return []
         raw = self.pm.read(data, count * DISPLAY_CHILD_STRIDE)
-        if not raw:
+        if not raw or len(raw) < count * DISPLAY_CHILD_STRIDE:
             return []
         entries = (struct.unpack_from("<Q", raw, i * DISPLAY_CHILD_STRIDE)[0] for i in range(count))
-        return [obj for obj in entries if obj]
+        return [
+            kid for kid in entries
+            if kid > 0x10000 and not kid & 7 and self.pm.ptr(kid + DISPLAY_PARENT) == obj
+        ]
 
     # ------------------------------------------------------------- selection
     def mark_choices(self, items: list[TextItem]) -> None:

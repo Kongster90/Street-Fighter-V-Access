@@ -364,6 +364,23 @@ two or more of those conditions and takes the stage as the text nearest them in
 the display tree, which leaves out the heading drawn above. Moving says the
 name only; the read key adds the conditions, as the pixel path did.
 
+**The background thread must never stall.** The same thread refreshes the
+block list and walks the display tree for picture grids. Back on stage select
+after character select, memory went silent for the rest of the session: its
+text was in new blocks at higher addresses that the list never learned about,
+while a fresh reader found it at once. The likely cause, not reproduced, is
+the grid walk following a torn-down screen's pointers into garbage claiming
+thousands of children. Three defences: `children` keeps only objects whose
+parent pointer names the object asking, the walk stops after a quarter of a
+second, and `Session.read` refreshes the block list itself if the background
+one is more than four seconds old. If this recurs, the log will show a screen
+the pixel reader reads while memory logs nothing.
+
+**Reads slow as a session goes on.** Scaleform's blocks grew from 72 MB to
+119 MB over an evening of screens, and a quick read from about 40 ms to about
+110 ms, most of it the sweep and placing leftover text from closed screens.
+Worth speeding up, for instance by remembering DocViews that failed to place.
+
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but
 their render state looks exactly like the question's, so they are recognised
