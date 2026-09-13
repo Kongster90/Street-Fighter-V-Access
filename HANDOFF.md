@@ -310,6 +310,17 @@ is compared by the tile as well as the text. The first recording of this
 screen was useless because the recorder never refreshed its block list; see
 `keep_pages_current`.
 
+**A tick is a missing part, not a colour.** In the menu music list each row
+has a tick box left of the song's name, holding a part with two bare shapes,
+the box, and when ticked a third part, the tick. `tick_state` reads that for
+the selected entry only, and only when two other rows in the list have a tick
+box too. The first version of the rule matched the Sound Settings tabs and
+volume rows, which are built the same way one level up; requiring the two bare
+shapes inside is what separates them, and a replay of the 151-record recording
+then read every song correctly and nothing else. Two recordings were needed:
+the first recorder saved only when text changed, and ticking changes no text.
+After Deselect All the game leaves the song you are on ticked.
+
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but
 their render state looks exactly like the question's, so they are recognised

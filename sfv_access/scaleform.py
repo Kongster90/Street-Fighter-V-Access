@@ -156,6 +156,7 @@ class TextItem:
     hidden: bool = False     # a parent is switched off
     box: tuple[float, float] = (0.0, 0.0)   # the text box's width and height in pixels
     slot: int = 0            # the picture tile this text names, when it names one
+    ticked: bool | None = None   # a checklist entry's box, when it has one
 
     @property
     def highlighted(self) -> bool:
@@ -198,7 +199,7 @@ def selection_key(items: list[TextItem]):
     """
     foot = footer(items)
     return (
-        tuple((it.text, it.slot) for it in items if it.selected),
+        tuple((it.text, it.slot, it.ticked) for it in items if it.selected),
         foot.text if foot else None,
     )
 
@@ -240,8 +241,14 @@ def landed_on(
     newly opened on the next move, and its question would be read again.
     """
     old = {_where(it) for it in before}
-    was_lit = {_where(it) for it in before if it.selected}
+    was_lit = {_where(it): it.ticked for it in before if it.selected}
     lit = [it for it in after if it.selected]
+    # Ticking the entry you are on changes nothing but its box, so that is
+    # said on its own, without the name you already heard.
+    toggled = [it for it in lit if _where(it) in was_lit and it.ticked is not None
+               and was_lit[_where(it)] is not None and was_lit[_where(it)] != it.ticked]
+    if toggled:
+        return [tick_word(it.ticked) for it in toggled[:1]]
     fresh = [it for it in lit if _where(it) not in was_lit]
     if fresh:
         old_groups = {it.group for it in before if it.chosen} | set(recent_groups)
@@ -259,7 +266,16 @@ def landed_on(
             and panels.intersection(it.chain)
             and not new_groups.intersection(it.chain)
         ]
-        return _unique(intro + [it.text for it in fresh])
+        named = []
+        seen = set(intro)
+        for it in fresh:
+            if it.text in seen:
+                continue
+            seen.add(it.text)
+            named.append(it.text)
+            if it.ticked is not None:
+                named.append(tick_word(it.ticked))
+        return _unique(intro) + named
     if lit or recent_groups or any(it.chosen for it in before):
         return []
     foot = footer(after)
@@ -270,6 +286,76 @@ def landed_on(
     if foot and (was is None or was.text != foot.text):
         return [foot.text]
     return []
+
+
+# ------------------------------------------------------------------ checklists
+#
+# The menu music list is a checklist. Each song's row holds four parts: its
+# background, the highlight bar, the holder of its name, and to the left of
+# the name a tick box. The box holds two parts, the second of which holds
+# three when the song is ticked and two when it is not: the tick itself is
+# removed. Recorded while one song was unticked and ticked back and the whole
+# list was unticked and ticked again, with the screenshots agreeing each time.
+
+TICKED_PARTS = 3
+UNTICKED_PARTS = 2
+CHECKLIST_SAMPLE = 12
+
+
+def tick_word(ticked: bool) -> str:
+    return "Ticked" if ticked else "Not ticked"
+
+
+def _tick_box(children, parts, skip=None):
+    """A row's tick box and the part inside it that holds the tick, if it has one.
+
+    The shape is common, a bare shape and a holder, and the Sound Settings tabs
+    and volume rows have it too. What sets the tick box apart is inside the
+    holder: two bare shapes, the box itself, and when ticked a third part with
+    something in it, the tick.
+    """
+    for part in parts:
+        if part == skip:
+            continue
+        inside = children(part)
+        if len(inside) != 2 or children(inside[0]):
+            continue
+        marks = children(inside[1])
+        if len(marks) not in (TICKED_PARTS, UNTICKED_PARTS):
+            continue
+        if children(marks[0]) or children(marks[1]):
+            continue
+        if len(marks) == TICKED_PARTS and not children(marks[2]):
+            continue
+        return part, inside[1]
+    return None
+
+
+def tick_state(children, x_of, chain) -> bool | None:
+    """Whether the checklist entry whose label has this chain is ticked.
+
+    None unless the label's row has a tick box to the left of the label, and
+    at least two other rows in the same list have one too, so a row that
+    merely happens to be built alike on some other screen is not read as a
+    checklist.
+    """
+    if len(chain) < 4:
+        return None
+    holder, row, rows = chain[1], chain[2], chain[3]
+    found = _tick_box(children, children(row), skip=holder)
+    if found is None:
+        return None
+    box, marks = found
+    box_x, label_x = x_of(box), x_of(holder)
+    if box_x is None or label_x is None or box_x >= label_x:
+        return None
+    alike = sum(
+        1 for other in children(rows)[:CHECKLIST_SAMPLE]
+        if other != row and _tick_box(children, children(other)) is not None
+    )
+    if alike < 2:
+        return None
+    return len(children(marks)) == TICKED_PARTS
 
 
 # ----------------------------------------------------------------- picture grids
@@ -555,6 +641,19 @@ class ScaleformText:
                 continue
             self._mark_by_brightness(container, slots)
         self._mark_picture_grids(shown)
+        self._mark_ticks(shown)
+
+    def _mark_ticks(self, shown: list[TextItem]) -> None:
+        """Whether each selected checklist entry is ticked. Only the selected
+        ones, since that is all that is said and each costs a few reads."""
+        def x_of(obj):
+            node = self._node(obj)
+            return None if node is None else node[0][2]
+
+        kids = _remembering(self.children)
+        for it in shown:
+            if it.selected:
+                it.ticked = tick_state(kids, x_of, it.chain)
 
     def _mark_picture_grids(self, shown: list[TextItem]) -> None:
         """Name the selected tile of a grid of pictures by the label nearest it.

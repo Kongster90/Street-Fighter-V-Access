@@ -380,6 +380,47 @@ locked_b = [sf.TextItem("???", 1058, 811, WHITE, 5, chosen=True, slot=1010)]
 check("moving between two locked stages of the same name is still a move",
       sf.selection_key(locked_a) != sf.selection_key(locked_b) and sf.landed_on(locked_a, locked_b) == ["???"])
 
+# The menu music list, as recorded: each row a background, a highlight bar,
+# the holder of the song's name, and left of it a tick box whose holder has two
+# bare shapes and, when ticked, the tick.
+def music_list(ticks, box_x=184, look_alike=False):
+    tree, next_id = {}, [10]
+    def node(kids=(), x=0):
+        next_id[0] += 1
+        tree[next_id[0]] = {"kids": list(kids), "x": x}
+        return next_id[0]
+    rows, labels = [], []
+    for ticked in ticks:
+        name = node([node()], x=244)
+        if look_alike:   # the Sound Settings tabs: same outline, different contents
+            holder = node([node([node()]), node()])
+        else:
+            holder = node([node(), node()] + ([node([node()])] if ticked else []))
+        box = node([node(), holder], x=box_x)
+        row = node([node([node(), node([node()])]), node([node(), node()]), name, box])
+        rows.append(row)
+        labels.append((node(), name, row))
+    rows_holder = node(rows)
+    kids = lambda o: tree.get(o, {}).get("kids", [])
+    x_of = lambda o: tree[o]["x"] if o in tree else None
+    return [sf.tick_state(kids, x_of, (label, name, row, rows_holder)) for label, name, row in labels]
+
+
+check("a ticked and an unticked song read as such", music_list([True, False, True, True]) == [True, False, True, True])
+check("rows built alike on another screen are not a checklist",
+      music_list([True, False, True], look_alike=True) == [None, None, None])
+check("a list of two is not taken for a checklist", music_list([True, False]) == [None, None])
+check("a box right of the name is not a tick box", music_list([True, True, True], box_x=400) == [None, None, None])
+
+on_song = [sf.TextItem("Main Menu", 747, 439, GOLD, 9, ticked=True)]
+on_unticked = [sf.TextItem("Main Menu", 747, 439, GOLD, 9, ticked=False)]
+on_next = [sf.TextItem("Bustling Side Street", 747, 482, GOLD, 9, ticked=False)]
+check("moving to a song says its name and whether it is ticked",
+      sf.landed_on(on_song, on_next) == ["Bustling Side Street", "Not ticked"], repr(sf.landed_on(on_song, on_next)))
+check("ticking the song you are on says only the new state",
+      sf.selection_key(on_song) != sf.selection_key(on_unticked)
+      and sf.landed_on(on_song, on_unticked) == ["Not ticked"], repr(sf.landed_on(on_song, on_unticked)))
+
 # Quick reads sweep only blocks shaped like Scaleform's own.
 qmem = FakeMemory()
 qroot = display_object(qmem, 0, 0, 0, WHITE)
