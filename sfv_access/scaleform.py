@@ -50,6 +50,7 @@ that never shows on the main menu is hidden by the container above it.
 
 from __future__ import annotations
 
+import bisect
 import math
 import struct
 from collections import defaultdict
@@ -192,7 +193,9 @@ def _unique(texts: list[str]) -> list[str]:
     return [t for t in texts if not (t in seen or seen.add(t))]
 
 
-def landed_on(before: list[TextItem], after: list[TextItem]) -> list[str]:
+def landed_on(
+    before: list[TextItem], after: list[TextItem], recent_groups: frozenset = frozenset()
+) -> list[str]:
     """What to say for a move from the `before` screen to the `after` one.
 
     Whatever has newly become selected. Only newly: a prompt opened from the
@@ -209,13 +212,17 @@ def landed_on(before: list[TextItem], after: list[TextItem]) -> list[str]:
     Failing that, the description line, but only if it changed. Between one
     button losing the selection and the next gaining it, neither label exists
     for a moment, and that is not worth saying anything about.
+
+    `recent_groups` are button groups a caller has seen lately. A read that
+    lands in that moment between buttons would otherwise make the prompt look
+    newly opened on the next move, and its question would be read again.
     """
     old = {_where(it) for it in before}
     was_lit = {_where(it) for it in before if it.selected}
     lit = [it for it in after if it.selected]
     fresh = [it for it in lit if _where(it) not in was_lit]
     if fresh:
-        old_groups = {it.group for it in before if it.chosen}
+        old_groups = {it.group for it in before if it.chosen} | set(recent_groups)
         new_groups = {it.group for it in fresh if it.chosen and it.group not in old_groups}
         panels = set()
         for it in fresh:
@@ -231,7 +238,7 @@ def landed_on(before: list[TextItem], after: list[TextItem]) -> list[str]:
             and not new_groups.intersection(it.chain)
         ]
         return _unique(intro + [it.text for it in fresh])
-    if lit or any(it.chosen for it in before):
+    if lit or recent_groups or any(it.chosen for it in before):
         return []
     foot = footer(after)
     changed = [it.text for it in after if it is not foot and _where(it) not in old]
@@ -262,8 +269,21 @@ class ScaleformText:
     def __init__(self, pm: ProcessMemory, module_base: int) -> None:
         self.pm = pm
         self.module_base = module_base
+        # The pages that held text at the last full sweep. The sweep of every
+        # page takes a third of a second, nearly all of a read; the text lives
+        # in a few dozen of them, a couple of megabytes, which take a thousandth.
+        self._text_pages = None
 
     # ------------------------------------------------------------- discovery
+    def refresh_pages(self) -> list[int]:
+        """Sweep every page, and remember which ones hold text for quick reads."""
+        pages = sorted(self.heap_pages(), key=lambda r: r.base)
+        found = self.docviews(pages)
+        starts = [r.base for r in pages]
+        holding = {bisect.bisect_right(starts, dv) - 1 for dv in found}
+        self._text_pages = [pages[i] for i in sorted(holding) if i >= 0]
+        return found
+
     def heap_pages(self):
         return [
             r
@@ -378,10 +398,20 @@ class ScaleformText:
                 item.group = container
 
     # ----------------------------------------------------------------- reads
-    def items(self, everything: bool = False) -> list[TextItem]:
-        """Text on screen in reading order. `everything` keeps the leftovers."""
+    def items(self, everything: bool = False, quick: bool = False) -> list[TextItem]:
+        """Text on screen in reading order. `everything` keeps the leftovers.
+
+        `quick` looks only in the pages that held text at the last full sweep,
+        for polling. Something drawn in a page that had no text before is
+        missed until `refresh_pages` runs again, so a caller polling quickly
+        should keep calling that in the background.
+        """
+        if quick and self._text_pages is not None:
+            docviews = self.docviews(self._text_pages)
+        else:
+            docviews = self.refresh_pages()
         out = []
-        for dv in self.docviews():
+        for dv in docviews:
             text = self.field_text(dv)
             if text is None:
                 continue

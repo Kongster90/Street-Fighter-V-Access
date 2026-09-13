@@ -278,6 +278,24 @@ check("a prompt over a gold menu still finds its selection",
 check("and reads its question, not the gold entry behind it",
       sf.landed_on(t_open, t_yes) == [training_question, "Yes "], repr(sf.landed_on(t_open, t_yes)))
 check("moving in it reads the answer", sf.landed_on(t_yes, t_no) == ["No"], repr(sf.landed_on(t_yes, t_no)))
+gap = [it for it in t_yes if not it.chosen and it.text.strip() not in ("Yes", "No")]
+groups = frozenset(it.group for it in t_yes if it.chosen)
+check("a read between the answers does not reopen the prompt",
+      sf.landed_on(gap, t_no, groups) == ["No"], repr(sf.landed_on(gap, t_no, groups)))
+check("nor does anything get said for that read", sf.landed_on(t_yes, gap, groups) == [],
+      repr(sf.landed_on(t_yes, gap, groups)))
+
+# Quick reads look only where text was found by the last full sweep.
+quick_reader = sf.ScaleformText(FakeMemory(), MODULE)
+check("a quick read before any sweep does a full one", quick_reader.items(quick=True) == []
+      and quick_reader._text_pages == [])
+qmem = FakeMemory()
+qroot = display_object(qmem, 0, 0, 0, WHITE)
+text_field(qmem, display_object(qmem, qroot, 100, 100, WHITE), 0, 0, ["Found quickly"])
+qreader = sf.ScaleformText(qmem, MODULE)
+qreader.refresh_pages()
+check("quick reads find what the sweep found",
+      [it.text for it in qreader.items(quick=True)] == ["Found quickly"])
 
 layered = [item("VERSION SELECT", 960, 524), item("VERSION SELECT", 232, 613), item("VERSION SELECT", 232, 613)]
 check("text drawn in layers is said once", sf.landed_on([], layered) == ["VERSION SELECT"],

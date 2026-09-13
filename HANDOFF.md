@@ -271,6 +271,17 @@ the buttons, so the Exit prompt read only "No". A prompt's question is now
 read whenever its group of buttons first appears, and a prompt closing says
 nothing, where before the button hints coming back were read as a move.
 
+**Almost all of a read is finding the text, not reading it.** A full read took
+0.4 seconds: 0.1 listing memory regions and 0.3 sweeping 9,600 pages for
+DocViews, against a hundredth for the text and placement of sixty fields.
+The text lives in a few dozen pages, about 2 MB. `items(quick=True)` sweeps
+only those, in about 11 ms, and the watch mode refreshes the list with a full
+sweep on a background thread once a second. The user noticed the old speed
+as a lag moving between Yes and No. Faster polling also catches the instant
+between the two answers, when neither label exists; without remembering the
+prompt's button group across it (`recent_groups`), the question was read again
+on every move.
+
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but
 their render state looks exactly like the question's, so they are recognised
