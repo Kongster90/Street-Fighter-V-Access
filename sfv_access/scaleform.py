@@ -155,6 +155,7 @@ class TextItem:
     group: int = 0           # the container holding that group of buttons
     hidden: bool = False     # a parent is switched off
     box: tuple[float, float] = (0.0, 0.0)   # the text box's width and height in pixels
+    slot: int = 0            # the picture tile this text names, when it names one
 
     @property
     def highlighted(self) -> bool:
@@ -197,13 +198,15 @@ def selection_key(items: list[TextItem]):
     """
     foot = footer(items)
     return (
-        tuple(it.text for it in items if it.selected),
+        tuple((it.text, it.slot) for it in items if it.selected),
         foot.text if foot else None,
     )
 
 
 def _where(it: TextItem):
-    return (round(it.x), round(it.y), it.text)
+    # The tile counts as well as the text: two locked stages side by side are
+    # both named "???", and moving between them is still a move.
+    return (round(it.x), round(it.y), it.text, it.slot)
 
 
 def _unique(texts: list[str]) -> list[str]:
@@ -269,6 +272,93 @@ def landed_on(
     return []
 
 
+# ----------------------------------------------------------------- picture grids
+#
+# The Favorite Stage grid is pictures: eighteen tiles of seven parts each, with
+# no text on any of them, and a label under the grid naming the stage the
+# cursor is on. On the selected tile the picture is at full brightness and a
+# yellow outline is switched on; on every other tile the picture is dimmed to
+# 0.4 and the outline is off. The label is the nearest text to the grid in the
+# display tree, five levels apart, where the category tab above is seven.
+#
+# These work on callables rather than on the reader so a recording can be
+# replayed through them: `children(obj)` lists an object's children, and
+# `appearance(obj)` gives its own colour multiplier and flag word, or None.
+
+GRID_MIN_TILES = 4
+GRID_SEARCH_LIMIT = 6000
+GRID_NAME_REACH = 6
+
+
+def find_grids(children, roots, limit: int = GRID_SEARCH_LIMIT) -> dict[int, list[int]]:
+    """Containers holding four or more tiles built alike, by number of parts."""
+    kids_of: dict[int, list[int]] = {}
+
+    def kids(obj):
+        if obj not in kids_of:
+            kids_of[obj] = children(obj)
+        return kids_of[obj]
+
+    grids = {}
+    stack = list(roots)
+    seen = set()
+    while stack and len(seen) < limit:
+        obj = stack.pop()
+        if obj in seen:
+            continue
+        seen.add(obj)
+        inside = kids(obj)
+        stack.extend(inside)
+        if len(inside) < GRID_MIN_TILES:
+            continue
+        parts = [len(kids(k)) for k in inside]
+        usual = max(set(parts), key=parts.count)
+        tiles = [k for k, n in zip(inside, parts) if n == usual]
+        if usual >= 2 and len(tiles) >= GRID_MIN_TILES:
+            grids[obj] = tiles
+    return grids
+
+
+def selected_tile(children, appearance, tiles) -> int | None:
+    """The one tile drawn differently from all the others, if it is the brighter."""
+    looks = {}
+    for tile in tiles:
+        parts = []
+        for part in children(tile):
+            seen = appearance(part)
+            parts.append(None if seen is None else (round(seen[0][0], 2), round(seen[0][3], 2), seen[1] & NODE_VISIBLE))
+        looks[tile] = tuple(parts)
+    kinds = sorted(set(looks.values()), key=lambda k: list(looks.values()).count(k), reverse=True)
+    if len(kinds) != 2:
+        return None
+    usual, odd = kinds
+    tally = list(looks.values())
+    if tally.count(odd) != 1 or tally.count(usual) < GRID_MIN_TILES - 1:
+        return None
+
+    def presence(look):
+        return sum(p[0] * p[1] + p[2] for p in look if p is not None)
+
+    if presence(odd) <= presence(usual):
+        return None
+    return next(tile for tile, look in looks.items() if look == odd)
+
+
+def name_for_grid(grid_and_parents: list[int], items: list[TextItem]) -> TextItem | None:
+    """The shown text nearest a grid in the display tree, within reach."""
+    best = None
+    for it in items:
+        if not it.shown or grid_and_parents[0] in it.chain:
+            continue
+        for level, obj in enumerate(it.chain):
+            if obj in grid_and_parents:
+                distance = level + grid_and_parents.index(obj)
+                if distance <= GRID_NAME_REACH and (best is None or distance < best[0]):
+                    best = (distance, it)
+                break
+    return best[1] if best else None
+
+
 def _compose(outer, inner):
     """Affine (sx, shx, tx, shy, sy, ty) products: apply inner, then outer."""
     a, b = outer, inner
@@ -296,6 +386,11 @@ class ScaleformText:
         # new text field, often in a block that held none, and the answer was
         # heard a second late.
         self._scaleform_pages = None
+        # Picture grids under the movies showing text, found by walking the
+        # display tree, which is too slow to do on every read. Only the
+        # selected tile is checked each read.
+        self._grids: dict[int, list[int]] = {}
+        self._roots: set[int] = set()
 
     # ------------------------------------------------------------- discovery
     def keep_pages_current(self, stop: threading.Event, interval: float = PAGE_REFRESH) -> None:
@@ -310,12 +405,17 @@ class ScaleformText:
             while not stop.is_set():
                 try:
                     self.refresh_pages()
+                    self.refresh_grids()
                 except Exception as exc:  # the game closing, most likely
                     print(f"page refresh failed: {exc}")
                 stop.wait(interval)
 
         self.refresh_pages()
         threading.Thread(target=run, daemon=True).start()
+
+    def refresh_grids(self) -> None:
+        """Walk the display tree under the movies last seen showing text for picture grids."""
+        self._grids = find_grids(self.children, set(self._roots))
 
     def refresh_pages(self) -> None:
         """Walk the address space for Scaleform's blocks, for quick reads to sweep."""
@@ -442,6 +542,33 @@ class ScaleformText:
             if self._mark_by_layers(container, slots):
                 continue
             self._mark_by_brightness(container, slots)
+        self._mark_picture_grids(shown)
+
+    def _mark_picture_grids(self, shown: list[TextItem]) -> None:
+        """Name the selected tile of a grid of pictures by the label nearest it."""
+        def appearance(obj):
+            node = self._node(obj)
+            return None if node is None else (node[1], node[2])
+
+        for grid, tiles in list(self._grids.items()):
+            if not tiles or self.pm.ptr(tiles[0] + DISPLAY_PARENT) != grid:
+                continue  # gone since the last walk
+            if any(grid in it.chain for it in shown):
+                continue  # its tiles carry text, which the other rules read
+            tile = selected_tile(self.children, appearance, tiles)
+            if tile is None:
+                continue
+            up = [grid]
+            while len(up) < MAX_DEPTH:
+                parent = self.pm.ptr(up[-1] + DISPLAY_PARENT)
+                if not parent or parent in up:
+                    break
+                up.append(parent)
+            label = name_for_grid(up, shown)
+            if label is not None:
+                label.chosen = True
+                label.group = grid
+                label.slot = tile
 
     def _mark_by_layers(self, container: int, slots) -> bool:
         """A prompt's buttons: the selected one has its outline and fill as extra children."""
@@ -503,6 +630,7 @@ class ScaleformText:
             docviews = self.docviews(self._scaleform_pages)
         else:
             docviews = self.docviews()
+        roots_before = set(self._roots)
         out = []
         for dv in docviews:
             text = self.field_text(dv)
@@ -519,6 +647,9 @@ class ScaleformText:
             item = TextItem(text, x, y, tint, len(chain), dv, chain, hidden=hidden, box=box)
             if everything or item.shown:
                 out.append(item)
+        self._roots = {it.chain[-1] for it in out if it.shown and it.chain}
+        if not quick and self._roots != roots_before:
+            self.refresh_grids()
         self.mark_choices(out)
         out.sort(key=lambda it: (round(it.y), it.x))
         return out

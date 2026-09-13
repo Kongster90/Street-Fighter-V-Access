@@ -292,10 +292,23 @@ language grid does, and a large label under the grid repeats the name.
 or more, provided the rest mostly share a tint and its text box is the same
 size as theirs. Text boxes record their width and height at DocView `+0x88`;
 without that check a heading drawn brighter above dim entries would read as a
-selection. The Favorite Stage grid is different again: its tiles are pictures
-with no text, and the only sign of the selection is the label under the grid
-naming the stage. That one is not solved; `tools/record_scaleform.py` is for
-capturing it.
+selection.
+
+**Pictures are read through the display tree.** The Favorite Stage grid's
+tiles hold no text: eighteen tiles of seven parts, the selected one with its
+outline switched on and its picture at full brightness, every other picture at
+0.4. `tools/record_scaleform.py` now keeps the whole display tree, walked down
+through each object's child array (`+0xD8`, sixteen bytes an entry), and that
+is what showed it. `find_grids` looks for containers of four or more tiles
+with the same number of parts, on the background thread since the walk is too
+slow for every read; `selected_tile` picks the one tile drawn differently and
+brighter; `name_for_grid` names it by the nearest shown text in the tree, five
+levels away for the stage label where the category tab is seven. Each read
+checks only the known grids' tiles. Grids whose tiles carry text are left to
+the brightness rule. Two locked stages are both named "???", so a selection
+is compared by the tile as well as the text. The first recording of this
+screen was useless because the recorder never refreshed its block list; see
+`keep_pages_current`.
 
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but

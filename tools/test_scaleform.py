@@ -315,6 +315,65 @@ check("a heading brighter than dim entries is not a selection",
 check("gold in the group leaves it to the gold",
       [it.text for it in character_grid("RYU", gold="VEGA") if it.selected] == ["VEGA"])
 
+# The Favorite Stage grid, as recorded: tiles of seven parts, the selected one
+# with its outline switched on and its picture undimmed, and a label five
+# levels away naming the stage, where the category tab is seven.
+def stage_screen(selected=1, names=("???", "The Grid", "Dojo", "Ring of Pride", "Ring of Destiny", "Ring of Power")):
+    tree = {}
+    def node(obj, kids=(), cx=(1, 1, 1, 1), flags=1):
+        tree[obj] = {"kids": list(kids), "cx": cx, "flags": flags}
+    tiles = []
+    for i in range(len(names)):
+        tile = 1000 + i * 10
+        parts = [tile + p for p in range(1, 8)]
+        on = i == selected
+        node(parts[0], flags=1 if on else 0)                                      # outline
+        node(parts[2], cx=(1, 1, 1, 1) if on else (0.4, 0.4, 0.4, 1))             # picture
+        for p in (parts[1], *parts[3:]):
+            node(p)
+        node(tile, parts)
+        tiles.append(tile)
+    node(998)
+    node(999, [998])                   # the scroll bar, one part, not a tile
+    node(900, [999] + tiles)           # the grid
+    node(800, [900]); node(700, [800, 610]); node(610, [611]); node(611, [612]); node(612, [613])
+    node(600, [700, 500]); node(500, [501]); node(501, [502]); node(502, [503])
+    node(1, [600])                     # the movie root
+    parent = {k: p for p, v in tree.items() for k in v["kids"]}
+    def chain(leaf):
+        out = [leaf]
+        while out[-1] in parent:
+            out.append(parent[out[-1]])
+        return tuple(out)
+    label = sf.TextItem(names[selected or 0], 1058, 811, WHITE, 0, chain=chain(613))
+    tab = sf.TextItem("ALL", 1196, 237, WHITE, 0, chain=chain(503))
+    for it in (label, tab):
+        it.depth = len(it.chain)
+    up = [900]
+    while up[-1] in parent:
+        up.append(parent[up[-1]])
+    return tree, [label, tab], up
+
+
+tree, texts, up = stage_screen(selected=3)
+kids = lambda o: tree.get(o, {}).get("kids", [])
+look = lambda o: (tree[o]["cx"], tree[o]["flags"]) if o in tree else None
+grids = sf.find_grids(kids, {1})
+check("a grid of picture tiles is found, and the one-part scroll bar is not a tile",
+      list(grids) == [900] and len(grids[900]) == 6, repr({k: len(v) for k, v in grids.items()}))
+check("the tile with its outline on and picture undimmed is the selected one",
+      sf.selected_tile(kids, look, grids[900]) == 1030)
+check("the stage is named by the nearest label, not the category tab",
+      getattr(sf.name_for_grid(up, texts), "text", None) == "Ring of Pride")
+tree2, _, _ = stage_screen(selected=None)
+check("a grid with nothing standing out selects nothing",
+      sf.selected_tile(lambda o: tree2.get(o, {}).get("kids", []),
+                       lambda o: (tree2[o]["cx"], tree2[o]["flags"]) if o in tree2 else None, grids[900]) is None)
+locked_a = [sf.TextItem("???", 1058, 811, WHITE, 5, chosen=True, slot=1000)]
+locked_b = [sf.TextItem("???", 1058, 811, WHITE, 5, chosen=True, slot=1010)]
+check("moving between two locked stages of the same name is still a move",
+      sf.selection_key(locked_a) != sf.selection_key(locked_b) and sf.landed_on(locked_a, locked_b) == ["???"])
+
 # Quick reads sweep only blocks shaped like Scaleform's own.
 qmem = FakeMemory()
 qroot = display_object(qmem, 0, 0, 0, WHITE)
