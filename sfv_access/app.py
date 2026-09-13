@@ -388,6 +388,11 @@ class App:
             foot = scaleform.footer(items)
             if foot is not None and not foot.selected:
                 said = memory_narration.phrase([said, foot.text])
+            # Stage conditions do not affect play, so moving through stage
+            # select leaves them out; asking for a reading includes them.
+            details = scaleform.stage_details(items)
+            if said and details:
+                said = memory_narration.phrase([said] + details)
             if said:
                 self.lines, self.footer = items, foot.text if foot else ""
                 self.cursor = next((i for i, it in enumerate(items) if it.selected), 0)

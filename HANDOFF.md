@@ -354,6 +354,16 @@ list scrolls, and the picture grid rule then took the list for a grid of
 pictures and named it after the nearest text. Grids seen holding text are now
 never treated as pictures.
 
+**Stage select has nothing selected.** It shows one stage at a time, so memory
+narration, which speaks when a selection moves, was silent there while the
+pixel reader spoke with a lag. Memory read it perfectly all along: the stage
+name, drawn twice, and conditions as label and value in one text, "Weather |
+Clear", "Time | 10:30", "Temperature | 77°F" (a real degree sign; a console
+shows it as a replacement character). `stage_on_offer` recognises the screen by
+two or more of those conditions and takes the stage as the text nearest them in
+the display tree, which leaves out the heading drawn above. Moving says the
+name only; the read key adds the conditions, as the pixel path did.
+
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but
 their render state looks exactly like the question's, so they are recognised
@@ -387,8 +397,7 @@ keys (R, D, A) and the snapshot key use the memory reading when there is one;
 a snapshot saves it beside the frame as `sfv-<stamp>-memory.txt`.
 
 Known gaps. The clock sits one object further down and is not resolved. Not
-yet heard from memory in play: character select, the real stage select, the
-voice language grid (the brightness rule may cover it; its EN and JA badges
+yet heard from memory in play: character select, the voice language grid (the brightness rule may cover it; its EN and JA badges
 are pictures and are not read), and anything in a match. Pixel-level things
 such as the health bars are untouched.
 

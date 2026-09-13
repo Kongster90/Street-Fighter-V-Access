@@ -475,6 +475,37 @@ emptied = reader_c.items()
 check("a list whose rows are empty mid-scroll is not named after its tab",
       not any(it.selected for it in emptied), repr([it.text for it in emptied if it.selected]))
 
+# Stage select, as logged: nothing selected, the heading drawn above, the stage
+# name drawn twice, and conditions each a label and value in one text.
+def stage_select(stage, temperature="77°F", weather="Clear", time_of_day="10:30", conditions=True):
+    mem = FakeMemory()
+    root = display_object(mem, 0, 0, 0, WHITE)
+    header = display_object(mem, root, 0, 100, WHITE)
+    text_field(mem, header, 960, 2, ["STAGE SELECT"])
+    text_field(mem, display_object(mem, header, 2, 3, WHITE), 0, 0, ["STAGE SELECT"])
+    info = display_object(mem, root, 0, 500, WHITE)
+    text_field(mem, display_object(mem, info, 62, 4, WHITE), 0, 0, [stage])
+    row = display_object(mem, info, 0, 60, WHITE)
+    if conditions:
+        text_field(mem, row, 283, 2, [f"Temperature | {temperature}\r", "\r"])
+        text_field(mem, row, 38, 11, [f"Weather | {weather}"])
+        text_field(mem, row, 774, 11, [f"Time | {time_of_day}"])
+    text_field(mem, row, 1150, 11, [stage])
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+on_dojo = stage_select("Dojo")
+on_ring = stage_select("Ring of Galaxy", temperature="?", weather="?", time_of_day="?")
+check("stage select's stage is selected, not its heading",
+      {it.text for it in on_dojo if it.selected} == {"Dojo"}, repr([it.text for it in on_dojo if it.selected]))
+check("moving to another stage says only its name",
+      sf.landed_on(on_dojo, on_ring) == ["Ring of Galaxy"], repr(sf.landed_on(on_dojo, on_ring)))
+check("stage conditions read as words, unknown ones left out",
+      sf.stage_details(on_dojo) == ["Temperature 77 degrees F", "Weather Clear", "Time 10:30"]
+      and sf.stage_details(on_ring) == [], repr(sf.stage_details(on_dojo)))
+check("without conditions it is not stage select",
+      not any(it.selected for it in stage_select("Dojo", conditions=False)))
+
 # The narrator the mod and the watch mode share, fed readings as they arrive.
 from sfv_access import memory_narration as mn  # noqa: E402
 

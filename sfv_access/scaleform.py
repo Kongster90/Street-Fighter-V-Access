@@ -496,6 +496,72 @@ def name_for_grid(grid_and_parents: list[int], items: list[TextItem]) -> TextIte
     return best[1] if best else None
 
 
+# ----------------------------------------------------------------- stage select
+#
+# Stage select shows one stage at a time, so nothing on it is gold or otherwise
+# selected, and narration that waits for a selection to move said nothing. The
+# screen names itself by its conditions, each a label and value in one text:
+# "Weather | Clear", "Time | 10:30", "Temperature | 77°F". The stage name is
+# drawn twice beside them, and the heading twice above. Of the other texts, the
+# stage is the one nearest the conditions in the display tree.
+
+STAGE_CONDITIONS = ("Weather", "Time", "Temperature")
+STAGE_CONDITION_MARK = "|"
+
+
+def stage_condition(text: str) -> tuple[str, str] | None:
+    """("Time", "10:30") for a stage condition's text, else None."""
+    label, mark, value = text.partition(STAGE_CONDITION_MARK)
+    if not mark or label.strip() not in STAGE_CONDITIONS:
+        return None
+    return label.strip(), value.strip()
+
+
+def _tree_distance(a: tuple[int, ...], b: tuple[int, ...]) -> int | None:
+    """Steps from one object up to the nearest ancestor they share, and down to the other."""
+    at = {obj: level for level, obj in enumerate(b)}
+    for level, obj in enumerate(a):
+        if obj in at:
+            return level + at[obj]
+    return None
+
+
+def stage_on_offer(items: list[TextItem]) -> TextItem | None:
+    """The stage name on stage select, or None if this is not that screen."""
+    shown = [it for it in items if it.shown]
+    conditions = [it for it in shown if stage_condition(it.text)]
+    if len({stage_condition(it.text)[0] for it in conditions}) < 2:
+        return None
+    best = None
+    for it in shown:
+        if stage_condition(it.text) or not it.text.strip():
+            continue
+        for condition in conditions:
+            distance = _tree_distance(it.chain, condition.chain)
+            if distance is not None and (best is None or distance < best[0]):
+                best = (distance, it)
+    return best[1] if best else None
+
+
+def stage_details(items: list[TextItem]) -> list[str]:
+    """Each stage condition as a phrase, leaving out ones not yet known.
+
+    An unset condition shows as a question mark, and "Weather question mark" is
+    worse than saying nothing. The degree sign is put in words, since a screen
+    reader may say it as a symbol or not at all.
+    """
+    out = []
+    for it in items:
+        found = stage_condition(it.text) if it.shown else None
+        if not found:
+            continue
+        label, value = found
+        value = " ".join(value.replace("°", " degrees ").split())
+        if value and value not in ("?", "-"):
+            out.append(f"{label} {value}")
+    return _unique(out)
+
+
 def _compose(outer, inner):
     """Affine (sx, shx, tx, shy, sy, ty) products: apply inner, then outer."""
     a, b = outer, inner
@@ -686,6 +752,10 @@ class ScaleformText:
         self._mark_highlighted_rows(shown, groups)
         self._mark_picture_grids(shown)
         self._mark_ticks(shown)
+        if not any(it.selected for it in shown):
+            stage = stage_on_offer(shown)
+            if stage is not None:
+                stage.chosen = True
 
     def _mark_highlighted_rows(self, shown: list[TextItem], groups) -> None:
         """Mark the text on a list row whose highlight bar is on, when the list has no gold.
