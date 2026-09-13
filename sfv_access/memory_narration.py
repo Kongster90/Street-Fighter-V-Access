@@ -14,9 +14,11 @@ reader in `app.announce` stays as the fallback for when memory cannot be read.
 
 from __future__ import annotations
 
+import bisect
 import datetime as _dt
 import threading
 import time
+import traceback
 from pathlib import Path
 
 from . import scaleform
@@ -34,6 +36,7 @@ ALIVE_CHECK = 1.0      # how often to confirm the attached game is still there
 # this far behind, for whatever reason, refresh it here instead: a stalled
 # refresh once left stage select silent for the rest of a session.
 STALE_PAGES = 4.0
+EMPTY_CHECK = 2.0      # how long quick reads find nothing before a full search checks
 
 
 def phrase(texts: list[str]) -> str:
@@ -154,6 +157,9 @@ class Session:
         self._log_screens = log_screens
         self._last_logged = 0.0
         self._last_shown = None
+        self._empty_since: float | None = None
+        self._next_full_check = 0.0
+        self._use_full = False
         self.attached_now = False   # set when a read has just attached or reattached
 
     @property
@@ -205,7 +211,18 @@ class Session:
             if time.monotonic() - self.reader.pages_refreshed_at > STALE_PAGES:
                 self.reader.refresh_pages()
             items = self.reader.items(quick=True)
-        except Exception:
+            if items:
+                self._empty_since, self._use_full = None, False
+            elif self._use_full:
+                # Quick reads are still missing what a full search found: keep
+                # searching in full, slower but not silent, until they recover.
+                items = self.reader.items()
+                self._use_full = bool(items)
+            elif self._seen_text:
+                items = self._check_empty(now)
+                self._use_full = bool(items)
+        except Exception as exc:
+            self.note(f"read failed, detaching: {exc!r}\n" + traceback.format_exc())
             self.close()
             self._next_attempt = now + RETRY
             return None
@@ -217,6 +234,42 @@ class Session:
         if self._log_screens:
             self._log_screen(items, now)
         return items
+
+    def _check_empty(self, now: float) -> list:
+        """A quick read found nothing: make sure a full search agrees.
+
+        Most of the time it does, on a loading screen. Stage select after
+        character select was the exception: the mod went silent there for the
+        rest of a session while a fresh reader found its text at once. So once
+        nothing has been found for a while, search everything, speak from that
+        if it finds text, and write down why the quick read missed it.
+        """
+        if self._empty_since is None:
+            self._empty_since = now
+            return []
+        if now - self._empty_since < EMPTY_CHECK or now < self._next_full_check:
+            return []
+        self._next_full_check = now + EMPTY_CHECK
+        full = self.reader.items()
+        if not full:
+            return []
+        known = {page.base for page in self.reader._scaleform_pages or []}
+        pages = sorted(self.reader.heap_pages(), key=lambda page: page.base)
+        starts = [page.base for page in pages]
+        missing = set()
+        for it in full:
+            at = bisect.bisect_right(starts, it.docview) - 1
+            if at >= 0 and pages[at].base not in known:
+                missing.add((pages[at].base, pages[at].size))
+        age = time.monotonic() - self.reader.pages_refreshed_at
+        self.note(
+            f"quick read found nothing for {now - self._empty_since:.1f} s but a full "
+            f"search found {len(full)} texts, e.g. {[it.text for it in full[:3]]}; block "
+            f"list {age:.1f} s old with {len(known)} blocks; the text is in "
+            f"{len(missing)} blocks it lacks, sizes {sorted({hex(size) for _b, size in missing})}"
+        )
+        self.reader.refresh_pages()
+        return full
 
     # ------------------------------------------------------------------ logging
     def _write(self, text: str) -> None:

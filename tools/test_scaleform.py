@@ -562,6 +562,32 @@ check("idling on one entry says nothing more", narrate([(0, on_story), (1, on_st
       == [(0, "STORY")])
 check("phrases join without doubled punctuation",
       mn.phrase(["Are you sure?", "No", "Costume.", "Kenji"]) == "Are you sure? No. Costume. Kenji")
+# A session whose block list has missed the text's block: quick reads find
+# nothing, so after a while a full search must find it, speak from it and say
+# why in the log. The log is a scratch file; tests never write to real data.
+import tempfile  # noqa: E402
+
+scratch_log = Path(tempfile.gettempdir()) / "sfv-access-test-scaleform-log.txt"
+scratch_log.unlink(missing_ok=True)
+mn.LOG = scratch_log
+assert mn.LOG != ROOT / "snapshots" / "scaleform-log.txt"
+smem = FakeMemory()
+sroot = display_object(smem, 0, 0, 0, WHITE)
+text_field(smem, display_object(smem, sroot, 100, 100, WHITE), 0, 0, ["Dojo"])
+session = mn.Session(log_screens=False)
+session.reader = sf.ScaleformText(smem, MODULE)
+session.reader._scaleform_pages = []                     # missed the block
+session.reader.pages_refreshed_at = _time.monotonic() + 3600   # but not old
+session._next_alive_check, session._seen_text = float("inf"), True
+first = session.read(now=0.0)
+soon = session.read(now=1.0)
+later = session.read(now=2.5)
+check("a quick read that misses text is checked by a full search, and heals",
+      first == [] and soon == [] and [it.text for it in later] == ["Dojo"]
+      and [it.text for it in session.read(now=2.6)] == ["Dojo"], repr((first, soon, later)))
+check("and the log says why", "blocks it lacks" in scratch_log.read_text(encoding="utf-8"))
+scratch_log.unlink(missing_ok=True)
+
 check("the read key names a selected song with its tick",
       mn.selection_phrase(on_next) == "Bustling Side Street. Not ticked")
 

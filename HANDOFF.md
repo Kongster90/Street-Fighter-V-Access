@@ -373,8 +373,21 @@ the grid walk following a torn-down screen's pointers into garbage claiming
 thousands of children. Three defences: `children` keeps only objects whose
 parent pointer names the object asking, the walk stops after a quarter of a
 second, and `Session.read` refreshes the block list itself if the background
-one is more than four seconds old. If this recurs, the log will show a screen
-the pixel reader reads while memory logs nothing.
+one is more than four seconds old.
+
+**It recurred with those defences in place**, so the cause above is not
+proven, and a fresh reader started afterwards on the same screen still read it
+perfectly. Two diagnostics are in now. If quick reads find nothing for two
+seconds, `Session._check_empty` runs a full search; if that finds text, the
+mod speaks from full searches until quick reads recover, and
+`scaleform-log.txt` gets a line starting "quick read found nothing" saying how
+old the block list was and which block sizes held the missed text. And if a
+pass of the mod's narration loop takes over five seconds, `faulthandler`
+writes every thread's stack to `snapshots/hang-log.txt`. After the user next
+goes stage select, character select, back to stage select, read both. A
+"quick read found nothing" line means the block list is at fault; a stack
+dump means something hangs; neither, with silence, means the reading is fine
+and the narrator is not speaking it.
 
 **Reads slow as a session goes on.** Scaleform's blocks grew from 72 MB to
 119 MB over an evening of screens, and a quick read from about 40 ms to about

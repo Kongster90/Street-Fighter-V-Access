@@ -14,6 +14,7 @@ hotkey. F9 switches between memory and the screen by hand.
 from __future__ import annotations
 
 import datetime as _dt
+import faulthandler
 import re
 import threading
 import time
@@ -26,6 +27,11 @@ from .hotkeys import Hotkeys
 from .speech import Speaker
 
 SNAPSHOT_DIR = Path(__file__).resolve().parent.parent / "snapshots"
+# If one pass of the narration loop takes longer than this, what every thread
+# was doing is written to the hang log. Narration going silent with nothing in
+# the other logs to say why is what this is for.
+HANG_SECONDS = 5.0
+HANG_LOG = SNAPSHOT_DIR / "hang-log.txt"
 
 # Plain Alt, at the user's request: fewer keys to press, and Windows claims some
 # Control Alt combinations for itself. Quit is F10 and the memory or screen
@@ -280,6 +286,7 @@ class App:
         self.use_memory = True
         self.session = memory_narration.Session()
         self.narrator = memory_narration.Narrator()
+        self._hang_file = None
 
     # -------------------------------------------------------------- lifecycle
     def run(self) -> None:
@@ -315,6 +322,13 @@ class App:
             banner += " " + extra
         self.speech.say(banner)
         self.session.note(f"=== {_dt.datetime.now():%Y-%m-%d} mod started")
+        try:
+            SNAPSHOT_DIR.mkdir(exist_ok=True)
+            self._hang_file = HANG_LOG.open("a", encoding="utf-8")
+            self._hang_file.write(f"\n=== {_dt.datetime.now():%Y-%m-%d %H:%M:%S} mod started\n")
+            self._hang_file.flush()
+        except OSError:
+            self._hang_file = None
 
         threading.Thread(target=self._watch_loop, daemon=True).start()
         threading.Thread(target=self._character_select_loop, daemon=True).start()
@@ -700,6 +714,9 @@ class App:
             if not self.watching:
                 time.sleep(WATCH_INTERVAL)
                 continue
+            started = time.monotonic()
+            if self._hang_file is not None:
+                faulthandler.dump_traceback_later(HANG_SECONDS, file=self._hang_file)
             try:
                 if self.use_memory:
                     items = self.session.read()
@@ -707,13 +724,22 @@ class App:
                         self.narrator.reset()
                     if items is not None:
                         self._narrate_memory(items)
-                        time.sleep(memory_narration.POLL)
                         continue
-                time.sleep(WATCH_INTERVAL)
                 self._pixel_tick()
             except Exception as exc:
                 print(f"[watch error] {exc}")
+                self.session.note(f"watch error: {exc!r}")
                 time.sleep(0.5)
+            finally:
+                if self._hang_file is not None:
+                    faulthandler.cancel_dump_traceback_later()
+                    took = time.monotonic() - started
+                    if took > HANG_SECONDS:
+                        self._hang_file.write(
+                            f"{_dt.datetime.now():%H:%M:%S} that pass took {took:.1f} s\n")
+                        self._hang_file.flush()
+                time.sleep(memory_narration.POLL if self.use_memory and self.session.available
+                           else WATCH_INTERVAL)
 
     def _narrate_memory(self, items) -> None:
         """Speak whatever the memory narrator decides this reading lands on."""
