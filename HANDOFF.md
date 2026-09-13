@@ -389,6 +389,20 @@ goes stage select, character select, back to stage select, read both. A
 dump means something hangs; neither, with silence, means the reading is fine
 and the narrator is not speaking it.
 
+**The next run ruled out both.** Back on stage select, quick and full reads
+alike found nothing showing for 46 seconds, no hang was logged, and then the
+text reappeared after the user moved between stages and narration carried on.
+So for that time the text was either somewhere the reader does not look, or
+found and judged not showing. `Session._start_wide_sweep` now tells which:
+once per minute while blind it logs "blind: text found but not counted as
+showing" with each text grouped by reason (not attached, parent hidden,
+transparent, off the stage, placeholder), then sweeps every readable region
+of any size or protection, about 20 seconds in the background, and logs any
+DocViews showing text there, adding those regions to what is read. If stage
+select's names turn up under "parent hidden" or "transparent", the visibility
+rules are wrong for that screen; if under a wide sweep region, Scaleform had
+put them outside its usual small pages.
+
 **Reads slow as a session goes on.** Scaleform's blocks grew from 72 MB to
 119 MB over an evening of screens, and a quick read from about 40 ms to about
 110 ms, most of it the sweep and placing leftover text from closed screens.

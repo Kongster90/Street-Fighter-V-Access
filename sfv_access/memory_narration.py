@@ -37,6 +37,29 @@ ALIVE_CHECK = 1.0      # how often to confirm the attached game is still there
 # refresh once left stage select silent for the rest of a session.
 STALE_PAGES = 4.0
 EMPTY_CHECK = 2.0      # how long quick reads find nothing before a full search checks
+WIDE_SWEEP_EVERY = 60.0   # at most this often; a sweep of every readable region takes ~20 s
+MAX_EXTRA_PAGES = 32
+
+
+def _reasons(items) -> str:
+    """Why each text is not counted as showing, grouped, with examples."""
+    groups: dict[str, list[str]] = {}
+    for it in items:
+        if it.depth < 2:
+            why = "not attached"
+        elif it.hidden:
+            why = "parent hidden"
+        elif it.tint[3] <= 0.01:
+            why = "transparent"
+        elif not it.on_stage:
+            why = "off the stage"
+        elif scaleform.is_placeholder(it.text):
+            why = "placeholder"
+        else:
+            why = "other"
+        groups.setdefault(why, []).append(it.text.replace("\n", " ")[:30])
+    return "; ".join(f"{why} {len(texts)}: {scaleform._unique(texts)[:8]}"
+                     for why, texts in groups.items()) or "none"
 
 
 def phrase(texts: list[str]) -> str:
@@ -160,6 +183,8 @@ class Session:
         self._empty_since: float | None = None
         self._next_full_check = 0.0
         self._use_full = False
+        self._wide_thread: threading.Thread | None = None
+        self._next_wide_sweep = 0.0
         self.attached_now = False   # set when a read has just attached or reattached
 
     @property
@@ -252,6 +277,7 @@ class Session:
         self._next_full_check = now + EMPTY_CHECK
         full = self.reader.items()
         if not full:
+            self._start_wide_sweep(now)
             return []
         known = {page.base for page in self.reader._scaleform_pages or []}
         pages = sorted(self.reader.heap_pages(), key=lambda page: page.base)
@@ -270,6 +296,60 @@ class Session:
         )
         self.reader.refresh_pages()
         return full
+
+    def _start_wide_sweep(self, now: float) -> None:
+        """Look for text beyond the usual pages, in the background, and log it.
+
+        Both reads can find nothing while text is on screen: back on stage
+        select after character select they did for most of a minute. A loading
+        screen does the same honestly, so this is only a diagnosis unless it
+        finds text showing; then those regions are read from then on.
+        """
+        if now < self._next_wide_sweep or (self._wide_thread and self._wide_thread.is_alive()):
+            return
+        self._next_wide_sweep = now + WIDE_SWEEP_EVERY
+        reader, stop = self.reader, self._stop
+
+        def run():
+            started = time.monotonic()
+            try:
+                leftovers = [it for it in reader.items(everything=True)
+                             if it.text.strip() and not it.shown]
+                # Written straight away: if the screen's text is here but judged
+                # hidden or transparent, this says so without waiting for the sweep.
+                self.note(f"blind: text found but not counted as showing: {_reasons(leftovers)}")
+                found = reader.wide_sweep(stop)
+            except Exception as exc:
+                self.note(f"wide sweep failed: {exc!r}")
+                return
+            showing = []
+            for region, views in found:
+                texts = []
+                for view in views:
+                    text = reader.field_text(view)
+                    placed = reader.place(view) if text else None
+                    if not placed:
+                        continue
+                    chain, x, y, tint, hidden = placed
+                    item = scaleform.TextItem(text, x, y, tint, len(chain), view, chain, hidden=hidden)
+                    if item.shown:
+                        texts.append(text)
+                if texts:
+                    showing.append((region, texts))
+            self.note(
+                f"blind for {time.monotonic() - (self._empty_since or started):.0f} s: wide sweep "
+                f"took {time.monotonic() - started:.1f} s, found DocViews in {len(found)} other "
+                f"regions, {len(showing)} with text showing"
+                + "".join(f"; region {r.base:#x} size {r.size:#x} protect {r.protect:#x}: {t[:6]}"
+                          for r, t in showing)
+            )
+            for region, _texts in showing:
+                if all(page.base != region.base for page in reader.extra_pages):
+                    reader.extra_pages.append(region)
+            del reader.extra_pages[:-MAX_EXTRA_PAGES]
+
+        self._wide_thread = threading.Thread(target=run, daemon=True)
+        self._wide_thread.start()
 
     # ------------------------------------------------------------------ logging
     def _write(self, text: str) -> None:

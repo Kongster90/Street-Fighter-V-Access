@@ -599,6 +599,9 @@ class ScaleformText:
         # heard a second late.
         self._scaleform_pages = None
         self.pages_refreshed_at = 0.0   # time.monotonic() of the last walk for blocks
+        # Regions outside the usual heap pages where a wide sweep has found text
+        # showing, read alongside them from then on. See `wide_sweep`.
+        self.extra_pages: list = []
         # Picture grids under the movies showing text, found by walking the
         # display tree, which is too slow to do on every read. Only the
         # selected tile is checked each read.
@@ -641,6 +644,28 @@ class ScaleformText:
             if r.size % SCALEFORM_CHUNK == SCALEFORM_EXTRA and r.size > SCALEFORM_CHUNK
         ]
         self.pages_refreshed_at = time.monotonic()
+
+    def wide_sweep(self, stop: threading.Event | None = None) -> list[tuple]:
+        """DocViews in readable regions the usual search skips, with their regions.
+
+        The usual search reads only small read-write pages, since that is where
+        Scaleform's text has always been. Returning to stage select from
+        character select left both quick and full reads finding nothing for
+        most of a minute while the screen showed text, so this looks everywhere
+        else: every readable region of any size or protection. It takes
+        several seconds, so it is for a background thread.
+        """
+        usual = {(page.base, page.size) for page in self.heap_pages()}
+        found = []
+        for region in self.pm.regions(1 << 31):
+            if stop is not None and stop.is_set():
+                break
+            if (region.base, region.size) in usual:
+                continue
+            views = self.docviews([region])
+            if views:
+                found.append((region, views))
+        return found
 
     def heap_pages(self):
         return [
@@ -911,9 +936,9 @@ class ScaleformText:
         if quick:
             if self._scaleform_pages is None:
                 self.refresh_pages()
-            docviews = self.docviews(self._scaleform_pages)
+            docviews = self.docviews(self._scaleform_pages + self.extra_pages)
         else:
-            docviews = self.docviews()
+            docviews = self.docviews(self.heap_pages() + self.extra_pages)
         roots_before = set(self._roots)
         out = []
         for dv in docviews:
