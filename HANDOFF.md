@@ -242,11 +242,18 @@ description, and a move with no gold is named by whatever short text changed
 with it, falling back to the description. The adverts change neither, so
 they are never read. `scaleform.selection_key` and `scaleform.landed_on`.
 
-Known gaps. The clock, the date and a few title-screen fields have DocViews
-whose owners do not sit at the usual distance, so they read as leftovers.
-Only the main menu has been checked; other screens may highlight differently,
-and the dialog and voice grid, which already need their own pixel readers, are
-the likeliest to. Pixel-level things such as the health bars are untouched.
+**Do not find the owner by distance.** The first version took the text field
+to start 0x2F0 before the DocView's listener, because on the main menu it
+does. The Exit prompt, the header and the profile panel allocate the listener
+separately, sometimes megabytes away, and every one of them read as a
+leftover. The prompt's question and both answers were in memory the whole
+time. The listener keeps a pointer to its field 0x98 before itself; follow
+that. Comparing a working field's bytes against a failing one side by side is
+what showed it: the same back pointers, pointing at different distances.
+
+Known gaps. The clock sits one object further down and is not resolved. Only
+the main menu has been checked for highlighting; the dialog and the voice
+grid, which already need their own pixel readers, highlight some other way. Pixel-level things such as the health bars are untouched.
 
 ### Where UE4SS got to, and why it is not installed
 

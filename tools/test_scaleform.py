@@ -82,14 +82,26 @@ def display_object(mem, parent, x, y, tint, visible=True):
     return obj
 
 
-def text_field(mem, parent, x, y, paragraphs, tint=WHITE, visible=True):
+def text_field(mem, parent, x, y, paragraphs, tint=WHITE, visible=True, separate=False):
+    """A text field with its DocView and text.
+
+    The listener lives inside the field on the main menu, and in its own
+    allocation elsewhere, the case the first reader missed. `separate` puts it
+    after a gap of unrelated memory.
+    """
     field = display_object(mem, parent, x, y, tint, visible)
+    if separate:
+        mem.alloc(0x400)
+        listener = mem.alloc(0x200) + 0x130
+    else:
+        listener = field + 0x2F0
+    mem.put(listener + sf.LISTENER_OWNER, "<Q", field)
     docview = mem.alloc(0x100)
     styled = mem.alloc(0x40)
     array = mem.alloc(8 * max(len(paragraphs), 1))
     mem.put(docview, "<Q", MODULE + sf.DOCVIEW_VTABLE)
     mem.put(docview + sf.DOCVIEW_TEXT, "<Q", styled)
-    mem.put(docview + sf.DOCVIEW_LISTENER, "<Q", field + sf.LISTENER_IN_FIELD)
+    mem.put(docview + sf.DOCVIEW_LISTENER, "<Q", listener)
     mem.put(styled, "<Q", MODULE + sf.STYLED_TEXT_VTABLE)
     mem.put(styled + sf.TEXT_PARAGRAPHS, "<Q", array)
     mem.put(styled + sf.TEXT_PARAGRAPH_COUNT, "<Q", len(paragraphs))
@@ -110,7 +122,7 @@ arcade_item = display_object(mem, menu, 0, 0, GREY)
 training_item = display_object(mem, menu, 0, 480, GOLD)
 text_field(mem, arcade_item, 42, 19, ["ARCADE"])
 text_field(mem, training_item, 42, 19, ["TRAINING"])
-text_field(mem, root, 110, 992, ["Enjoy battle without worrying about a time limit.\r"])
+text_field(mem, root, 110, 992, ["Enjoy battle without worrying about a time limit.\r"], separate=True)
 text_field(mem, root, 100, 100, ["Two lines\r", "of text"])
 text_field(mem, menu, 0, 700, ["HIDDEN"], visible=False)
 text_field(mem, root, -1920, 0, ["Off to the side"])
@@ -121,7 +133,7 @@ orphan = text_field(mem, 0, 10, 10, ["Detached"])
 # A DocView left behind by a closed screen: its field no longer has a node.
 stale = text_field(mem, root, 5, 5, ["Close"])
 listener = mem.ptr(stale + sf.DOCVIEW_LISTENER)
-mem.put(listener - sf.LISTENER_IN_FIELD + sf.DISPLAY_RENDER_NODE, "<Q", 0)
+mem.put(mem.ptr(listener + sf.LISTENER_OWNER) + sf.DISPLAY_RENDER_NODE, "<Q", 0)
 
 reader = sf.ScaleformText(mem, MODULE)
 

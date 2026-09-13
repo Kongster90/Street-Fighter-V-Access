@@ -16,10 +16,14 @@ How it is found, all confirmed against this build:
   the sweep takes a third of a second.
 - The DocView holds the StyledText, which holds the paragraphs, each a pointer
   to UTF-16 text and a length that counts the terminator.
-- The DocView also points at a listener that lives inside the text field that
-  owns it, at a fixed distance from the field's start. From the field, every
-  display object points at its parent and at its render node, and the node's
-  data holds a 2 by 4 transform in twips and a colour transform.
+- The DocView also points at a listener, and 0x98 bytes before the listener
+  sits a pointer back to the text field that owns it. On the main menu the
+  listener happens to live inside the field, 0x2F0 in, and the first version
+  of this reader relied on that. Dialogs, the header and the profile panel
+  allocate it separately, anywhere up to megabytes away, which is why the Exit
+  prompt read as nothing. From the field, every display object points at its
+  parent and at its render node, and the node's data holds a 2 by 4 transform
+  in twips and a colour transform.
 - Multiplying the transforms and colours from the field up to the root gives
   the position on the 1920 by 1080 stage and the tint the text is drawn with.
   A highlighted menu entry is tinted by the multiplier 1.0, 0.89, 0.549, which
@@ -54,8 +58,8 @@ STYLED_TEXT_VTABLE = 0x34C8530
 
 # Field offsets, 64-bit.
 DOCVIEW_TEXT = 0x10          # StyledText*
-DOCVIEW_LISTENER = 0x20      # listener embedded in the owning text field
-LISTENER_IN_FIELD = 0x2F0    # where that listener sits inside the field
+DOCVIEW_LISTENER = 0x20      # listener belonging to the owning text field
+LISTENER_OWNER = -0x98       # pointer to that field, relative to the listener
 TEXT_PARAGRAPHS = 0x18       # array of Paragraph*
 TEXT_PARAGRAPH_COUNT = 0x20
 DISPLAY_PARENT = 0x38
@@ -242,9 +246,9 @@ class ScaleformText:
     def place(self, docview: int):
         """Depth, visibility, stage position and tint of a DocView's field."""
         listener = self.pm.ptr(docview + DOCVIEW_LISTENER)
-        if not listener:
+        obj = self.pm.ptr(listener + LISTENER_OWNER) if listener else None
+        if not obj:
             return None
-        obj = listener - LISTENER_IN_FIELD
         chain = []
         seen = set()
         while obj and obj not in seen and len(chain) < MAX_DEPTH:
