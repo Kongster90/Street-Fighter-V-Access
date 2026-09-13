@@ -32,8 +32,8 @@ names.json
 # your own with Control Alt S.
 snapshots/
 
-# Third-party libraries, each with its own licence. Fetch them yourself:
-# Tolk from github.com/dkager/tolk, the NVDA controller client from NV Access.
+# Speech libraries from before the move to Prism, which may still sit in an
+# older checkout. Nothing loads them now.
 Tolk.dll
 TolkDotNet.dll
 nvdaControllerClient*.dll

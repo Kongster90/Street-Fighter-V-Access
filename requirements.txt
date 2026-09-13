@@ -1,7 +1,7 @@
-accessible_output2==0.17
 bettercam==1.0.0
 numpy>=2.0
 pillow>=11.0
+prismatoid==0.18.2
 pywin32>=311
 winrt-Windows.Foundation==3.2.1
 winrt-Windows.Foundation.Collections==3.2.1

@@ -48,7 +48,10 @@ Used where the screen cannot help, which today means character select.
 - Character select reports both fighters, costume and colour, read from memory,
   with all 46 characters named.
 - Health, V-Trigger and Critical Art on a hotkey during a match.
-- Speech through Tolk to NVDA, with fallbacks.
+- Speech through Prism to NVDA, falling back to Windows voices. Prism puts COM
+  into a single-threaded apartment on whichever thread creates it, as Tolk did
+  before it, so speech must stay confined to its own thread or screen capture
+  breaks.
 
 ## What a session in play actually fixed
 

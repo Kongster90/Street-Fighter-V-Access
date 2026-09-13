@@ -11,9 +11,9 @@ Windows program, none of it exists as a window, a control, or an accessibility
 object, so NVDA sees one blank rectangle with nothing inside it to read.
 
 This is worth being precise about, because it is easy to expect more of the
-screen-reader libraries than they can give. Tolk and the NVDA controller client
-are output only. A program hands them a string and they make the screen reader
-say it. Neither one can inspect another application, hook into it, or discover
+screen-reader libraries than they can give. Prism, which this uses, is output
+only. A program hands it a string and it makes the screen reader say it. It
+cannot inspect another application, hook into it, or discover
 what it is displaying. They solve the speaking half of the problem, which was
 never the hard half. Finding out what the game is showing is entirely up to us,
 and there are only four ways to do it: read the pixels, measure the pixels,
@@ -124,14 +124,14 @@ what tells a health bar apart from a picture of a fighter.
 ## Requirements
 
 - Windows 10 or 11 with the English OCR language pack, present by default
-- NVDA running, though Tolk falls back to SAPI 5 on its own
+- NVDA running, though speech falls back to Windows voices on its own
 - Python 3.14, already set up in `.venv`
 
-Speech backends are tried in order: Tolk, then the NVDA controller client
-directly, then accessible_output2, then SAPI 5. `Tolk.dll` and
-`nvdaControllerClient64.dll` in this folder are picked up automatically, and
-both must be the 64-bit builds to match Python. A mismatch is reported by name
-at startup rather than failing silently.
+Speech goes through [Prism](https://github.com/ethindp/prism), installed by pip
+as `prismatoid`. It picks the best output available: a running screen reader
+first, NVDA among them, then Windows OneCore voices, then SAPI 5. It talks to
+NVDA directly, so no DLLs are needed beside `run.py`. If the screen reader it
+chose exits while the tool is running, the next announcement picks again.
 
 ## Running it
 

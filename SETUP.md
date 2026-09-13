@@ -18,15 +18,10 @@ python -m venv .venv
 
 ## 2. A screen reader to speak through
 
-NVDA is what this was built against. Speech backends are tried in order: Tolk,
-then the NVDA controller client, then accessible_output2, which pip already
-installed and which works on its own. So this step is optional.
-
-For Tolk, take the **x64** build from
-[github.com/dkager/tolk](https://github.com/dkager/tolk) and drop `Tolk.dll`
-beside `run.py`, along with `nvdaControllerClient64.dll` from NV Access. Both
-must be 64-bit to match Python; a 32-bit one is reported by name at startup
-rather than failing quietly.
+NVDA is what this was built against. There is nothing to fetch: speech goes
+through [Prism](https://github.com/ethindp/prism), which pip installed as
+`prismatoid`. It finds NVDA or another running screen reader by itself and
+falls back to the Windows voices when there is none.
 
 ## 3. The game's own text
 
