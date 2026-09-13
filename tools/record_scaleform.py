@@ -8,10 +8,13 @@ since a selection can be marked on a picture that holds no text at all. A
 small screenshot is saved with each record while the game is in front, so
 which entry was really selected can be checked by eye afterwards.
 
-A record is written whenever what is drawn changes, at most every 0.3
-seconds. It speaks when ready and stops on Control Alt Q, rather than
-guessing when you are done; the prompt work showed that recorders which
-decided in advance what to keep, or when to stop, caught nothing useful.
+A record is written whenever the text changes or anything in the display
+tree is switched on or off or changes brightness, at most every 0.3 seconds.
+Watching the text alone missed ticking a song in the menu music list, which
+changes only a picture. It speaks when ready and stops on Control Alt Q,
+rather than guessing when you are done; the prompt work showed that
+recorders which decided in advance what to keep, or when to stop, caught
+nothing useful.
 
     python tools/record_scaleform.py [name]
 
@@ -114,12 +117,18 @@ def main() -> None:
                 print(f"read failed: {exc}")
                 time.sleep(1)
                 continue
-            sig = json.dumps([
-                (it.text, round(it.x), round(it.y), [round(t, 2) for t in it.tint], it.hidden, it.depth)
-                for it in items
-            ])
             now = time.monotonic()
-            if sig == last_sig or now - last_write < MIN_GAP:
+            if now - last_write < MIN_GAP:
+                time.sleep(0.05)
+                continue
+            tree = walk_tree(reader, {it.chain[-1] for it in items if it.chain and it.shown})
+            sig = json.dumps([
+                [(it.text, round(it.x), round(it.y), [round(t, 2) for t in it.tint], it.hidden, it.depth)
+                 for it in items],
+                sorted((k, n["flags"], [round(c, 1) for c in n["cx"]] if n["cx"] else None)
+                       for k, n in tree.items()),
+            ])
+            if sig == last_sig:
                 time.sleep(0.05)
                 continue
             last_sig, last_write = sig, now
@@ -137,8 +146,7 @@ def main() -> None:
                     for it in items
                 ],
                 "objects": {str(k): v for k, v in objects.items()},
-                "tree": {str(k): v for k, v in
-                         walk_tree(reader, {it.chain[-1] for it in items if it.chain and it.shown}).items()},
+                "tree": {str(k): v for k, v in tree.items()},
             }
             win = game.find_window()
             if win is not None and win.is_foreground:
