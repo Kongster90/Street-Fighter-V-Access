@@ -3,8 +3,10 @@
 For working out how a screen marks its selection when the reader cannot tell.
 Every text field is kept whether or not the reader counts it as shown, with
 its whole owner chain: each object's child count, render node data and first
-bytes. A small screenshot is saved with each record while the game is in
-front, so which entry was really selected can be checked by eye afterwards.
+bytes. The whole display tree under the movies showing text is kept too,
+since a selection can be marked on a picture that holds no text at all. A
+small screenshot is saved with each record while the game is in front, so
+which entry was really selected can be checked by eye afterwards.
 
 A record is written whenever what is drawn changes, at most every 0.3
 seconds. It speaks when ready and stops on Control Alt Q, rather than
@@ -37,6 +39,35 @@ from sfv_access.speech import Speaker  # noqa: E402
 MIN_GAP = 0.3
 OBJECT_BYTES = 0x100
 NODE_BYTES = 0xC0
+TREE_LIMIT = 8000
+
+
+def walk_tree(reader: scaleform.ScaleformText, roots) -> dict:
+    """Every display object under the movie roots, text or not.
+
+    Pictures such as the stage tiles hold no text, so they never appear in a
+    text field's chain; walking down through the child arrays is the only
+    way to see them. Each node keeps its children, its own transform
+    translation in pixels, its own colour multiplier and flag word.
+    """
+    nodes = {}
+    stack = list(roots)
+    while stack and len(nodes) < TREE_LIMIT:
+        obj = stack.pop()
+        if obj in nodes:
+            continue
+        kids = reader.children(obj)
+        node = reader._node(obj)
+        nodes[obj] = {
+            "vt": (reader.pm.ptr(obj) or 0) - reader.module_base,
+            "kids": kids,
+            "t": [node[0][2] / scaleform.TWIPS_PER_PIXEL, node[0][5] / scaleform.TWIPS_PER_PIXEL] if node else None,
+            "s": [node[0][0], node[0][4]] if node else None,
+            "cx": list(node[1]) if node else None,
+            "flags": node[2] if node else None,
+        }
+        stack.extend(k for k in kids if k not in nodes)
+    return nodes
 
 
 def describe_object(reader: scaleform.ScaleformText, obj: int) -> dict:
@@ -105,6 +136,8 @@ def main() -> None:
                     for it in items
                 ],
                 "objects": {str(k): v for k, v in objects.items()},
+                "tree": {str(k): v for k, v in
+                         walk_tree(reader, {it.chain[-1] for it in items if it.chain and it.shown}).items()},
             }
             win = game.find_window()
             if win is not None and win.is_foreground:

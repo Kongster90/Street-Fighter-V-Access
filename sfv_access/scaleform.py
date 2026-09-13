@@ -75,7 +75,9 @@ TEXT_PARAGRAPHS = 0x18       # array of Paragraph*
 TEXT_PARAGRAPH_COUNT = 0x20
 DISPLAY_PARENT = 0x38
 DISPLAY_RENDER_NODE = 0x48
-DISPLAY_CHILD_COUNT = 0xE0   # beside the child array at 0xD8
+DISPLAY_CHILDREN = 0xD8      # array of children, an object pointer per entry
+DISPLAY_CHILD_COUNT = 0xE0
+DISPLAY_CHILD_STRIDE = 16
 RENDER_NODE_DATA = 0x10
 NODE_FLAGS = 0x0A            # u16; bit 0 set while visible, for parents at least
 NODE_MATRIX = 0x10           # 2 by 4 floats: sx, shx, 0, tx / shy, sy, 0, ty
@@ -134,6 +136,7 @@ SCALEFORM_EXTRA = 0x1000
 MAX_PARAGRAPHS = 512
 MAX_PARAGRAPH_CHARS = 4096
 MAX_DEPTH = 40
+MAX_CHILDREN = 4096
 
 
 @dataclass
@@ -380,6 +383,18 @@ class ScaleformText:
         hidden = any(not flags & NODE_VISIBLE for _m, _cx, flags in nodes[1:])
         x, y = world[2] / TWIPS_PER_PIXEL, world[5] / TWIPS_PER_PIXEL
         return tuple(chain), x, y, tuple(tint), hidden
+
+    def children(self, obj: int) -> list[int]:
+        """The display objects directly inside `obj`."""
+        count = self.pm.u32(obj + DISPLAY_CHILD_COUNT) or 0
+        data = self.pm.ptr(obj + DISPLAY_CHILDREN)
+        if not data or not 0 < count <= MAX_CHILDREN:
+            return []
+        raw = self.pm.read(data, count * DISPLAY_CHILD_STRIDE)
+        if not raw:
+            return []
+        entries = (struct.unpack_from("<Q", raw, i * DISPLAY_CHILD_STRIDE)[0] for i in range(count))
+        return [obj for obj in entries if obj]
 
     # ------------------------------------------------------------- selection
     def mark_choices(self, items: list[TextItem]) -> None:
