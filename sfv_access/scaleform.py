@@ -1017,7 +1017,7 @@ def trial_restarted(before: list[TextItem], after: list[TextItem]) -> bool:
 #
 # The wording is the user's. "then" is not said, only the comma where the arrow
 # was; nor is "(STANDING)", since a button with no direction before it is
-# standing already.
+# standing already. "(CROUCH)" is said "down plus", "(JUMP)" "jump".
 
 DIRECTION_WORDS = {"1": "down back", "2": "down", "3": "down forward", "4": "back", "5": "neutral",
                    "6": "forward", "7": "up back", "8": "up", "9": "up forward"}
@@ -1025,7 +1025,13 @@ MOTION_WORDS = {"236": "quarter circle forward", "214": "quarter circle back",
                 "41236": "half circle forward", "63214": "half circle back"}
 STRENGTH_WORDS = {"l": "light", "m": "medium", "h": "heavy"}
 JOINER_WORDS = {"plus": "plus", "next": ""}
-UNSAID_TEXT = re.compile(r"\(\s*STANDING\s*\)", re.IGNORECASE)
+# The game's own words before a button, as the user wants them said: standing
+# is left out, crouch is down plus, jump stays jump.
+STANCE_WORDS = (
+    (re.compile(r"\(\s*STANDING\s*\)", re.IGNORECASE), ""),
+    (re.compile(r"\(\s*CROUCH(ING)?\s*\)", re.IGNORECASE), "down plus"),
+    (re.compile(r"\(\s*JUMP(ING)?\s*\)", re.IGNORECASE), "jump"),
+)
 
 
 def input_words(name: str) -> str | None:
@@ -1056,8 +1062,8 @@ def describe_inputs(pieces: list[tuple[str, str]]) -> str:
     dropped, since the words already say it. The notation is the user's own
     example: "heavy punch, quarter circle forward plus kick kick, down, down
     plus heavy punch", so no comma before plus, a plain button pressed twice
-    is said twice, the arrow meaning then is only a comma, and "(STANDING)"
-    is left out.
+    is said twice, the arrow meaning then is only a comma, "(STANDING)" is
+    left out, "(CROUCH)" is "down plus" and "(JUMP)" is "jump".
     """
     # Each token is [kind, words, name, count]: kind "text", "input" or "joiner".
     tokens: list[list] = []
@@ -1077,7 +1083,8 @@ def describe_inputs(pieces: list[tuple[str, str]]) -> str:
     out, previous, comma = "", None, False
     for kind, said, name, count in tokens:
         if kind == "text":
-            said = UNSAID_TEXT.sub("", said)
+            for pattern, words in STANCE_WORDS:
+                said = pattern.sub(words, said)
         said = " ".join(said.split())
         if name == "next":
             comma = True

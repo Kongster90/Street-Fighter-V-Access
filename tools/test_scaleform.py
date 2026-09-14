@@ -1032,8 +1032,13 @@ check("combos read in the user's own notation",
 linked = sf.describe_inputs([("text", "(CROUCH) M"), ("picture", "punch_m"), ("picture", "next"),
                              ("text", "(JUMP) H"), ("picture", "punch_h"), ("picture", "next"),
                              ("picture", "punch"), ("picture", "next"), ("picture", "punch")])
-check("the arrow meaning then is only a comma, whatever follows it",
-      linked == "(CROUCH) medium punch, (JUMP) heavy punch, punch, punch", repr(linked))
+check("the arrow meaning then is only a comma, crouch is down plus and jump stays jump",
+      linked == "down plus medium punch, jump heavy punch, punch, punch", repr(linked))
+logged_trial = ", ".join(sf.describe_inputs(step) for step in (
+    [("text", "(JUMP) H"), ("picture", "punch_h")], [("text", "(CROUCH) H"), ("picture", "punch_h")],
+    [("text", " M"), ("picture", "punch_m")], [("text", " H"), ("picture", "punch_h")]))
+check("the second trial logged, '(JUMP) H', '(CROUCH) H', ' M', ' H', in the user's words",
+      logged_trial == "jump heavy punch, down plus heavy punch, medium punch, heavy punch", repr(logged_trial))
 check("a picture with no words is left as the game's space, and noted",
       preader.unknown_pictures == {"button_start"}, repr(preader.unknown_pictures))
 RED = (1.0, 0.4, 0.3, 0.5)

@@ -620,8 +620,10 @@ kick kick, down, down plus heavy punch". No comma before plus, a plain
 button pressed twice is said twice, a trial's steps are joined by commas
 without numbers, the arrow meaning then is only a comma, and "(STANDING)"
 is dropped (a button with no direction before it is standing already, the
-user's reasoning). "(CROUCH)" and "(JUMP)" are still said as the game
-writes them; ask before changing them. Other cmd_ digits are
+user's reasoning). "(CROUCH)" is said "down plus" and "(JUMP)" "jump", also
+the user's choice (`STANCE_WORDS`); the Zeku trial logged as "(JUMP) H",
+"(CROUCH) H", " M", " H" reads "jump heavy punch, down plus heavy punch,
+medium punch, heavy punch". Other cmd_ digits are
 spelled as directions and 41236/63214 named; punch_l, kick_l/m/h are
 guessed by pattern and unseen. Unknown picture names stay spaces and are
 logged once each as "pictures in text with no words: [...]", which is the
