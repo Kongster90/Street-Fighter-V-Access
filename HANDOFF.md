@@ -660,6 +660,19 @@ stay between directions and at the arrow meaning then. The Icon Info page is a l
 icons that are not text pictures, so only its descriptions show ("Hold the
 down button") and one is taken for a selection; not handled.
 
+**Extra Battle's event panel.** Entering Extra Battle in Challenges puts the
+cursor on BEGIN BATTLE beside one event's panel, and only BEGIN BATTLE was
+said. The panel (recognised by "PARTICIPATION FEE (FM)" and "NO. OF
+REMAINING PLAYS", their common ancestor being the panel) holds the title at
+the top, label and value rows on one line each (START, DEADLINE with "(19:55
+remaining)", REWARD whose reward is a picture, the fee, remaining plays), a
+description whose paragraphs start with a heading line ("Difficulty" /
+"Easy", "Clear Reward" / "\"Forest\" Gem, 100 EXP"), and "Clear Conditions:
+Win the battle!". `extra_battle_details` turns it into sentences; the
+narrator says the brief form (title, difficulty, clear conditions) once
+before BEGIN BATTLE on arriving, and Alt R says all of it. Read live on
+2026-09-14; not yet heard.
+
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
 right) read from the screen before memory took over, and never from memory:

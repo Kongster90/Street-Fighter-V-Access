@@ -150,6 +150,8 @@ class Narrator:
         self.summary_since = 0.0
         self.summary_held: list[str] = []
         self.restarted_at = float("-inf")
+        # An Extra Battle's short introduction, said once as BEGIN BATTLE is reached.
+        self.extra_battle_said = ""
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
@@ -206,6 +208,14 @@ class Narrator:
                     parts = None
         elif (self.summary_said or self.summary_held) and now - self.summary_seen_at > GROUP_MEMORY:
             self.summary_said, self.summary_held = "", []
+
+        intro = phrase(scaleform.extra_battle_details(items, brief=True))
+        if not intro:
+            self.extra_battle_said = ""
+        elif (parts and intro != self.extra_battle_said
+              and scaleform.EXTRA_BATTLE_BUTTON in (p.strip() for p in parts)):
+            self.extra_battle_said = intro
+            parts = [intro] + parts
 
         said = phrase(parts or [])
         if said and said != self.said:

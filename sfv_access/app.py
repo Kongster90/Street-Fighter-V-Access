@@ -399,7 +399,7 @@ class App:
         if items is not None:
             said = memory_narration.selection_phrase(items)
             foot = scaleform.footer(items)
-            story = scaleform.path_story(items)
+            story = scaleform.path_story(items) or scaleform.extra_battle_details(items)
             if story:
                 # Path select's description line is the same for every path;
                 # the story is what the user asked to hear.

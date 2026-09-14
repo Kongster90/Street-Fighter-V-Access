@@ -1135,6 +1135,77 @@ def describe_inputs(pieces: list[tuple[str, str]]) -> str:
     return out
 
 
+# ---------------------------------------------------------------- extra battle
+#
+# Entering Extra Battle opens one event's panel beside BEGIN BATTLE, the only
+# thing selected: its title, START and DEADLINE with the time remaining,
+# REWARD (a picture), PARTICIPATION FEE (FM) and NO. OF REMAINING PLAYS with
+# their values on the same line, a description whose paragraphs begin with a
+# heading line ("Difficulty", "Easy"; "Clear Reward", "\"Forest\" Gem, 100
+# EXP"), and "Clear Conditions: Win the battle!". Only BEGIN BATTLE was said.
+# Arriving now says the title, difficulty and clear conditions first; the read
+# key says the rest.
+
+EXTRA_BATTLE_LABELS = ("PARTICIPATION FEE (FM)", "NO. OF REMAINING PLAYS")
+EXTRA_BATTLE_BUTTON = "BEGIN BATTLE"
+HEADING_MAX = 40
+
+
+def _extra_battle_panel(shown: list[TextItem]) -> int | None:
+    labels = [it for it in shown if it.text.strip() in EXTRA_BATTLE_LABELS and it.chain]
+    if len({it.text.strip() for it in labels}) != len(EXTRA_BATTLE_LABELS):
+        return None
+    common = set(labels[0].chain)
+    for it in labels[1:]:
+        common &= set(it.chain)
+    return next((obj for obj in labels[0].chain[1:] if obj in common), None)
+
+
+def _paragraph_sentences(text: str) -> list[str]:
+    """A description's paragraphs as sentences, a heading line joined to what follows it."""
+    out = []
+    for block in re.split(r"\n\s*\n", text.strip()):
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        if not lines:
+            continue
+        head = lines[0]
+        if len(lines) > 1 and len(head) <= HEADING_MAX and ":" not in head and head[-1] not in ".!?)":
+            out.append(f"{head}: {', '.join(lines[1:])}")
+        else:
+            out.extend(lines)
+    return out
+
+
+def extra_battle_details(items: list[TextItem], brief: bool = False) -> list[str]:
+    """An Extra Battle event's panel as sentences, in reading order; `brief` for arriving.
+
+    Brief is the title, difficulty and clear conditions. A label with no text
+    beside it, REWARD whose reward is a picture, is left out.
+    """
+    shown = [it for it in items if it.shown]
+    panel = _extra_battle_panel(shown)
+    if panel is None:
+        return []
+    inside = [it for it in shown if panel in it.chain and it.text.strip()]
+    rows: dict[int, list[TextItem]] = defaultdict(list)
+    for it in inside:
+        rows[round(it.y)].append(it)
+    sentences = []
+    for y in sorted(rows):
+        row = sorted(rows[y], key=lambda it: it.x)
+        if len(row) == 1 and "\n" in row[0].text:
+            sentences += _paragraph_sentences(row[0].text)
+        elif len(row) > 1:
+            sentences.append(f"{row[0].text.strip()}: {' '.join(it.text.strip() for it in row[1:])}")
+        elif not sentences or ":" in row[0].text or len(row[0].text.strip()) > HEADING_MAX:
+            sentences.append(" ".join(row[0].text.split()))
+    if not brief:
+        return sentences
+    wanted = [sentences[0]] if sentences else []
+    wanted += [s for s in sentences[1:] if s.startswith(("Difficulty", "Clear Conditions"))]
+    return wanted
+
+
 PATH_STORY_MIN = 60
 
 
