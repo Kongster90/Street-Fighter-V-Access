@@ -412,6 +412,11 @@ def tick_state(children, x_of, chain) -> bool | None:
 
 GRID_MIN_TILES = 4
 SHORT_LIST_ROWS = 2   # a list's highlight bar is read from this many rows, strictly below four
+# The pause menu's Command List, recognised by its note, and its move rows:
+# sixteen parts in play, each part a background and a holder.
+COMMAND_LIST_NOTE = "All commands assume the character is facing right."
+MOVE_ROW_MIN_PARTS = 8
+MOVE_ROW_PART_CHILDREN = 2
 GRID_SEARCH_LIMIT = 6000
 # The walk runs on the thread that keeps the block list current, so it must not
 # run long. While a screen is torn down its objects can point into garbage, and
@@ -1481,6 +1486,7 @@ class ScaleformText:
                 continue
             self._mark_by_brightness(container, slots)
         self._mark_highlighted_rows(shown, groups)
+        self._mark_single_move(shown, groups)
         self._mark_picture_grids(shown)
         mark_fighters(shown)
         mark_results(shown)
@@ -1514,6 +1520,42 @@ class ScaleformText:
                 continue
             for it in shown:
                 if row in it.chain:
+                    it.chosen = True
+
+    def _mark_single_move(self, shown: list[TextItem], groups) -> None:
+        """The only move in a Command List section, which nothing else can mark.
+
+        With two moves or more the row the cursor is on shows one part the
+        others hide. With one there is nothing to compare, so on the Command
+        List, and only while nothing else there is selected, a list whose text
+        all sits in one move row, many parts each a background and a holder,
+        is taken as the selection: the one move is the one the cursor is on.
+        """
+        note = next((it for it in shown if it.text.strip() == COMMAND_LIST_NOTE and it.chain), None)
+        if note is None:
+            return
+        # Only the Command List's own movie: a trial's step layers behind the
+        # pause menu are still marked at this point, and cleared later.
+        movie = note.chain[-1]
+        if any(it.chosen for it in shown if it.chain and it.chain[-1] == movie):
+            return
+        kids = _remembering(self.children)
+        best = None
+        for container, slots in groups.items():
+            if len(slots) != 1:
+                continue
+            (row, held), = slots.items()
+            if len(held) < 2 or (best is not None and len(held) >= len(best[1])):
+                continue
+            parts = kids(row)
+            if len(parts) < MOVE_ROW_MIN_PARTS or any(len(kids(p)) != MOVE_ROW_PART_CHILDREN for p in parts):
+                continue
+            if any(len(kids(other)) >= MOVE_ROW_MIN_PARTS for other in kids(container) if other != row):
+                continue
+            best = (row, held)
+        if best is not None:
+            for it, _level in best[1]:
+                if not it.highlighted:
                     it.chosen = True
 
     def _mark_ticks(self, shown: list[TextItem]) -> None:

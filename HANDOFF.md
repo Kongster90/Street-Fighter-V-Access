@@ -644,7 +644,14 @@ read too, but only when exactly one part differs in visibility across the
 rows and it is shown on exactly one; the three recordings give no marks
 under that rule. Checked live on Normal Throw that MIKOSHI's row is the one
 marked; a screenshot to confirm the cursor was on it could not be taken, the
-game being behind. A section of one move is still silent. Also buttons drawn
+game being behind. A section of one move (Unique Attacks: NOUTEN WARI) has
+nothing to compare, so `_mark_single_move` takes it: only while the note "All
+commands assume the character is facing right." shows and nothing in that
+movie is chosen, a list whose text all sits in one row of eight parts or
+more, each part a background and a holder, with no other such row beside
+it. Read live: "NOUTEN WARI. forward plus heavy punch". A trial's step
+layers behind the pause menu are still marked at that point in the pass,
+hence the check within the note's movie only. Also buttons drawn
 side by side are pressed together: the same button is said twice ("punch
 punch") and different ones get plus between them ("heavy punch plus heavy
 kick", the throw "light punch plus light kick"), from the user's example

@@ -540,6 +540,45 @@ emptied = reader_c.items()
 check("a list whose rows are empty mid-scroll is not named after its tab",
       not any(it.selected for it in emptied), repr([it.text for it in emptied if it.selected]))
 
+def command_list_section(moves=(("NOUTEN WARI", "forward plus heavy punch"),), note=True):
+    """A Command List section as read live: a list holding a hidden cursor and a
+    row per move, each row sixteen parts of a background and a holder, the
+    move's name and command in two of the holders."""
+    mem = FakeMemory(size=0x41000)
+    movie = display_object(mem, 0, 0, 0, WHITE)
+    panel = display_object(mem, movie, 0, 0, WHITE)
+    if note:
+        text_field(mem, display_object(mem, panel, 317, 794, WHITE), 0, 0, [sf.COMMAND_LIST_NOTE])
+    listing = display_object(mem, panel, 447, 290, WHITE)
+    cursor = display_object(mem, listing, 0, 0, WHITE, flags=0)
+    set_children(mem, cursor, [display_object(mem, cursor, 0, 0, WHITE)])
+    rows = []
+    for r, (name, command) in enumerate(moves):
+        row = display_object(mem, listing, 0, 126 * r, WHITE)
+        parts = []
+        for p in range(16):
+            part = display_object(mem, row, 0, 43 * (p - 13) if p >= 13 else 0, WHITE)
+            background = display_object(mem, part, 0, 0, WHITE, flags=0)
+            holder = display_object(mem, part, 0, 0, WHITE)
+            if p in (13, 14):
+                field = text_field(mem, holder, 0, 0, [name if p == 13 else command])
+                set_children(mem, holder, [mem.ptr(mem.ptr(field + sf.DOCVIEW_LISTENER) + sf.LISTENER_OWNER)])
+            set_children(mem, part, [background, holder])
+            parts.append(part)
+        set_children(mem, row, parts)
+        rows.append(row)
+    set_children(mem, listing, [cursor] + rows)
+    set_children(mem, panel, [listing])
+    set_children(mem, movie, [panel])
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+single = command_list_section()
+check("a Command List section of one move reads that move",
+      [it.text for it in single if it.selected] == ["NOUTEN WARI", "forward plus heavy punch"],
+      repr([it.text for it in single if it.selected]))
+check("but only on the Command List", not any(it.selected for it in command_list_section(note=False)))
+
 # Stage select, as logged: nothing selected, the heading drawn above, the stage
 # name drawn twice, and conditions each a label and value in one text.
 def stage_select(stage, temperature="77°F", weather="Clear", time_of_day="10:30", conditions=True,
