@@ -594,8 +594,8 @@ pause menu shows no notice, so a highlighted Try Again vanishing counts too
 (closing the pause menu with Try Again highlighted will also reread). A
 replay of the 23:15 to 23:21 session gave one reread per notice. Display
 Commands draws most inputs as button pictures with no text: "(STANDING) M
-H" and steps made only of pictures are absent, so its numbering skips them;
-Display Move Names gives every step. Not yet heard.
+H" and steps made only of pictures are absent; that is now solved, see the
+next section. Confirmed in play on 2026-09-14 in both displays.
 
 **Pictures inside text are named.** The command display's pictures are
 inline images in the text field, each in place of a space character, not
@@ -624,8 +624,12 @@ user's reasoning). "(CROUCH)" is said "down plus" and "(JUMP)" "jump", also
 the user's choice (`STANCE_WORDS`); the Zeku trial logged as "(JUMP) H",
 "(CROUCH) H", " M", " H" reads "jump heavy punch, down plus heavy punch,
 medium punch, heavy punch". Other cmd_ digits are
-spelled as directions and 41236/63214 named; punch_l, kick_l/m/h are
-guessed by pattern and unseen. Unknown picture names stay spaces and are
+spelled as directions and 41236/63214 named; kick_m and kick_h, guessed by
+pattern, read correctly in play; punch_l and kick_l are still unseen. The
+user confirmed the whole trial reading in play on 2026-09-14, rereads on
+restart included: "jump heavy kick, down plus heavy punch, quarter circle
+back plus medium kick, ...". The only unknown picture logged so far is
+button_x, a controller prompt beside "Fighter Profile", left silent. Unknown picture names stay spaces and are
 logged once each as "pictures in text with no words: [...]", which is the
 list to extend. Costs about 4 ms on a 135 ms read. The pause menu's Command
 List uses the same pictures and should now read too; not checked.
