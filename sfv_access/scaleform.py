@@ -107,6 +107,10 @@ UNAVAILABLE_GREY = 0.6
 # Labels longer than this are not answers on a button. It keeps the choice rule
 # off the banner, whose date line and title sit side by side like two buttons.
 CHOICE_TEXT_LIMIT = 24
+# A prompt's chosen button has its outline and fill as extra children, six in
+# all, with its label inside a layer, two levels under the row holding it.
+CHOSEN_BUTTON_CHILDREN = 6
+LONE_BUTTON_NESTING = 2
 # A grid's selected tile has to be this much brighter, as the sum of its red,
 # green and blue times its alpha, than the next brightest. The Favorite
 # Character grid gives 3.0 against 2.25. Its text box must also be the same
@@ -1202,7 +1206,10 @@ class ScaleformText:
             for level in range(1, len(it.chain)):
                 groups[it.chain[level]][it.chain[level - 1]].append((it, level - 1))
         for container, slots in groups.items():
-            if len(slots) < 2 or any(len(held) != 1 for held in slots.values()):
+            if len(slots) == 1:
+                self._mark_lone_button(container, slots, shown)
+                continue
+            if any(len(held) != 1 for held in slots.values()):
                 continue
             if any(len(held[0][0].text.strip()) > CHOICE_TEXT_LIMIT for held in slots.values()):
                 continue
@@ -1310,6 +1317,34 @@ class ScaleformText:
         item.chosen = True
         item.group = container
         return True
+
+    def _mark_lone_button(self, container: int, slots, shown: list[TextItem]) -> None:
+        """A notice's only button, such as Close: built as a prompt's chosen button.
+
+        The Trials notice in Challenges ("Some combos or move properties...")
+        is the Exit prompt's template with one button: a row holding one
+        button of six children, its label inside a layer, and the message
+        beside the row in the same panel. With nothing to compare it with,
+        the layers rule never looked at it, and the notice was silent. Nothing
+        in three recordings was built this way.
+        """
+        (slot, held), = slots.items()
+        if len(held) != 1:
+            return
+        item, nesting = held[0]
+        if nesting != LONE_BUTTON_NESTING or len(item.text.strip()) > CHOICE_TEXT_LIMIT:
+            return
+        if self.pm.u32(container + DISPLAY_CHILD_COUNT) != 1:
+            return
+        if self.pm.u32(slot + DISPLAY_CHILD_COUNT) != CHOSEN_BUTTON_CHILDREN:
+            return
+        at = item.chain.index(container)
+        panel = item.chain[at + 1] if at + 1 < len(item.chain) else None
+        if panel is None or not any(it is not item and panel in it.chain and container not in it.chain
+                                    for it in shown):
+            return
+        item.chosen = True
+        item.group = container
 
     def _mark_by_brightness(self, container: int, slots) -> None:
         """A grid of tiles: the one you are on is drawn brighter than the rest.

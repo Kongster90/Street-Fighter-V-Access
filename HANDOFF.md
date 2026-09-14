@@ -562,6 +562,21 @@ three modes. Replaying the Arcade recording gave exactly that sentence. The
 result screen and this share `screen_summary`, which the narrator and Alt R
 use.
 
+**Notices with one button.** Opening Trials in Challenges shows a notice,
+"Some combos or move properties in Trials and Demonstrations may be
+different from the current patched version of the game.", with one button,
+Close. It is the Exit prompt's template: the message at 0.62 grey and half
+alpha in a panel, a "wwww" placeholder, and a row holding one button of six
+children with its label inside a layer (at alpha 0.15). `_mark_by_layers`
+compares buttons, so with one it never looked and the notice was silent.
+`_mark_lone_button` takes a label two levels under a six-child button, alone
+in its row, with other text in the row's panel, as a chosen button; the
+narrator then reads the panel first, as for any prompt opening. No shown
+text in the three recordings has that shape. Read live: the message, then
+"Close". Not yet heard. The startup challenge notices ("Perform a combo 10
+time(s)!" with a Close button) are probably the same template and may read
+now too; unchecked.
+
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
 right) read from the screen before memory took over, and never from memory:

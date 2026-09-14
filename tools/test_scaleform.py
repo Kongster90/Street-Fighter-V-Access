@@ -278,6 +278,34 @@ check("the question is read even if it showed before the buttons",
 closed = [it for it in on_no if it.text == "The application will close."] + [item("  Fighter Profile", 1310, 948)]
 check("closing the prompt says nothing", sf.landed_on(on_no, closed) == [], repr(sf.landed_on(on_no, closed)))
 
+# The Trials notice in Challenges: the prompt's template with one button, Close.
+NOTICE = "Some combos or move properties in Trials and Demonstrations may be different from the current patched version of the game."
+
+
+def notice(message=NOTICE, children=6):
+    mem = FakeMemory()
+    root = display_object(mem, 0, 0, 0, WHITE)
+    text_field(mem, display_object(mem, root, 157, 199, GOLD), 0, 0, ["Trials"])
+    panel = display_object(mem, root, 0, 340, WHITE)
+    if message:
+        text_field(mem, display_object(mem, panel, 520, 100, WHITE), 0, 0, [message],
+                   tint=(0.62, 0.62, 0.62, 0.5), flags=0, separate=True)
+    text_field(mem, panel, 960, 274, ["wwwwwwwwwwwwwwwwwww"], flags=0)
+    row = display_object(mem, panel, 1161, 331, WHITE, children=1)
+    button = display_object(mem, row, 0, 0, WHITE, children=children)
+    layer = display_object(mem, button, 0, 0, WHITE)
+    text_field(mem, layer, 0, 0, ["Close"], tint=(1, 1, 1, 0.15), separate=True)
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+behind = [it for it in notice() if it.text == "Trials"]
+check("a notice's only button, built as a chosen one, is selected and reads the message first",
+      sf.landed_on(behind, notice()) == [NOTICE, "Close"], repr(sf.landed_on(behind, notice())))
+check("a lone label without a message beside it is not a notice",
+      not any(it.chosen for it in notice(message=None)))
+check("nor is one under a button without the chosen button's layers",
+      not any(it.chosen for it in notice(children=2)))
+
 # From the Training pause menu the prompt opens over a gold entry that stays gold.
 training_question = "Exit current mode and return to Main Menu. Are you sure?"
 t_open = exit_prompt(None, training_question, ("Go to Main Menu", GOLD))
