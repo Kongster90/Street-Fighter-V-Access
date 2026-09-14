@@ -781,7 +781,9 @@ combo and `TOAST_UNSAID` leaves out. `scaleform.toast` finds one; the
 narrator adds it after whatever else is said, once while it shows, and
 again if the same one returns after a second's absence (`GROUP_MEMORY`),
 clearing its repeat guard so pressing X on Special twice says it twice.
-None of the four recordings has one. Checked in tests; not yet heard. In the
+None of the four recordings has one. Confirmed in play by the user on
+2026-09-14 on the shop's Special. The Extra Battle notice's shorter brief was
+heard and approved the same day. In the
 same session the shop's Stages list said "Stage: Ring of Pride. Unavailable.
 Purchased. Unavailable": a bought stage and its "Purchased" label both in
 the 0.6 grey; not yet asked about.
