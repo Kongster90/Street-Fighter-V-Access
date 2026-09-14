@@ -711,7 +711,17 @@ What follows is roughly in order of value.
    Arcade's result screen ("CODY. REWARD. 20320") both confirmed by the user
    in play. The VS sentence was said twice once, without and then with the
    stage, which arrived a read late; `SUMMARY_SETTLE` now waits for a summary
-   to hold still for 0.4 s, not yet heard. The mod stopped by
+   to hold still for 0.4 s, not yet heard.
+
+   Open: before the final stage (SAGAT at 21:06:57) Arcade's result screen
+   shows FINAL STAGE where NEXT STAGE was, with one opponent and no choice,
+   and no card text counted as showing, so nothing was said about him; the
+   log only keeps shown text, and the leftovers were gone by the time it was
+   looked at. It now says "FINAL STAGE", and `Session._note_arcade_offer`
+   writes "arcade offer (...)" to `scaleform-log.txt` twice per visit to
+   that screen, listing every fighter's name not shown with its reason and
+   each object above it (flag word / raw alpha, "e" for empty bounds). The
+   next run to the final stage will say what hides the card. The mod stopped by
    itself that evening at 20:33 on Arcade's result screen with nothing in
    either log; if it happens again, ask whether they closed it, and look for
    a console window's last lines. `scaleform-arcade-choice` is a 541-record

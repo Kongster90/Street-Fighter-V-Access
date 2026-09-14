@@ -727,6 +727,24 @@ check("a zero alpha on a node with bounds still does",
 check("the opponent card you move to is read by its gold",
       sf.landed_on(on_poison, on_abigail) == ["ABIGAIL", "REWARD", "15070"], repr(sf.landed_on(on_poison, on_abigail)))
 
+
+def arcade_result(marker):
+    mem = FakeMemory()
+    movie = display_object(mem, 0, 0, 0, WHITE)
+    screen = display_object(mem, movie, 0, 0, WHITE)
+    text_field(mem, display_object(mem, screen, 68, 7, WHITE), 0, 0, ["RESULT"])
+    column = display_object(mem, screen, 0, 0, WHITE)
+    text_field(mem, column, 259, 156, ["PLAYER 1"])
+    text_field(mem, display_object(mem, column, 272, 231, WHITE), 0, 0, ["WIN"])
+    text_field(mem, display_object(mem, display_object(mem, 0, 0, 0, WHITE), 240, 660, WHITE), 0, 0, [marker])
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+check("Arcade's result screen before the final stage says so",
+      sf.screen_summary(arcade_result("FINAL STAGE")) == (True, "FINAL STAGE")
+      and sf.screen_summary(arcade_result("NEXT STAGE")) == (True, None),
+      repr((sf.screen_summary(arcade_result("FINAL STAGE")), sf.screen_summary(arcade_result("NEXT STAGE")))))
+
 # The VS screen before a fight, as recorded: one panel holding both names,
 # each side's V-Skill and V-TRIGGER label and value, and the stage's name.
 def versus_screen(left="ZEKU", right="ABIGAIL", heading=None, gold=False,
@@ -867,6 +885,27 @@ check("a quick read that misses text is checked by a full search, and heals",
       first == [] and soon == [] and [it.text for it in later] == ["Dojo"]
       and [it.text for it in session.read(now=2.6)] == ["Dojo"], repr((first, soon, later)))
 check("and the log says why", "blocks it lacks" in scratch_log.read_text(encoding="utf-8"))
+scratch_log.unlink(missing_ok=True)
+
+# On Arcade's result screen the log describes the opponent on offer that the
+# reader cannot see, here a name under a hidden card, twice per visit.
+amem = FakeMemory()
+aroot = display_object(amem, 0, 0, 0, WHITE)
+text_field(amem, display_object(amem, aroot, 68, 7, WHITE), 0, 0, ["RESULT"])
+text_field(amem, display_object(amem, aroot, 272, 231, WHITE), 0, 0, ["WIN"])
+text_field(amem, display_object(amem, aroot, 240, 660, WHITE), 0, 0, ["FINAL STAGE"])
+text_field(amem, display_object(amem, display_object(amem, aroot, 1146, 412, WHITE, flags=0), 46, 40, WHITE),
+           0, 0, ["SAGAT"])
+arcade_session = mn.Session(log_screens=True)
+arcade_session.reader = sf.ScaleformText(amem, MODULE)
+arcade_session.reader.pages_refreshed_at = _time.monotonic() + 3600
+arcade_session._next_alive_check, arcade_session._seen_text = float("inf"), True
+for moment in (0.0, 0.5, 2.5, 3.0):
+    arcade_session.read(now=moment)
+arcade_log = scratch_log.read_text(encoding="utf-8") if scratch_log.exists() else ""
+check("Arcade's result screen logs the hidden opponent twice, with why",
+      arcade_log.count("arcade offer (FINAL STAGE") == 2 and "NAME 'SAGAT'" in arcade_log
+      and "why parent hidden" in arcade_log and "failed" not in arcade_log, arcade_log[-400:])
 scratch_log.unlink(missing_ok=True)
 
 check("the read key names a selected song with its tick",

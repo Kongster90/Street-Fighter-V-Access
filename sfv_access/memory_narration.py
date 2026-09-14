@@ -41,29 +41,38 @@ ALIVE_CHECK = 1.0      # how often to confirm the attached game is still there
 # refresh once left stage select silent for the rest of a session.
 STALE_PAGES = 4.0
 EMPTY_CHECK = 2.0      # how long quick reads find nothing before a full search checks
+# Arcade's result screen offers the next opponent beside one of these. Two
+# opponents read as a gold menu; before the final stage, with one opponent,
+# nothing on it was shown and nothing was said. Until that screen has been
+# seen, the log describes what the reader finds there.
+ARCADE_MARKERS = ("NEXT STAGE", "FINAL STAGE")
+ARCADE_NOTE_AGAIN = 2.0
 WIDE_SWEEP_EVERY = 60.0   # at most this often; a sweep of every readable region takes ~20 s
 MAX_EXTRA_PAGES = 32
+
+
+def _reason(it) -> str:
+    """Why a text is not counted as showing."""
+    if it.depth < 2:
+        return "not attached"
+    if not it.rooted:
+        return "cut loose from its movie"
+    if it.hidden:
+        return "parent hidden"
+    if it.tint[3] <= 0.01:
+        return "transparent"
+    if not it.on_stage:
+        return "off the stage"
+    if scaleform.is_placeholder(it.text):
+        return "placeholder"
+    return "other"
 
 
 def _reasons(items) -> str:
     """Why each text is not counted as showing, grouped, with examples."""
     groups: dict[str, list[str]] = {}
     for it in items:
-        if it.depth < 2:
-            why = "not attached"
-        elif not it.rooted:
-            why = "cut loose from its movie"
-        elif it.hidden:
-            why = "parent hidden"
-        elif it.tint[3] <= 0.01:
-            why = "transparent"
-        elif not it.on_stage:
-            why = "off the stage"
-        elif scaleform.is_placeholder(it.text):
-            why = "placeholder"
-        else:
-            why = "other"
-        groups.setdefault(why, []).append(it.text.replace("\n", " ")[:30])
+        groups.setdefault(_reason(it), []).append(it.text.replace("\n", " ")[:30])
     return "; ".join(f"{why} {len(texts)}: {scaleform._unique(texts)[:8]}"
                      for why, texts in groups.items()) or "none"
 
@@ -214,6 +223,9 @@ class Session:
         self._wide_thread: threading.Thread | None = None
         self._next_wide_sweep = 0.0
         self.attached_now = False   # set when a read has just attached or reattached
+        self._arcade_marker: str | None = None
+        self._arcade_seen_at = 0.0
+        self._arcade_notes = 0
 
     @property
     def available(self) -> bool:
@@ -286,7 +298,47 @@ class Session:
         self.items = items
         if self._log_screens:
             self._log_screen(items, now)
+            try:
+                self._note_arcade_offer(items, now)
+            except Exception as exc:   # a diagnostic must never cost the narration
+                self.note(f"arcade offer: note failed: {exc!r}")
         return items
+
+    def _note_arcade_offer(self, items, now: float) -> None:
+        """On Arcade's result screen, log what the reader makes of the opponent on offer.
+
+        Twice per visit: when NEXT STAGE or FINAL STAGE appears, and a little
+        later, since the cards can arrive after it. Every fighter's name that is
+        not counted as showing is described with why, and each object above it.
+        """
+        marker = next((it for it in items if it.text.strip() in ARCADE_MARKERS), None)
+        if marker is None:
+            self._arcade_marker, self._arcade_notes = None, 0
+            return
+        if marker.text.strip() != self._arcade_marker:
+            self._arcade_marker, self._arcade_seen_at, self._arcade_notes = marker.text.strip(), now, 0
+        if self._arcade_notes >= 2 or (self._arcade_notes == 1 and now - self._arcade_seen_at < ARCADE_NOTE_AGAIN):
+            return
+        self._arcade_notes += 1
+        try:
+            every = self.reader.items(everything=True, quick=True)
+        except Exception as exc:
+            self.note(f"arcade offer: read failed: {exc!r}")
+            return
+        names = scaleform.fighter_names()
+        movie = marker.chain[-1] if marker.chain else None
+        shown = [it.text.strip() for it in items if it.text.strip() in names]
+        lines = [f"arcade offer ({marker.text.strip()}, note {self._arcade_notes}): names shown {shown}"]
+        for it in every:
+            text = it.text.strip()
+            in_movie = movie is not None and it.chain and it.chain[-1] == movie
+            if it.shown or not text or not (text in names or in_movie):
+                continue
+            lines.append(
+                f"    {'NAME ' if text in names else ''}{text[:30]!r} ({it.x:.0f},{it.y:.0f}) "
+                f"why {_reason(it)}, tint {[round(t, 2) for t in it.tint]} depth {it.depth} "
+                f"up {self.reader.chain_states(it.chain)}")
+        self.note("\n".join(lines))
 
     def _check_empty(self, now: float) -> list:
         """A quick read found nothing: make sure a full search agrees.

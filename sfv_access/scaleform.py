@@ -787,6 +787,7 @@ def result_summary(items: list[TextItem]) -> str | None:
 # the stage. The opponent is the right-hand side: player one was on the left
 # in Arcade, Versus and Training alike.
 
+ARCADE_FINAL_STAGE = "FINAL STAGE"
 VERSUS_LABELS = ("V-Skill", "V-TRIGGER")
 VERSUS_WORDS = {"V-Skill": "V-Skill", "V-TRIGGER": "V-Trigger"}
 VERSION_NUMERALS = {"I": 1, "II": 2, "III": 3}
@@ -868,10 +869,15 @@ def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
     """For screens read as one sentence rather than by what is selected.
 
     Whether this is one, and the sentence once all of it is showing: the
-    result screen after a match, and the VS screen before one.
+    result screen after a match, and the VS screen before one. Arcade's
+    result screen before the final stage offers one opponent and no choice,
+    and nothing on it was found to read, so it says "FINAL STAGE".
     """
     if on_results(items):
-        return True, result_summary(items)
+        summary = result_summary(items)
+        if summary is None and any(it.shown and it.text.strip() == ARCADE_FINAL_STAGE for it in items):
+            summary = ARCADE_FINAL_STAGE
+        return True, summary
     summary = versus_summary(items)
     return summary is not None, summary
 
@@ -1065,6 +1071,22 @@ class ScaleformText:
         rooted = nodes[-1][2] & MOVIE_ROOT_FLAGS == MOVIE_ROOT_FLAGS
         x, y = world[2] / TWIPS_PER_PIXEL, world[5] / TWIPS_PER_PIXEL
         return tuple(chain), x, y, tuple(tint), hidden, rooted
+
+    def chain_states(self, chain: tuple[int, ...]) -> str:
+        """Each object's flag word and raw alpha up a chain, "e" where its bounds are empty, for logs."""
+        states = []
+        for obj in chain:
+            entry = self.pm.ptr(obj + DISPLAY_RENDER_NODE)
+            data = self.pm.ptr(entry + RENDER_NODE_DATA) if entry else None
+            raw = self.pm.read(data, NODE_BOUNDS + 0x20) if data else None
+            if not raw:
+                states.append("-")
+                continue
+            flags = struct.unpack_from("<H", raw, NODE_FLAGS)[0]
+            alpha = struct.unpack_from("<f", raw, NODE_CXFORM + 12)[0]
+            empty = "e" if not any(struct.unpack_from("<8f", raw, NODE_BOUNDS)) else ""
+            states.append(f"{flags:x}/{alpha:.2f}{empty}")
+        return " ".join(states)
 
     def children(self, obj: int) -> list[int]:
         """The display objects directly inside `obj`.
