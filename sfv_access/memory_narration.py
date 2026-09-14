@@ -210,15 +210,23 @@ class Narrator:
             self.summary_said, self.summary_held = "", []
 
         # Screens introduced once, as their button is reached: an Extra Battle's
-        # event before BEGIN BATTLE, the Current Missions notice before Close.
+        # event before BEGIN BATTLE, a notice's list before Close. Notices
+        # follow one another with Close in the same place, so a new list with
+        # its Close still selected is introduced too, though Close did not move.
         intro, button = phrase(scaleform.extra_battle_details(items, brief=True)), scaleform.EXTRA_BATTLE_BUTTON
         if not intro:
-            intro, button = phrase(scaleform.missions_details(items, brief=True)), scaleform.MISSIONS_BUTTON
+            intro, button = phrase(scaleform.notice_details(items, brief=True)), scaleform.NOTICE_BUTTON
         if not intro:
             self.intro_said = ""
-        elif parts and intro != self.intro_said and button in (p.strip() for p in parts):
-            self.intro_said = intro
-            parts = [intro] + parts
+        elif intro != self.intro_said:
+            reached = parts and button in (p.strip() for p in parts)
+            # Only for notices: an Extra Battle's brief carries its time
+            # remaining, which would be said again each time it changed.
+            still_on = (button == scaleform.NOTICE_BUTTON and self.intro_said
+                        and any(it.selected and it.text.strip() == button for it in items))
+            if reached or still_on:
+                self.intro_said = intro
+                parts = [intro] + (parts if reached else [button])
 
         said = phrase(parts or [])
         if said and said != self.said:

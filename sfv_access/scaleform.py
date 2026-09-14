@@ -1057,8 +1057,14 @@ STANCE_WORDS = (
 
 
 # Pictures standing for a currency, said after the amount that follows them:
-# the missions notice draws "Reward: <Fight Money picture>50".
+# the Current Missions notice draws "Reward: <Fight Money picture>50".
 ICON_WORDS = {"icon_FM": "Fight Money"}
+# Pictures that need no words: each sits beside words saying the same, as the
+# EXP picture before "100 EXP" and a gem's before its name, or is a controller
+# button's picture beside the hint it belongs to. Left as the game's spaces and
+# not noted as wanting words.
+SILENT_PICTURES = {"icon_EXP", "icon_GC", "icon_Entitlement_open", "button_a", "button_x", "button_y"}
+SILENT_PICTURE_PREFIXES = ("icon_EXbattle",)
 
 
 def _icon_amounts(text: str) -> str:
@@ -1221,37 +1227,51 @@ def extra_battle_details(items: list[TextItem], brief: bool = False) -> list[str
     return wanted
 
 
-# -------------------------------------------------------------------- missions
+# ---------------------------------------------------------------- notice lists
 #
-# After logging in, the main menu opens under a notice of Current Missions: one
-# scrolling text holding every mission as a line of what to do ("Perform a
-# cross-up 10 time(s)!") and a line "DEADLINE:Sep 15, 2026, 9:00:00 PM (Days
-# left: 1) Reward: 50", a Fight Money picture before the amount, then a blank
-# line. Below it one Close button, plain white and not built as a prompt's
-# chosen button, so no rule marked it. The main menu's cursor starts on the
-# advert banner behind, which is marked, and the notice said only "UPGRADE KIT
-# AVAILABLE NOW". The title field, "Current Missions", sits at zero alpha while
-# plainly drawn, so the title is taken as known rather than read.
+# After logging in, the main menu opens under notices, one after another, each
+# a panel holding a title, one scrolling text and one Close button. The text is
+# entries separated by blank lines, each a name, perhaps a detail line, and a
+# DEADLINE line:
+#
+#   Current Missions: "Perform a cross-up 10 time(s)!", then "DEADLINE:Sep 15,
+#   2026, 9:00:00 PM (Days left: 1) Reward: 50", a Fight Money picture before
+#   the amount.
+#
+#   Currently Available Extra Battle (not completed): "[Quick & Immovable] Get
+#   the Crossover Costume! [2]", "Costume: RASHID : Airman", "DEADLINE:Sep 14,
+#   2026, 9:00:00 PM ( 4:50 remaining)", "Reward: "Forest" Gem, 100 EXP", a
+#   picture before each reward and the costume. The time left is hours and
+#   minutes as the notice was built: 4:50 before 9 PM, at 4:10 PM.
+#
+# Close is plain white, not built as a prompt's chosen button, so no rule
+# marked it, and the main menu's cursor starts on the advert banner behind,
+# which is marked: the first notice said only "UPGRADE KIT AVAILABLE NOW". The
+# title field sits at zero alpha while plainly drawn; see `_show_notice_title`.
 
-MISSIONS_TITLE = "Current Missions"
-MISSIONS_BUTTON = "Close"
-MISSION_DETAIL = re.compile(
-    r"^DEADLINE:\s*(?P<deadline>.*?)\s*\(Days left:\s*(?P<days>\d+)\)\s*Reward:\s*(?P<reward>.*?)\s*$")
-# How far above the missions text and the Close button their shared panel may be.
-MISSIONS_PANEL_LEVELS = 4
+NOTICE_BUTTON = "Close"
+NOTICE_DEADLINE = re.compile(
+    r"^DEADLINE:\s*(?P<deadline>.*?)\s*(?:\((?P<left>[^)]*)\))?\s*(?:Reward:\s*(?P<reward>.*?))?\s*$")
+NOTICE_REWARD = re.compile(r"^Reward:\s*(?P<reward>.*?)\s*$")
+NOTICE_TITLE_MAX = 80
+# How far above a notice's text and its Close button their shared panel may be.
+NOTICE_PANEL_LEVELS = 4
 MONTH_WORDS = {"Jan": "January", "Feb": "February", "Mar": "March", "Apr": "April", "Jun": "June",
                "Jul": "July", "Aug": "August", "Sep": "September", "Oct": "October", "Nov": "November",
                "Dec": "December"}
 
 
-def missions(text: str) -> list[tuple[str, str, int, str]]:
-    """Each mission in a Current Missions text: what to do, deadline, days left, reward."""
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
+def notice_entries(text: str) -> list[tuple[str, list[str], str, str, str]]:
+    """Each entry in a notice's list: its name, other lines, deadline, time left and reward."""
     out = []
-    for task, detail in zip(lines, lines[1:]):
-        m = MISSION_DETAIL.match(detail)
-        if m and not MISSION_DETAIL.match(task):
-            out.append((task, m["deadline"], int(m["days"]), m["reward"]))
+    for block in re.split(r"\n\s*\n", text):
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        deadline = next((m for m in map(NOTICE_DEADLINE.match, lines[1:]) if m), None)
+        if deadline is None:
+            continue
+        reward = deadline["reward"] or next((m["reward"] for m in map(NOTICE_REWARD.match, lines[1:]) if m), "")
+        extras = [line for line in lines[1:] if not NOTICE_DEADLINE.match(line) and not NOTICE_REWARD.match(line)]
+        out.append((lines[0], extras, deadline["deadline"], (deadline["left"] or "").strip(), reward))
     return out
 
 
@@ -1268,28 +1288,47 @@ def _spoken_date(text: str) -> str:
     return re.sub(r"\b(" + "|".join(MONTH_WORDS) + r")\b", lambda m: MONTH_WORDS[m.group()], text)
 
 
-def _missions_notice(shown: list[TextItem]) -> tuple[TextItem, TextItem] | None:
-    """The Current Missions text and its Close button, while the notice shows."""
+def _plural(count: int, word: str) -> str:
+    return f"{count} {word}{'' if count == 1 else 's'}"
+
+
+def _time_left(left: str) -> str:
+    """"Days left: 1" as "1 day left", "4:50 remaining" as "4 hours 50 minutes remaining"."""
+    days = re.fullmatch(r"Days left:\s*(\d+)", left)
+    if days:
+        return f"{_plural(int(days.group(1)), 'day')} left"
+    clock = re.fullmatch(r"(\d+):(\d\d) remaining", left)
+    if clock:
+        hours, minutes = int(clock.group(1)), int(clock.group(2))
+        parts = [_plural(hours, "hour")] if hours else []
+        if minutes or not hours:
+            parts.append(_plural(minutes, "minute"))
+        return " ".join(parts) + " remaining"
+    return left
+
+
+def _notice_list(shown: list[TextItem]) -> tuple[TextItem, TextItem] | None:
+    """A notice's list text and its Close button, while such a notice shows."""
     for text in shown:
-        if not text.chain or "DEADLINE:" not in text.text or not missions(text.text):
+        if not text.chain or "DEADLINE:" not in text.text or not notice_entries(text.text):
             continue
         for button in shown:
-            if button.text.strip() != MISSIONS_BUTTON or not button.chain:
+            if button.text.strip() != NOTICE_BUTTON or not button.chain:
                 continue
-            panel = next((obj for obj in text.chain[1:MISSIONS_PANEL_LEVELS + 1] if obj in button.chain), None)
-            if panel is not None and button.chain.index(panel) <= MISSIONS_PANEL_LEVELS:
+            panel = next((obj for obj in text.chain[1:NOTICE_PANEL_LEVELS + 1] if obj in button.chain), None)
+            if panel is not None and button.chain.index(panel) <= NOTICE_PANEL_LEVELS:
                 return text, button
     return None
 
 
-def mark_missions(shown: list[TextItem]) -> None:
-    """Close is the notice's selection, and nothing behind the notice is.
+def mark_notice(shown: list[TextItem]) -> None:
+    """Close is a notice's selection, and nothing behind the notice is.
 
     Gold behind it stays gold, as behind any prompt; only marks made by the
     rules without gold, such as the banner's, are cleared outside the
     notice's movie.
     """
-    found = _missions_notice(shown)
+    found = _notice_list(shown)
     if found is None:
         return
     text, button = found
@@ -1299,26 +1338,34 @@ def mark_missions(shown: list[TextItem]) -> None:
     button.chosen = True
 
 
-def missions_details(items: list[TextItem], brief: bool = False) -> list[str]:
-    """The Current Missions notice as sentences; `brief`, for arriving, only what each asks.
+def notice_details(items: list[TextItem], brief: bool = False) -> list[str]:
+    """A notice's title and list as sentences; `brief`, for arriving, without deadlines and rewards.
 
-    In full each mission says what to do, the days left and deadline, and the
-    reward: "Perform a cross-up 10 times! 1 day left, deadline September 15,
-    2026, 9:00 PM. Reward 50 Fight Money."
+    In full an entry says its name and any detail line, the time left and
+    deadline, and the reward: "Perform a cross-up 10 times! 1 day left,
+    deadline September 15, 2026, 9:00 PM. Reward 50 Fight Money."
     """
-    found = _missions_notice([it for it in items if it.shown])
+    shown = [it for it in items if it.shown]
+    found = _notice_list(shown)
     if found is None:
         return []
-    sentences = [MISSIONS_TITLE]
-    for task, deadline, days, reward in missions(found[0].text):
-        sentences.append(_counted(task))
+    text, button = found
+    holder = text.chain[1] if len(text.chain) > 1 else None
+    title = next((it.text.strip() for it in shown
+                  if it is not text and it is not button and holder in it.chain
+                  and 0 < len(it.text.strip()) <= NOTICE_TITLE_MAX and "\n" not in it.text.strip()), None)
+    sentences = [title] if title else []
+    for name, extras, deadline, left, reward in notice_entries(text.text):
+        sentences.append(_counted(name))
+        sentences += extras
         if brief:
             continue
-        left = f"{days} day{'' if days == 1 else 's'} left"
-        sentences.append(f"{left}, deadline {_spoken_date(deadline)}")
+        when = f"deadline {_spoken_date(deadline)}"
+        sentences.append(f"{_time_left(left)}, {when}" if left else when)
         if reward:
             sentences.append(f"Reward {reward}")
-    return sentences
+    # A picture left as the game's space doubles the space beside it.
+    return [" ".join(s.split()) for s in sentences]
 
 
 # ---------------------------------------------------------------- status lines
@@ -1566,7 +1613,8 @@ class ScaleformText:
                 pieces.append(("text", f" {ICON_WORDS[name]} {chunk[1:]}"))
                 continue
             if input_words(name) is None:
-                self.unknown_pictures.add(name)
+                if name not in SILENT_PICTURES and not name.startswith(SILENT_PICTURE_PREFIXES):
+                    self.unknown_pictures.add(name)
                 pieces.append(("text", chunk))
                 continue
             found = True
@@ -1705,7 +1753,7 @@ class ScaleformText:
         mark_results(shown)
         mark_versus(shown)
         mark_trial(shown)
-        mark_missions(shown)
+        mark_notice(shown)
         self._mark_ticks(shown)
         if not any(it.selected for it in shown):
             stage = stage_on_offer(shown)
@@ -1969,6 +2017,31 @@ class ScaleformText:
             if cards.intersection(it.chain) and only_faded(it):
                 it.tint = (it.tint[0], it.tint[1], it.tint[2], 1.0)
 
+    def _show_notice_title(self, every: list[TextItem]) -> None:
+        """Read the title of a notice list, drawn while its own field holds alpha zero.
+
+        "Current Missions" and "Currently Available Extra Battle (not
+        completed)" were plainly on screen in the screenshot, yet each field's
+        own node had alpha zero with real bounds, and nothing above it did.
+        Only while a notice list shows, and only for a one-line text beside
+        its list hidden by nothing but its own alpha.
+        """
+        found = _notice_list([it for it in every if it.shown])
+        if found is None or len(found[0].chain) < 2:
+            return
+        holder = found[0].chain[1]
+        for it in every:
+            line = it.text.strip()
+            if (it.shown or it.hidden or not it.rooted or it.depth < 2 or not it.on_stage
+                    or it.tint[3] > 0.01 or holder not in it.chain or not line or "\n" in line
+                    or len(line) > NOTICE_TITLE_MAX or is_placeholder(line)):
+                continue
+            own = self._node(it.chain[0])
+            above = [self._node(obj) for obj in it.chain[1:]]
+            if own is None or own[1][3] > 0.01 or any(node is None or node[1][3] <= 0.01 for node in above):
+                continue
+            it.tint = (it.tint[0], it.tint[1], it.tint[2], 1.0)
+
     def _show_path_select(self, every: list[TextItem]) -> None:
         """Read Arcade's path select, whose whole movie sits under a zero alpha.
 
@@ -2035,6 +2108,7 @@ class ScaleformText:
             self._show_hidden_stage_select(every)
         self._show_final_opponent(every)
         self._show_path_select(every)
+        self._show_notice_title(every)
         out = every if everything else [it for it in every if it.shown]
         self._roots = {it.chain[-1] for it in out if it.shown and it.chain}
         if not quick and self._roots != roots_before:

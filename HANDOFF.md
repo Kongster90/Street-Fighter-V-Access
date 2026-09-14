@@ -729,23 +729,36 @@ text ends "..." (at most 60 characters) a summary through `screen_summary`,
 said once it holds for `SUMMARY_SETTLE`, so only the login line is heard. No
 other logged screen had one text ending that way.
 
-**The Current Missions notice.** One text field holds every mission, each a
-line of what to do ("Perform a cross-up 10 time(s)!") and a line
-"DEADLINE:Sep 15, 2026, 9:00:00 PM (Days left: 1) Reward: 50" with an
-`icon_FM` picture before the amount, then a blank line; it scrolls. Close
-below it is plain white with no chosen-button layers, and the title field
-"Current Missions" is at zero alpha while drawn. The main menu's cursor
-starts on the advert banner behind it, which `_mark_highlighted_rows`
-marks, so the notice said "UPGRADE KIT AVAILABLE NOW". `mark_missions` finds
-the text (by `MISSION_DETAIL` lines) and a Close sharing a panel within four
-levels, marks Close, and clears non-gold marks in other movies;
-`missions_details` gives "Current Missions" and each mission, counts made
-plain ("10 times", "1 match"), and for Alt R the days left, the deadline
-with the month in full and no seconds, and the reward. The narrator's
-introduction before a button, Extra Battle's until now, takes it too:
-"Current Missions. Perform a cross-up 10 times! ... Close". `ICON_WORDS`
-says the Fight Money picture after its amount everywhere ("Reward: 50 Fight
-Money"). Checked live on the notice; not yet heard. On the main menu the
+**Notices after logging in.** Two follow each other over the main menu,
+the same template: a title, one scrolling text of entries separated by
+blank lines, and one Close. Current Missions entries are a line of what to
+do ("Perform a cross-up 10 time(s)!") and "DEADLINE:Sep 15, 2026, 9:00:00
+PM (Days left: 1) Reward: 50" with an `icon_FM` picture before the amount.
+Currently Available Extra Battle (not completed) entries are a title, a
+detail line ("Costume: RASHID : Airman", after an entitlement picture),
+"DEADLINE:Sep 14, 2026, 9:00:00 PM ( 4:50 remaining)" and "Reward: "Forest"
+Gem, 100 EXP", each reward after a picture of itself; the time remaining is
+hours and minutes as the notice was built at startup. Close is plain white
+with no chosen-button layers, and the title field is at zero alpha (its own
+node only, with bounds) while drawn; `_show_notice_title` counts it as
+showing while a notice list shows. The main menu's cursor starts on the
+advert banner behind, which `_mark_highlighted_rows` marks, so the first
+notice said "UPGRADE KIT AVAILABLE NOW" and the second the same. `mark_notice`
+finds a text with `NOTICE_DEADLINE` lines and a Close sharing a panel within
+four levels, marks Close, and clears non-gold marks in other movies.
+`notice_details` gives the title and each entry's name and detail lines,
+counts made plain ("10 times", "1 match"), and for Alt R the time left in
+words, the deadline with the month in full and no seconds, and the reward.
+The narrator's introduction before a button, Extra Battle's until now,
+takes it too, and because the second notice's Close is where the first's
+was, a new list with Close still selected is introduced without a move
+(notices only: Extra Battle's brief carries a live time remaining).
+`ICON_WORDS` says the Fight Money picture after its amount everywhere
+("Reward: 50 Fight Money"); `SILENT_PICTURES` stops pictures that sit beside
+their own words, and the controller hints, being logged as wanting words.
+The missions notice was heard correctly on 2026-09-14; the Extra Battle one
+checked live, not yet heard. Its brief repeats "[Quick & Immovable] Get the
+Crossover Costume! [2]" for each costume; the user may want that shorter. On the main menu the
 banner advert was said every fifteen seconds while idle on it in an earlier
 session ("Aug 31, 2026 - Sep 30, 2026. UPGRADE KIT AVAILABLE NOW", 13:45:31
 to 13:46:36 on 2026-09-14); not yet looked into.

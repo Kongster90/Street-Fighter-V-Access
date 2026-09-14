@@ -1191,39 +1191,71 @@ check("no Extra Battle details elsewhere", sf.extra_battle_details(on_story) == 
 
 MISSIONS_TEXT = (" Perform a cross-up 10 time(s)!\nDEADLINE:Sep 15, 2026, 9:00:00 PM (Days left: 1) Reward: 50 Fight Money\n\n"
                  " Win 1 Battle Lounge match(es)!\nDEADLINE:Sep 17, 2026, 9:00:00 PM (Days left: 3) Reward: 500 Fight Money\n\n")
+EXTRA_BATTLES_TEXT = ("[Quick & Immovable] Get the Crossover Costume! [2]\n     Costume: RASHID : Airman\n"
+                      "    DEADLINE:Sep 14, 2026, 9:00:00 PM ( 4:50 remaining)\n    Reward:  \"Forest\" Gem,  100 EXP\n\n"
+                      "Get Your Hands on Fortune Tickets!\n    DEADLINE:Sep 14, 2026, 9:00:00 PM ( 0:05 remaining)\n"
+                      "    Reward:  Fortune Tickets,  100 EXP\n\n")
 
 
-def missions_notice(notice=True):
-    """The Current Missions notice over the main menu as read live: the missions
-    text and Close under one panel in their own movie, the banner behind marked."""
+def notice(kind="missions"):
+    """A notice over the main menu as read live: its title, list and Close under
+    one panel in their own movie, the banner behind marked. None for no notice."""
     out = [sf.TextItem("UPGRADE KIT AVAILABLE NOW", 799, 452, WHITE, 7, chain=(1, 2, 3, 4, 5, 6, 7), chosen=True),
            sf.TextItem("Go to the purchase screen for content displayed in the Information section.", 110, 992,
                        WHITE, 5, chain=(8, 9, 5, 6, 7))]
-    if notice:
-        out += [sf.TextItem(MISSIONS_TEXT, 520, 440, (0.62, 0.62, 0.62, 0.5), 6, chain=(20, 21, 22, 23, 24, 25)),
+    if kind is not None:
+        title, text = {"missions": ("Current Missions", MISSIONS_TEXT),
+                       "extra": ("Currently Available Extra Battle (not completed)", EXTRA_BATTLES_TEXT)}[kind]
+        out += [sf.TextItem(text, 520, 440, (0.62, 0.62, 0.62, 0.5), 6, chain=(20, 21, 22, 23, 24, 25)),
+                sf.TextItem(title, 1483, 440, WHITE, 8, chain=(40, 41, 42, 21, 22, 23, 24, 25)),
                 sf.TextItem("Close", 960, 690, WHITE, 7, chain=(30, 31, 32, 22, 23, 24, 25))]
-    sf.mark_missions(out)
+    sf.mark_notice(out)
     return out
 
 
-check("the missions notice's Close is selected and the banner behind it is not",
-      [it.text for it in missions_notice() if it.selected] == ["Close"],
-      repr([it.text for it in missions_notice() if it.selected]))
+check("a notice's Close is selected and the banner behind it is not",
+      [it.text for it in notice() if it.selected] == ["Close"], repr([it.text for it in notice() if it.selected]))
 check("the banner stays marked once the notice has gone",
-      [it.text for it in missions_notice(notice=False) if it.selected] == ["UPGRADE KIT AVAILABLE NOW"])
+      [it.text for it in notice(None) if it.selected] == ["UPGRADE KIT AVAILABLE NOW"])
 check("missions read in full for the read key, counts and dates in words",
-      sf.missions_details(missions_notice()) == [
+      sf.notice_details(notice()) == [
           "Current Missions", "Perform a cross-up 10 times!", "1 day left, deadline September 15, 2026, 9:00 PM",
           "Reward 50 Fight Money", "Win 1 Battle Lounge match!", "3 days left, deadline September 17, 2026, 9:00 PM",
-          "Reward 500 Fight Money"], repr(sf.missions_details(missions_notice())))
-opening = narrate([(0.0, missions_notice(notice=False)), (0.5, missions_notice()), (1.0, missions_notice()),
-                   (1.5, missions_notice(notice=False))])
-check("the notice says its missions once as Close is reached, and closing says where the cursor is",
+          "Reward 500 Fight Money"], repr(sf.notice_details(notice())))
+check("Extra Battles read in full, detail lines kept and time remaining in words",
+      sf.notice_details(notice("extra")) == [
+          "Currently Available Extra Battle (not completed)", "[Quick & Immovable] Get the Crossover Costume! [2]",
+          "Costume: RASHID : Airman", "4 hours 50 minutes remaining, deadline September 14, 2026, 9:00 PM",
+          "Reward \"Forest\" Gem, 100 EXP", "Get Your Hands on Fortune Tickets!",
+          "5 minutes remaining, deadline September 14, 2026, 9:00 PM", "Reward Fortune Tickets, 100 EXP"],
+      repr(sf.notice_details(notice("extra"))))
+opening = narrate([(0.0, notice(None)), (0.5, notice()), (1.0, notice()), (1.5, notice(None))])
+check("a notice says its list once as Close is reached, and closing says where the cursor is",
       [s for _, s in opening] == ["UPGRADE KIT AVAILABLE NOW",
                                   "Current Missions. Perform a cross-up 10 times! Win 1 Battle Lounge match! Close",
                                   "UPGRADE KIT AVAILABLE NOW"],
       repr(opening))
-check("no missions elsewhere", sf.missions_details(on_story) == [] and sf.missions_details(extra_battle()) == [])
+following = narrate([(0.0, notice()), (0.5, notice("extra")), (1.0, notice("extra"))])
+check("the next notice is introduced though Close stays where it was",
+      [s for _, s in following] == [
+          "Current Missions. Perform a cross-up 10 times! Win 1 Battle Lounge match! Close",
+          "Currently Available Extra Battle (not completed). [Quick & Immovable] Get the Crossover Costume! [2]. "
+          "Costume: RASHID : Airman. Get Your Hands on Fortune Tickets! Close"], repr(following))
+check("no notice lists elsewhere", sf.notice_details(on_story) == [] and sf.notice_details(extra_battle()) == [])
+
+nmem = FakeMemory()
+nroot = display_object(nmem, 0, 0, 0, WHITE)
+npanel = display_object(nmem, nroot, 0, 0, WHITE)
+nholder = display_object(nmem, npanel, 0, 0, WHITE)
+text_field(nmem, nholder, 520, 440, MISSIONS_TEXT.split("\n"), tint=(0.62, 0.62, 0.62, 0.5))
+text_field(nmem, display_object(nmem, nholder, 0, 0, WHITE), 1483, 440, ["Current Missions"], tint=(1, 1, 1, 0))
+faded = display_object(nmem, nholder, 0, 0, (1, 1, 1, 0))
+text_field(nmem, faded, 300, 300, ["Faded away"], tint=(1, 1, 1, 0))
+text_field(nmem, display_object(nmem, display_object(nmem, npanel, 0, 0, WHITE), 0, 0, WHITE), 960, 690, ["Close"])
+nread = sf.ScaleformText(nmem, MODULE).items()
+check("a notice's title, transparent in its own field alone, is read, and Close is selected",
+      [it.text.strip() for it in nread] == [MISSIONS_TEXT.strip(), "Current Missions", "Close"]
+      and [it.text for it in nread if it.selected] == ["Close"], repr([(it.text[:20], it.selected) for it in nread]))
 
 imem = FakeMemory()
 iroot = display_object(imem, 0, 0, 0, WHITE)
