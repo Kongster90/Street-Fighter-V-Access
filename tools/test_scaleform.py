@@ -795,6 +795,29 @@ check("the main menu's description line at the foot of the screen is not an endi
       sf.ending_summary(ending(title="Top User", caption_at=(110, 992))) is None)
 check("a third text on screen means it is not an ending",
       sf.ending_summary(ending(extra="Fight Request OFF")) is None)
+def path_select(on="STREET FIGHTER I", prompt="Please select a path. Your best score can be recorded."):
+    """Arcade's path select as read live: its movie's top node at alpha zero, the
+    description line in a movie of its own."""
+    mem = FakeMemory(size=0x21000)
+    movie = display_object(mem, 0, 0, 0, WHITE)
+    top = display_object(mem, movie, 0, 0, (1.0, 1.0, 1.0, 0.0), flags=sf.MOVIE_ROOT_FLAGS | 1)
+    listing = display_object(mem, top, 0, 0, (1.0, 1.0, 1.0, 0.0), bounds=False)
+    for i, (name, battles) in enumerate((("STREET FIGHTER I", 4), ("STREET FIGHTER II", 8))):
+        row = display_object(mem, listing, 198, 175 + 125 * i, WHITE)
+        tint = GOLD if name == on else GREY
+        text_field(mem, display_object(mem, row, 0, 0, tint), 0, 0, [name])
+        text_field(mem, display_object(mem, row, 53, 49, tint), 0, 0, [f"NO. OF BATTLES: {battles}"])
+    footer_movie = display_object(mem, 0, 0, 0, WHITE)
+    text_field(mem, display_object(mem, footer_movie, 110, 992, WHITE), 0, 0, [prompt])
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+check("Arcade's path select reads under its movie's zero alpha, as a gold menu",
+      sf.landed_on(path_select(), path_select("STREET FIGHTER II")) == ["STREET FIGHTER II", "NO. OF BATTLES: 8"],
+      repr(sf.landed_on(path_select(), path_select("STREET FIGHTER II"))))
+check("without its description line, a movie at zero alpha stays hidden",
+      [it.text for it in path_select(prompt="Change the battle settings.")] == ["Change the battle settings."],
+      repr([it.text for it in path_select(prompt="Change the battle settings.")]))
 artwork = [item("Special Artwork: BENGUS", 160, 911)]
 check("an unlocked picture's credit alone on screen is read",
       sf.screen_summary(artwork) == (True, "Special Artwork: BENGUS"), repr(sf.screen_summary(artwork)))

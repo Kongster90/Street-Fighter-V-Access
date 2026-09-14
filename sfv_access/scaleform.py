@@ -788,6 +788,7 @@ def result_summary(items: list[TextItem]) -> str | None:
 # in Arcade, Versus and Training alike.
 
 ARCADE_FINAL_STAGE = "FINAL STAGE"
+PATH_SELECT_PROMPT = "Please select a path."
 VERSUS_LABELS = ("V-Skill", "V-TRIGGER")
 VERSUS_WORDS = {"V-Skill": "V-Skill", "V-TRIGGER": "V-Trigger"}
 VERSION_NUMERALS = {"I": 1, "II": 2, "III": 3}
@@ -1387,6 +1388,38 @@ class ScaleformText:
             if cards.intersection(it.chain) and only_faded(it):
                 it.tint = (it.tint[0], it.tint[1], it.tint[2], 1.0)
 
+    def _show_path_select(self, every: list[TextItem]) -> None:
+        """Read Arcade's path select, whose whole movie sits under a zero alpha.
+
+        The paths (STREET FIGHTER I to V, each with its battles and best score,
+        the one you are on gold) were read from the screen before memory took
+        over, so they are on screen, yet the top node of their movie holds
+        alpha zero with bounds. Nothing in its node data tells it from other
+        movies, and a menu left loaded behind another screen may be hidden the
+        same way, so this is kept to path select: while its description line
+        ("Please select a path...") shows, text hidden by nothing but its
+        movie's top alpha counts as showing.
+        """
+        if not any(it.shown and it.text.strip().startswith(PATH_SELECT_PROMPT) for it in every):
+            return
+        tops = {}
+        for it in every:
+            if not (it.depth >= 2 and it.rooted and not it.hidden and it.on_stage and it.tint[3] <= 0.01):
+                continue
+            top = it.chain[-2]
+            if top not in tops:
+                node = self._node(top)
+                tops[top] = node is not None and node[1][3] <= 0.01 and bool(node[2] & MOVIE_ROOT_FLAGS)
+            if not tops[top]:
+                continue
+            alpha = 1.0
+            for obj in it.chain:
+                if obj != top:
+                    node = self._node(obj)
+                    alpha *= node[1][3] if node is not None else 0.0
+            if alpha > 0.01:
+                it.tint = (it.tint[0], it.tint[1], it.tint[2], alpha)
+
     # ----------------------------------------------------------------- reads
     def items(self, everything: bool = False, quick: bool = False) -> list[TextItem]:
         """Text on screen in reading order. `everything` keeps the leftovers.
@@ -1420,6 +1453,7 @@ class ScaleformText:
         if not any(it.shown for it in every):
             self._show_hidden_stage_select(every)
         self._show_final_opponent(every)
+        self._show_path_select(every)
         out = every if everything else [it for it in every if it.shown]
         self._roots = {it.chain[-1] for it in out if it.shown and it.chain}
         if not quick and self._roots != roots_before:

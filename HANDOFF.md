@@ -562,6 +562,21 @@ three modes. Replaying the Arcade recording gave exactly that sentence. The
 result screen and this share `screen_summary`, which the narrator and Alt R
 use.
 
+**Arcade path select.** The paths (STREET FIGHTER I to V, each row with
+NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
+right) read from the screen before memory took over, and never from memory:
+the user noticed on 2026-09-13. The top node of their whole movie (the
+object under the root, flags 0x1801) holds alpha zero with bounds while it is
+on screen. Nothing in its node data told it from other movies' tops, and a
+menu left loaded behind another screen might be hidden the same way (a
+78-text movie showed nothing behind the Versus results for reasons not
+recorded), so `_show_path_select` ignores that alpha only while the
+description line "Please select a path..." shows. Read live: "STREET FIGHTER
+I. NO. OF BATTLES: 4. BEST SCORE 123220". Not yet heard. If another screen
+turns out silent with "transparent" texts and a zero-alpha movie top, this
+is the pattern; the evidence for a general rule would be a screenshot of a
+movie hidden that way that is really off screen, or none after several.
+
 **Arcade endings.** A run ends on artwork with a caption: a title naming the
 path and fighter ("SFI Ryu" at (160, 780)) and a paragraph of story at
 (220, 868), in one panel, and nothing else shown, which the user clicks
