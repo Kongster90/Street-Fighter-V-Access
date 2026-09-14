@@ -947,10 +947,10 @@ What follows is roughly in order of value.
    "GAME OVER" and "DRAW GAME" under hidden panels, which look like other
    modes' result banners.
 
-   One thing agreed earlier and not started: starting the mod automatically
-   with the game. Steam launch options running a small launcher were
-   recommended over starting with Windows; the user has not chosen, and
-   changing their Steam settings needs their go-ahead.
+   Starting the mod with the game, asked for on 2026-09-14, is written: see
+   "Starting with the game" under "Running things". Whether the launch
+   options are set in Steam, and whether it has been heard working from a
+   real launch, is recorded there.
 
 1. **Screens nobody has tried.** Not yet seen from memory: online matches
    past their menus (Ranked, Casual, Battle Lounge rooms); story mode and its
@@ -1085,8 +1085,8 @@ Setup from a clean clone is in `SETUP.md`. Day to day:
 ```
 
 The other suites are `selftest.py`, and `test_correction.py`, `test_learning.py`,
-`test_memory.py` and `test_scaleform.py` under `tools/`. All six should pass
-before anything is committed. `tools/show_bands.py <snapshot>` explains why a screen was read the
+`test_memory.py`, `test_scaleform.py` and `test_launch.py` under `tools/`. All
+seven should pass before anything is committed. `tools/show_bands.py <snapshot>` explains why a screen was read the
 way it was, and is the first thing to reach for when one reads wrongly.
 
 Memory reading does not need the game in front, and does not care if it is
@@ -1109,3 +1109,26 @@ confirmed the window now closes on F10 (2026-09-14). The
 virtual environment's python.exe is a launcher that starts the real
 interpreter as a child, so one running mod shows two `python.exe run.py`
 processes.
+
+**Starting with the game.** Steam launch options, as the user already has
+for Stardew Valley with SMAPI, rather than something running from Windows
+startup. `tools/steam_launch_options.py --apply` sets Street Fighter V's
+(app 310950) in `userdata\<id>\config\localconfig.vdf` to
+`"<repo>\.venv\Scripts\pythonw.exe" "<repo>\start_with_game.pyw" %command%`,
+refusing while steam.exe runs (Steam writes that file back on exit), keeping
+`localconfig.vdf.before-sfv-access`, and leaving alone launch options it did
+not write; `--remove` undoes it. The launcher starts `run.py --with-game`
+under pythonw, output to `snapshots/console-log.txt`, unless the mutex in
+`sfv_access/instance.py` says a copy runs, then runs the game command and
+waits for it. No console at all, because a console coming up over the game
+is one more window, and Windows 11's default terminal may not honour opening
+minimised. `--with-game` leaves the game's state out of the banner (it
+always said "game not running") and `GameWatch` closes the mod
+`GAME_GONE_SECONDS` (3) after both game processes are gone, or after
+`GAME_WAIT_SECONDS` (180) if the game never appears, so the Alt keys are not
+kept from other programs. Checked on 2026-09-14 by running the launcher
+with a stand-in game command, then a copy of ping.exe renamed
+StreetFighterV.exe: no window, banner in the log, closed four seconds after
+the stand-in ended, mutex released. Not yet done at the time of writing:
+setting the launch options in Steam, which needed the user's go-ahead and
+Steam closed, and a real launch from Steam.

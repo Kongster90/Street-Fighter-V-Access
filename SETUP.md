@@ -64,6 +64,15 @@ this only needs running for the ones still missing.
 
 Or double-click `Start SFV Access.bat`. Alt K lists the keys.
 
+To have Steam start it with the game instead, close Steam and run:
+
+```bash
+.venv\Scripts\python.exe tools\steam_launch_options.py --apply
+```
+
+The launch options it writes name this folder, so run it again if the folder
+moves. See "Starting with the game" in `README.md`.
+
 ## Checking it works
 
 ```bash

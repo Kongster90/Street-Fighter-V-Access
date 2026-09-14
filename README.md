@@ -150,6 +150,26 @@ To check that speech, capture and recognition all work:
 Only one copy can run at a time, because hotkeys are exclusive. A second copy
 says so at startup instead of leaving its keys quietly dead.
 
+### Starting with the game
+
+Steam can start the mod each time Street Fighter V starts, through the game's
+launch options. With Steam closed:
+
+```bash
+.venv\Scripts\python.exe tools\steam_launch_options.py --apply
+```
+
+That sets the launch options to run `start_with_game.pyw` before the game, the
+same way SMAPI is started for Stardew Valley. It changes nothing else in
+Steam's settings, keeps a copy of the file it edits, and `--remove` takes it
+back out. Run it with neither to see what is set.
+
+Started this way the mod opens no window, writes what it would have printed to
+`snapshots/console-log.txt`, and closes a few seconds after the game does. If
+a copy is already running, for instance one started by hand, it leaves that
+one alone. F10 still closes it early, and `Start SFV Access.bat` still starts
+it by hand.
+
 ## Keys
 
 These work while the game has focus, including in fullscreen.

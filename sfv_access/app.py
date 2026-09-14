@@ -23,7 +23,7 @@ import time
 from pathlib import Path
 
 from . import capture as _capture
-from . import game, hud, memory_narration, menu, ocr, scaleform, screens, strings
+from . import game, hud, instance, memory_narration, menu, ocr, scaleform, screens, strings
 from .capture import Capture
 from .hotkeys import Hotkeys
 from .speech import Speaker
@@ -67,6 +67,14 @@ WATCH_INTERVAL = 0.12
 # served that way are polled less often. Still quick enough to keep up with a
 # cursor moving across the roster.
 MEMORY_INTERVAL = 0.35
+
+# Started with the game from Steam (see start_with_game.pyw), the mod closes
+# when the game does. It waits this long for the game to appear at all, and
+# closes once the game has been gone this long. Either of the game's two
+# processes counts, and the small launcher starts the real one before it exits,
+# so there is no gap between them to wait out.
+GAME_WAIT_SECONDS = 180.0
+GAME_GONE_SECONDS = 3.0
 
 # The " 5 of 6." a narrated entry ends with. Stripped before comparing one
 # announcement with the last, since the count depends on how much text was
@@ -270,8 +278,31 @@ def clean_phrase(text: str) -> str:
     return ". ".join(clean(p) for p in pieces) + "." if pieces else text
 
 
+class GameWatch:
+    """When a mod started with the game should close.
+
+    Kept apart from the thread that asks, so the test can drive it with its own
+    clock.
+    """
+
+    def __init__(self, started: float) -> None:
+        self.started = started
+        self.last_seen: float | None = None
+
+    def step(self, running: bool, now: float) -> str | None:
+        """None to carry on, or why to close: "closed" or "never started"."""
+        if running:
+            self.last_seen = now
+            return None
+        if self.last_seen is None:
+            return "never started" if now - self.started >= GAME_WAIT_SECONDS else None
+        return "closed" if now - self.last_seen >= GAME_GONE_SECONDS else None
+
+
 class App:
-    def __init__(self) -> None:
+    def __init__(self, with_game: bool = False) -> None:
+        # Started by Steam alongside the game, and so to close with it.
+        self.with_game = with_game
         self.speech = Speaker()
         self.capture = Capture()
         self.keys = Hotkeys()
@@ -292,20 +323,25 @@ class App:
 
     # -------------------------------------------------------------- lifecycle
     def run(self) -> None:
+        instance.claim()
         for name, (combo, _desc) in HOTKEYS.items():
             self.keys.bind(combo, getattr(self, f"on_{name}"))
         self.keys.start()
 
         gw = game.find_window()
-        if gw:
-            where = f"game found, {gw.width} by {gw.height}"
+        if self.with_game:
+            # Steam starts the mod a moment before the game, so this would
+            # always say the game is not running.
+            where = ""
+        elif gw:
+            where = f"game found, {gw.width} by {gw.height}. "
         elif game.is_running():
-            where = "game running but minimised"
+            where = "game running but minimised. "
         else:
-            where = "game not running"
+            where = "game not running. "
         banner = (
             f"Street Fighter 5 access ready. Speech through {self.speech.backend}. "
-            f"{where}. Menu narration on, reading the game's memory. "
+            f"{where}Menu narration on, reading the game's memory. "
             "Alt K lists the keys."
         )
         print(banner)
@@ -333,6 +369,8 @@ class App:
             self._hang_file = None
 
         threading.Thread(target=self._watch_loop, daemon=True).start()
+        if self.with_game:
+            threading.Thread(target=self._follow_game, daemon=True).start()
 
         try:
             while not self._stop.wait(0.25):
@@ -612,10 +650,31 @@ class App:
             self.speech.say("Reading memory once the game can be read, the screen until then.")
 
     def on_quit(self) -> None:
+        self._close("Closing Street Fighter 5 access.")
+
+    def _close(self, said: str) -> None:
         self.watching = False
-        self.speech.say("Closing Street Fighter 5 access.")
+        print(said)
+        self.speech.say(said)
         time.sleep(0.6)
         self._stop.set()
+
+    def _follow_game(self) -> None:
+        """Close when the game does, for a mod started with it from Steam.
+
+        Left running, the mod would keep its Alt keys from every other program
+        until closed by hand, and the next start with the game would find it
+        still there.
+        """
+        watch = GameWatch(time.monotonic())
+        while not self._stop.wait(1.0):
+            why = watch.step(game.is_running(), time.monotonic())
+            if why == "closed":
+                self.session.note("game closed, so the mod is closing")
+                self._close("Closing Street Fighter 5 access.")
+            elif why == "never started":
+                self.session.note("game never started, so the mod is closing")
+                self._close("Street Fighter 5 did not start. Closing Street Fighter 5 access.")
 
     def _narrate_from_memory(self) -> None:
         """Announce screens the pixel reader cannot see, currently character select.
@@ -799,7 +858,7 @@ class App:
 
 
 def main() -> None:
-    App().run()
+    App(with_game="--with-game" in sys.argv[1:]).run()
     # Quit promptly once F10 has closed everything. Speech, capture and the
     # hotkey pump sit in native calls on their own threads, and waiting on
     # the interpreter to wind those down could leave the console open with
