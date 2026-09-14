@@ -877,10 +877,13 @@ def versus_summary(items: list[TextItem]) -> str | None:
 ENDING_TITLE_MAX = 40
 ENDING_CAPTION_MIN = 60
 ENDING_REACH = 4
+# The title starts with the path's game, SFI, SFII, SFIII, SFIV or SFV (and
+# Alpha's, if it follows the pattern), which the user asked to leave unsaid.
+ENDING_PATH = re.compile(r"^SF[IVXAZ]*\s+")
 
 
 def ending_summary(items: list[TextItem]) -> str | None:
-    """"SFI Ryu. The young challenger Ryu stands before..." on an Arcade ending, else None."""
+    """"Ryu. The young challenger Ryu stands before..." on an Arcade ending, else None."""
     shown = [it for it in items if it.shown]
     if len(shown) != 2:
         return None
@@ -892,7 +895,9 @@ def ending_summary(items: list[TextItem]) -> str | None:
     distance = _tree_distance(title.chain, caption.chain)
     if distance is None or distance > ENDING_REACH:
         return None
-    return f"{title.text.strip()}. {' '.join(caption.text.split())}"
+    name = ENDING_PATH.sub("", title.text.strip())
+    story = " ".join(caption.text.split())
+    return f"{name}. {story}" if name else story
 
 
 def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:

@@ -783,10 +783,14 @@ def ending(caption="The young challenger Ryu stands before the Muay Thai emperor
 
 
 ryu_ending = ending()
-check("an Arcade ending reads its title and caption as one sentence",
-      sf.ending_summary(ryu_ending) == "SFI Ryu. The young challenger Ryu stands before the Muay Thai emperor, Sagat. "
+check("an Arcade ending reads its fighter and caption as one sentence, without the path's game",
+      sf.ending_summary(ryu_ending) == "Ryu. The young challenger Ryu stands before the Muay Thai emperor, Sagat. "
       "When all is said and done, the emperor is left with a deep wound in his chest, and within his heart.",
       repr(sf.ending_summary(ryu_ending)))
+check("every path's game is left out of the title",
+      all(sf.ending_summary(ending(title=f"{game} Zeku")).startswith("Zeku. The young")
+          for game in ("SFI", "SFII", "SFIII", "SFIV", "SFV")),
+      repr([sf.ending_summary(ending(title=f"{game} Zeku"))[:12] for game in ("SFI", "SFII", "SFIII", "SFIV", "SFV")]))
 check("the main menu's description line at the foot of the screen is not an ending",
       sf.ending_summary(ending(title="Top User", caption_at=(110, 992))) is None)
 check("a third text on screen means it is not an ending",
