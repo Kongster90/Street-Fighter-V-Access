@@ -152,6 +152,9 @@ class Narrator:
         self.restarted_at = float("-inf")
         # A short introduction, said once as its button is reached: see `step`.
         self.intro_said = ""
+        # The game's short message last said, and when it last showed.
+        self.toast_said = ""
+        self.toast_seen_at = 0.0
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
@@ -227,6 +230,21 @@ class Narrator:
             if reached or still_on:
                 self.intro_said = intro
                 parts = [intro] + (parts if reached else [button])
+
+        # The game's short messages select nothing, so they are said as they
+        # appear: once while they show, and again if the same one comes back,
+        # as pressing X on the shop's Special again does.
+        message = scaleform.toast(items)
+        if message is None:
+            if self.toast_said and now - self.toast_seen_at > GROUP_MEMORY:
+                self.toast_said = ""
+        else:
+            if message != self.toast_said:
+                self.toast_said = message
+                self.said = ""   # the same message again is news, not a repeat
+                if message not in (parts or []):
+                    parts = (parts or []) + [message]
+            self.toast_seen_at = now
 
         said = phrase(parts or [])
         if said and said != self.said:

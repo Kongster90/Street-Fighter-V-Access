@@ -1281,6 +1281,17 @@ check("a line ending in dots among other text is not",
       sf.status_line(logging_in + [item("Dengster", 1379, 53)]) is None and sf.status_line(on_story) is None)
 startup = narrate([(0.0, []), (0.1, [item("Applying Title Update Ver.07.011...", 960, 886)]), (0.3, []),
                    (1.0, logging_in), (1.2, logging_in), (1.5, logging_in), (3.0, logging_in), (4.0, [])])
+shop = [item("Characters", 157, 199, GREY), item("Special", 157, 595, GOLD),
+        item("Purchase content such as a Season Pass from Steam.", 110, 992)]
+unavailable = shop + [item("Your selection is\ncurrently unavailable.", 95, 900)]
+pressed = narrate([(0.0, shop), (0.5, unavailable), (1.0, unavailable), (2.0, unavailable), (3.0, shop),
+                   (4.5, shop), (5.0, unavailable), (5.5, shop), (5.8, unavailable)])
+check("the game's short message is said as it appears, once while it shows, and again when it comes back",
+      [s for _, s in pressed] == ["Special", "Your selection is currently unavailable.",
+                                  "Your selection is currently unavailable."], repr(pressed))
+check("a trial's Restart Battle in the same place is left to the trial's rule",
+      sf.toast([item("Restart Battle", 95, 900)]) is None
+      and sf.toast([item("ZEKU: \nReceived 5000 EXP.", 95, 900)]) == "ZEKU: Received 5000 EXP.")
 check("status lines are said once when they stay, not when they flash past",
       [s for _, s in startup] == ["Logging into the server..."], repr(startup))
 before_fight = narrate([(0.0, [item("STAGE 2", 660, 660)]), (0.5, versus), (0.8, versus), (1.1, versus),

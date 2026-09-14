@@ -769,6 +769,23 @@ banner advert was said every fifteen seconds while idle on it in an earlier
 session ("Aug 31, 2026 - Sep 30, 2026. UPGRADE KIT AVAILABLE NOW", 13:45:31
 to 13:46:36 on 2026-09-14); not yet looked into.
 
+**The game's short messages.** Pressing X on Special in the shop seemed to do
+nothing but make a sound: the game showed "Your selection is\ncurrently
+unavailable." at (95, 900) for a few seconds, selecting nothing, so nothing
+was said. Every text ever logged at exactly that place is such a message
+("[SFI Ryu] has been added to the Gallery.", "ZEKU: \nReceived 5000 EXP.",
+"Perform a cross-up 10 time(s)! has begun! \nCheck it out from "Challenge"
+>> "Missions."", a locked story setting's "currently unavailable") or a
+trial's "Restart Battle", which the trial rule answers by rereading the
+combo and `TOAST_UNSAID` leaves out. `scaleform.toast` finds one; the
+narrator adds it after whatever else is said, once while it shows, and
+again if the same one returns after a second's absence (`GROUP_MEMORY`),
+clearing its repeat guard so pressing X on Special twice says it twice.
+None of the four recordings has one. Checked in tests; not yet heard. In the
+same session the shop's Stages list said "Stage: Ring of Pride. Unavailable.
+Purchased. Unavailable": a bought stage and its "Purchased" label both in
+the 0.6 grey; not yet asked about.
+
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
 right) read from the screen before memory took over, and never from memory:

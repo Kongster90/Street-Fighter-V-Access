@@ -1412,6 +1412,33 @@ def status_line(items: list[TextItem]) -> str | None:
     return text if text.endswith("...") and len(text) <= STATUS_MAX else None
 
 
+# ---------------------------------------------------------------------- toasts
+#
+# The game's short messages all appear at one place, the foot of the screen's
+# left side, and go again after a few seconds: "Your selection is currently
+# unavailable." when choosing Special in the shop or a locked story setting,
+# "[SFI Ryu] has been added to the Gallery.", "ZEKU: Received 5000 EXP.", "...
+# has begun! Check it out from "Challenge" >> "Missions."". Nothing is selected
+# by them, so none was ever said; pressing X on Special seemed to do nothing.
+# Every text logged at that place was one of these, or a trial's "Restart
+# Battle", which its own rule answers by reading the combo again.
+
+TOAST_AT = (95.0, 900.0)
+TOAST_TOLERANCE = 3.0
+TOAST_UNSAID = ("Restart Battle",)
+
+
+def toast(items: list[TextItem]) -> str | None:
+    """The game's short message showing now, such as "Your selection is currently unavailable."."""
+    for it in items:
+        if (it.shown and not it.selected and abs(it.x - TOAST_AT[0]) <= TOAST_TOLERANCE
+                and abs(it.y - TOAST_AT[1]) <= TOAST_TOLERANCE):
+            text = " ".join(it.text.split())
+            if text and text not in TOAST_UNSAID:
+                return _counted(text)
+    return None
+
+
 PATH_STORY_MIN = 60
 
 
