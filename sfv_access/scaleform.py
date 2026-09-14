@@ -1253,6 +1253,9 @@ NOTICE_BUTTON = "Close"
 NOTICE_DEADLINE = re.compile(
     r"^DEADLINE:\s*(?P<deadline>.*?)\s*(?:\((?P<left>[^)]*)\))?\s*(?:Reward:\s*(?P<reward>.*?))?\s*$")
 NOTICE_REWARD = re.compile(r"^Reward:\s*(?P<reward>.*?)\s*$")
+NOTICE_COSTUME = re.compile(r"^Costume:\s*(?P<who>[^:]+?)\s*:\s*(?P<what>.+?)\s*$")
+# Arriving says less than the read key does, and says so, at the user's request.
+NOTICE_MORE = "Press Alt R for more information."
 NOTICE_TITLE_MAX = 80
 # How far above a notice's text and its Close button their shared panel may be.
 NOTICE_PANEL_LEVELS = 4
@@ -1338,12 +1341,22 @@ def mark_notice(shown: list[TextItem]) -> None:
     button.chosen = True
 
 
+def _and_list(names: list[str]) -> str:
+    """"RASHID, BALROG and SAGAT"."""
+    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
+
+
 def notice_details(items: list[TextItem], brief: bool = False) -> list[str]:
-    """A notice's title and list as sentences; `brief`, for arriving, without deadlines and rewards.
+    """A notice's title and list as sentences; `brief` for arriving.
 
     In full an entry says its name and any detail line, the time left and
     deadline, and the reward: "Perform a cross-up 10 times! 1 day left,
     deadline September 15, 2026, 9:00 PM. Reward 50 Fight Money."
+
+    Brief says each name once, with whose costumes it offers, then that Alt R
+    says more, as the user asked: four entries of "[Quick & Immovable] Get
+    the Crossover Costume! [2]" differing only in their costume line become
+    that name and "For RASHID, BALROG, SAGAT and MENAT".
     """
     shown = [it for it in items if it.shown]
     found = _notice_list(shown)
@@ -1355,11 +1368,23 @@ def notice_details(items: list[TextItem], brief: bool = False) -> list[str]:
                   if it is not text and it is not button and holder in it.chain
                   and 0 < len(it.text.strip()) <= NOTICE_TITLE_MAX and "\n" not in it.text.strip()), None)
     sentences = [title] if title else []
-    for name, extras, deadline, left, reward in notice_entries(text.text):
+    entries = notice_entries(text.text)
+    if brief:
+        whose: dict[str, list[str]] = {}
+        for name, extras, *_rest in entries:
+            owners = whose.setdefault(name, [])
+            for m in filter(None, map(NOTICE_COSTUME.match, extras)):
+                if m["who"] not in owners:
+                    owners.append(m["who"])
+        for name, owners in whose.items():
+            sentences.append(_counted(name))
+            if owners:
+                sentences.append(f"For {_and_list(owners)}")
+        entries = []
+        sentences.append(NOTICE_MORE)
+    for name, extras, deadline, left, reward in entries:
         sentences.append(_counted(name))
         sentences += extras
-        if brief:
-            continue
         when = f"deadline {_spoken_date(deadline)}"
         sentences.append(f"{_time_left(left)}, {when}" if left else when)
         if reward:

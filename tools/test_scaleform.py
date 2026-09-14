@@ -1194,7 +1194,9 @@ MISSIONS_TEXT = (" Perform a cross-up 10 time(s)!\nDEADLINE:Sep 15, 2026, 9:00:0
 EXTRA_BATTLES_TEXT = ("[Quick & Immovable] Get the Crossover Costume! [2]\n     Costume: RASHID : Airman\n"
                       "    DEADLINE:Sep 14, 2026, 9:00:00 PM ( 4:50 remaining)\n    Reward:  \"Forest\" Gem,  100 EXP\n\n"
                       "Get Your Hands on Fortune Tickets!\n    DEADLINE:Sep 14, 2026, 9:00:00 PM ( 0:05 remaining)\n"
-                      "    Reward:  Fortune Tickets,  100 EXP\n\n")
+                      "    Reward:  Fortune Tickets,  100 EXP\n\n"
+                      "[Quick & Immovable] Get the Crossover Costume! [2]\n     Costume: BALROG : Gutsman\n"
+                      "    DEADLINE:Sep 14, 2026, 9:00:00 PM ( 1:00 remaining)\n    Reward:  \"Forest\" Gem,  100 EXP\n\n")
 
 
 def notice(kind="missions"):
@@ -1227,20 +1229,24 @@ check("Extra Battles read in full, detail lines kept and time remaining in words
           "Currently Available Extra Battle (not completed)", "[Quick & Immovable] Get the Crossover Costume! [2]",
           "Costume: RASHID : Airman", "4 hours 50 minutes remaining, deadline September 14, 2026, 9:00 PM",
           "Reward \"Forest\" Gem, 100 EXP", "Get Your Hands on Fortune Tickets!",
-          "5 minutes remaining, deadline September 14, 2026, 9:00 PM", "Reward Fortune Tickets, 100 EXP"],
+          "5 minutes remaining, deadline September 14, 2026, 9:00 PM", "Reward Fortune Tickets, 100 EXP",
+          "[Quick & Immovable] Get the Crossover Costume! [2]", "Costume: BALROG : Gutsman",
+          "1 hour remaining, deadline September 14, 2026, 9:00 PM", "Reward \"Forest\" Gem, 100 EXP"],
       repr(sf.notice_details(notice("extra"))))
 opening = narrate([(0.0, notice(None)), (0.5, notice()), (1.0, notice()), (1.5, notice(None))])
 check("a notice says its list once as Close is reached, and closing says where the cursor is",
       [s for _, s in opening] == ["UPGRADE KIT AVAILABLE NOW",
-                                  "Current Missions. Perform a cross-up 10 times! Win 1 Battle Lounge match! Close",
+                                  "Current Missions. Perform a cross-up 10 times! Win 1 Battle Lounge match! "
+                                  "Press Alt R for more information. Close",
                                   "UPGRADE KIT AVAILABLE NOW"],
       repr(opening))
 following = narrate([(0.0, notice()), (0.5, notice("extra")), (1.0, notice("extra"))])
-check("the next notice is introduced though Close stays where it was",
+check("the next notice is introduced though Close stays where it was, a battle named once with whose costumes",
       [s for _, s in following] == [
-          "Current Missions. Perform a cross-up 10 times! Win 1 Battle Lounge match! Close",
+          "Current Missions. Perform a cross-up 10 times! Win 1 Battle Lounge match! Press Alt R for more information. Close",
           "Currently Available Extra Battle (not completed). [Quick & Immovable] Get the Crossover Costume! [2]. "
-          "Costume: RASHID : Airman. Get Your Hands on Fortune Tickets! Close"], repr(following))
+          "For RASHID and BALROG. Get Your Hands on Fortune Tickets! Press Alt R for more information. Close"],
+      repr(following))
 check("no notice lists elsewhere", sf.notice_details(on_story) == [] and sf.notice_details(extra_battle()) == [])
 
 nmem = FakeMemory()

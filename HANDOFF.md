@@ -756,9 +756,15 @@ was, a new list with Close still selected is introduced without a move
 `ICON_WORDS` says the Fight Money picture after its amount everywhere
 ("Reward: 50 Fight Money"); `SILENT_PICTURES` stops pictures that sit beside
 their own words, and the controller hints, being logged as wanting words.
-The missions notice was heard correctly on 2026-09-14; the Extra Battle one
-checked live, not yet heard. Its brief repeats "[Quick & Immovable] Get the
-Crossover Costume! [2]" for each costume; the user may want that shorter. On the main menu the
+The missions notice was heard correctly on 2026-09-14. The Extra Battle one
+listed "[Quick & Immovable] Get the Crossover Costume! [2]" once per
+costume, and at the user's request the brief now names each entry once with
+whose costumes it offers (`NOTICE_COSTUME`), and every notice's brief ends
+"Press Alt R for more information." before Close: "Currently Available
+Extra Battle (not completed). [Quick & Immovable] Get the Crossover
+Costume! [2]. For RASHID, BALROG, SAGAT and MENAT. Get Your Hands on Fortune
+Tickets! Press Alt R for more information. Close". Checked live, not yet
+heard. On the main menu the
 banner advert was said every fifteen seconds while idle on it in an earlier
 session ("Aug 31, 2026 - Sep 30, 2026. UPGRADE KIT AVAILABLE NOW", 13:45:31
 to 13:46:36 on 2026-09-14); not yet looked into.
@@ -1099,6 +1105,9 @@ standing instruction rather than something to be asked about each time.
   commas without numbers. They do not know move names, so Display Commands
   with these words is what they use.
 - A trial's list is read again on every restart.
+- Notices after logging in say each entry once, a costume battle with whose
+  costumes it offers rather than one entry per costume, and end with "Press
+  Alt R for more information."
 
 **How this session found things.** Almost everything came from reading the
 game's memory while the user held the screen, with small scripts run from the
