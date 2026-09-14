@@ -577,6 +577,26 @@ text in the three recordings has that shape. Read live: the message, then
 time(s)!" with a Close button) are probably the same template and may read
 now too; unchecked.
 
+**Trials.** A trial lists its combo's steps down the left (x 134, from y 340,
+about 48 apart), each step drawn three times at one place: a top layer,
+white while to do and (1, 0.8, 0, alpha 0.5) once landed, over two red
+layers (1, 0.4, 0.3, alpha 0.5) that become (1, 0.6, 0.3) as a trial
+completes. That red tint appeared nowhere else in either log. Nothing is
+selected, but the layers rule marked some layers, and as steps lit and reset
+the marks moved, so attempts read broken parts of the list; `_unique` also
+dropped a repeated move ("SHUKUMYO" twice in one combo). `trial_summary`
+says the list once, numbered ("1, Standing Hard Punch (COUNTER). 2,
+SHUKUMYO. ..."), through `screen_summary`, and `mark_trial` clears the
+marks. At the user's request it is said again on a restart
+(`trial_restarted`): "Restart Battle" appears at (95, 900) each time the
+user restarts, the steps reset to white with it, and Try Again leaving the
+pause menu shows no notice, so a highlighted Try Again vanishing counts too
+(closing the pause menu with Try Again highlighted will also reread). A
+replay of the 23:15 to 23:21 session gave one reread per notice. Display
+Commands draws most inputs as button pictures with no text: "(STANDING) M
+H" and steps made only of pictures are absent, so its numbering skips them;
+Display Move Names gives every step. Not yet heard.
+
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
 right) read from the screen before memory took over, and never from memory:

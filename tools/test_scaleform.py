@@ -972,6 +972,41 @@ check("moving through the roster says each fighter as it is reached, and the tag
 said = narrate([(0.0, arriving), (0.3, arriving), (0.5, won), (0.8, won), (0.95, won),
                 (1.0, result_screen(menu="Play Again")),
                 (1.3, result_screen(menu=MENU_ENTRIES[1])), (1.6, result_screen(menu=MENU_ENTRIES[1]))])
+RED = (1.0, 0.4, 0.3, 0.5)
+LANDED = (1.0, 0.8, 0.0, 0.5)
+ZEKU_STEPS = ["Standing Hard Punch (COUNTER)", "SHUKUMYO", "BUSHIN SOUKOSOU", "EX BUSHIN SHO", "H HOZANTO",
+              "SHUKUMYO", "EX BUSHIN GRAM - KOKU"]
+
+
+def trial(landed=0, notice=False, pause=None, steps=ZEKU_STEPS):
+    """A trial as logged: each step white (or yellow once landed) over two red layers,
+    some layers marked by the prompt rule, as the log showed."""
+    out = [item("PLAYER 1", 167, 90)]
+    for n, text in enumerate(steps):
+        y = 340 + 48 * n
+        out.append(sf.TextItem(text, 134, y, LANDED if n < landed else WHITE, 7, chosen=n % 2 == 1))
+        out += [item(text, 134, y, RED), item(text, 134, y, RED)]
+    if notice:
+        out.append(item("Restart Battle", 95, 900))
+    if pause:
+        out += [item(entry, 410, 311 + 42 * i, GOLD if entry == pause else GREY)
+                for i, entry in enumerate(("Try Again", "View Challenge Demonstration"))]
+    sf.mark_trial(out)
+    return out
+
+
+check("a trial's steps are said numbered, a repeated move each time",
+      sf.trial_summary(trial()) == "1, Standing Hard Punch (COUNTER). 2, SHUKUMYO. 3, BUSHIN SOUKOSOU. "
+      "4, EX BUSHIN SHO. 5, H HOZANTO. 6, SHUKUMYO. 7, EX BUSHIN GRAM - KOKU.", repr(sf.trial_summary(trial())))
+check("a trial's step layers are never selected", not any(it.selected for it in trial(landed=3)))
+check("no trial away from one", sf.trial_summary(on_story) is None and sf.trial_summary(versus) is None)
+LIST = sf.trial_summary(trial())
+attempts = narrate([(0.0, trial()), (0.5, trial()), (1.0, trial(landed=2)), (1.5, trial(landed=4)),
+                    (2.0, trial()), (2.5, trial(notice=True)), (3.0, trial(notice=True)), (3.5, trial()),
+                    (4.0, trial(notice=True)), (9.0, trial(pause="Try Again")), (9.5, trial(landed=1)),
+                    (10.0, trial(landed=1))])
+check("a trial is said once, not while steps land or reset, and again on each restart and Try Again",
+      [s for _, s in attempts] == [LIST, LIST, "Try Again", LIST], repr([(t, s[:20]) for t, s in attempts]))
 before_fight = narrate([(0.0, [item("STAGE 2", 660, 660)]), (0.5, versus), (0.8, versus), (1.1, versus),
                         (5.0, [item("SCORE", 561, 48)])])
 check("the VS screen says who is fighting once",

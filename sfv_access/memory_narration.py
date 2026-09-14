@@ -34,6 +34,9 @@ GROUP_MEMORY = 1.0     # how long a prompt counts as open once its panel is gone
 # VS screen's stage name arrived a read after the rest, and the sentence was
 # said without it and then again with it.
 SUMMARY_SETTLE = 0.4
+# A trial's steps are said again on a restart, but not twice for one: the
+# restart notice can come and go while it shows.
+TRIAL_RESTART_GAP = 3.0
 RETRY = 3.0            # how often to look for the game while not attached
 ALIVE_CHECK = 1.0      # how often to confirm the attached game is still there
 # The block list is refreshed once a second in the background. If that falls
@@ -146,10 +149,15 @@ class Narrator:
         self.summary_pending = ""
         self.summary_since = 0.0
         self.summary_held: list[str] = []
+        self.restarted_at = float("-inf")
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
         """The sentence to speak for this reading, or an empty string."""
+        if scaleform.trial_restarted(self.previous, items) and now - self.restarted_at > TRIAL_RESTART_GAP:
+            self.restarted_at = now
+            # Both, or the unchanged list is refused as a repeat of what was just said.
+            self.summary_said = self.said = ""
         if any(panel in it.chain for panel in self.recent_groups.values() for it in items):
             self.groups_seen_at = now
         elif self.recent_groups and now - self.groups_seen_at > GROUP_MEMORY:

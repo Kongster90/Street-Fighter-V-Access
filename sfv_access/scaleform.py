@@ -916,6 +916,80 @@ def ending_summary(items: list[TextItem]) -> str | None:
     return f"{name}. {story}" if name else story
 
 
+# ---------------------------------------------------------------------- trials
+#
+# A trial lists its combo's steps down the left of the fight, each step drawn
+# three times at one place: a top layer, white while to do and yellow (1, 0.8,
+# 0, alpha 0.5) once landed, over two red layers (1, 0.4, 0.3, alpha 0.5) that
+# turn (1, 0.6, 0.3) as the trial completes. Nothing is selected, but the
+# prompt rule took the layers for buttons and marked some of them, and as steps
+# lit and reset those marks moved, so attempts read out broken pieces of the
+# list; and a step repeated in a combo was said once. The list is now said
+# whole, numbered, once, and again on each restart: the game shows "Restart
+# Battle" at the foot of the screen, and Try Again leaves the pause menu.
+# Commands display draws most inputs as pictures with no text, so steps made
+# only of pictures are missing from it; Display Move Names gives every step.
+
+TRIAL_LAYER_TINTS = ((1.0, 0.4, 0.3, 0.5), (1.0, 0.6, 0.3, 0.5))
+TRIAL_RESTART_NOTICE = "Restart Battle"
+TRIAL_TRY_AGAIN = "Try Again"
+
+
+def _near(tint, want) -> bool:
+    return all(abs(a - b) <= TINT_TOLERANCE for a, b in zip(tint, want))
+
+
+def _step_text(it: TextItem) -> str:
+    return " ".join(it.text.split())
+
+
+def _trial_places(shown: list[TextItem]) -> dict[tuple, list[TextItem]]:
+    places: dict[tuple, list[TextItem]] = defaultdict(list)
+    for it in shown:
+        text = _step_text(it)
+        if text:
+            places[(round(it.x), round(it.y), text)].append(it)
+    return {place: layers for place, layers in places.items()
+            if len(layers) >= 2 and any(_near(l.tint, t) for l in layers for t in TRIAL_LAYER_TINTS)}
+
+
+def trial_steps(items: list[TextItem]) -> list[str]:
+    """A trial's steps in order, a repeated move as often as it comes."""
+    places = _trial_places([it for it in items if it.shown])
+    return [text for (_x, _y, text) in sorted(places, key=lambda p: (p[1], p[0]))]
+
+
+def mark_trial(items: list[TextItem]) -> None:
+    """A trial's step layers are never selected."""
+    shown = [it for it in items if it.shown]
+    for layers in _trial_places(shown).values():
+        for it in layers:
+            if it.chosen:
+                it.chosen, it.group, it.slot = False, 0, 0
+
+
+def trial_summary(items: list[TextItem]) -> str | None:
+    """"1, Standing Hard Punch (COUNTER). 2, SHUKUMYO. ..." while a trial's steps show."""
+    steps = trial_steps(items)
+    if not steps:
+        return None
+    return ". ".join(f"{n}, {text}" for n, text in enumerate(steps, 1)) + "."
+
+
+def trial_restarted(before: list[TextItem], after: list[TextItem]) -> bool:
+    """Whether a trial has just been restarted, so its steps are worth hearing again."""
+    if not trial_steps(after):
+        return False
+
+    def notice(items):
+        return any(it.shown and it.text.strip() == TRIAL_RESTART_NOTICE and not it.selected for it in items)
+
+    if notice(after) and not notice(before):
+        return True
+    on_try_again = any(it.highlighted and it.text.strip() == TRIAL_TRY_AGAIN for it in before)
+    return on_try_again and not any(it.shown and it.text.strip() == TRIAL_TRY_AGAIN for it in after)
+
+
 PATH_STORY_MIN = 60
 
 
@@ -955,7 +1029,7 @@ def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
         if summary is None and any(it.shown and it.text.strip() == ARCADE_FINAL_STAGE for it in items):
             summary = ARCADE_FINAL_STAGE
         return True, summary
-    summary = versus_summary(items) or ending_summary(items)
+    summary = versus_summary(items) or ending_summary(items) or trial_summary(items)
     return summary is not None, summary
 
 
@@ -1221,6 +1295,7 @@ class ScaleformText:
         mark_fighters(shown)
         mark_results(shown)
         mark_versus(shown)
+        mark_trial(shown)
         self._mark_ticks(shown)
         if not any(it.selected for it in shown):
             stage = stage_on_offer(shown)
