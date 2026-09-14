@@ -825,13 +825,19 @@ said = narrate([(0.0, on_zeku), (0.1, on_kolin), (0.2, blinked), (0.3, on_kolin)
                 (0.7, on_zeku), (0.8, mirror)])
 check("moving through the roster says each fighter as it is reached, and the tag's blinking nothing",
       [s for _, s in said] == ["ZEKU. KEN", "KOLIN", "ZEKU", "KEN"], repr(said))
-said = narrate([(0.0, arriving), (0.3, arriving), (0.5, won), (0.8, won), (1.0, result_screen(menu="Play Again")),
+said = narrate([(0.0, arriving), (0.3, arriving), (0.5, won), (0.8, won), (0.95, won),
+                (1.0, result_screen(menu="Play Again")),
                 (1.3, result_screen(menu=MENU_ENTRIES[1])), (1.6, result_screen(menu=MENU_ENTRIES[1]))])
 before_fight = narrate([(0.0, [item("STAGE 2", 660, 660)]), (0.5, versus), (0.8, versus), (1.1, versus),
                         (5.0, [item("SCORE", 561, 48)])])
 check("the VS screen says who is fighting once",
       [s for _, s in before_fight] == ["Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area."],
       repr(before_fight))
+stage_late = narrate([(0.0, versus_screen(stage=None)), (0.1, versus_screen(stage=None)), (0.2, versus),
+                      (0.4, versus), (0.7, versus), (1.0, versus)])
+check("a stage name arriving a read late is waited for, not said in a second sentence",
+      [s for _, s in stage_late] == ["Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area."],
+      repr(stage_late))
 check("the result screen says its summary once when complete, then the Results Menu as it moves",
       [s for _, s in said] == ["PLAYER 1 wins. Wins 1 to 0. Win streak 1 to 0. Win ratio 100 to 0 percent.",
                                "Play Again", "Return to Character/Stage Select"], repr(said))

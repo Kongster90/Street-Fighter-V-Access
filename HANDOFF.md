@@ -706,9 +706,12 @@ What follows is roughly in order of value.
    the costume and version panels should say whose they are, since both
    sides' panels read the same.
 
-   Arcade, 2026-09-13: the VS screen ("ZEKU versus ABIGAIL") and the choice
-   of next opponent on Arcade's result screen are in, the second checked
-   live against the game, neither heard in play yet. The mod stopped by
+   Arcade, 2026-09-13: the VS screen ("Opponent, CODY, V-Skill 2,
+   V-Trigger 1. Frosty Boulevard.") and the choice of next opponent on
+   Arcade's result screen ("CODY. REWARD. 20320") both confirmed by the user
+   in play. The VS sentence was said twice once, without and then with the
+   stage, which arrived a read late; `SUMMARY_SETTLE` now waits for a summary
+   to hold still for 0.4 s, not yet heard. The mod stopped by
    itself that evening at 20:33 on Arcade's result screen with nothing in
    either log; if it happens again, ask whether they closed it, and look for
    a console window's last lines. `scaleform-arcade-choice` is a 541-record

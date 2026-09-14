@@ -30,6 +30,10 @@ LOG_INTERVAL = 0.25
 POLL = 0.03            # a quick read takes forty to seventy thousandths of a second
 SETTLE = 0.2           # how long a move with nothing selected waits to settle
 GROUP_MEMORY = 1.0     # how long a prompt counts as open once its panel is gone
+# How long a summary screen's sentence must hold still before it is said. The
+# VS screen's stage name arrived a read after the rest, and the sentence was
+# said without it and then again with it.
+SUMMARY_SETTLE = 0.4
 RETRY = 3.0            # how often to look for the game while not attached
 ALIVE_CHECK = 1.0      # how often to confirm the attached game is still there
 # The block list is refreshed once a second in the background. If that falls
@@ -130,6 +134,8 @@ class Narrator:
         # screen stays, however its parts flicker.
         self.summary_said = ""
         self.summary_seen_at = 0.0
+        self.summary_pending = ""
+        self.summary_since = 0.0
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
@@ -168,7 +174,9 @@ class Narrator:
             self.summary_seen_at = now
             if not any(it.selected for it in items):
                 parts, self.pending = None, None
-            if summary and summary != self.summary_said:
+            if (summary or "") != self.summary_pending:
+                self.summary_pending, self.summary_since = summary or "", now
+            if summary and summary != self.summary_said and now - self.summary_since >= SUMMARY_SETTLE:
                 self.summary_said = summary
                 parts = [summary] + (parts or [])
         elif self.summary_said and now - self.summary_seen_at > GROUP_MEMORY:
