@@ -15,7 +15,9 @@ from __future__ import annotations
 
 import datetime as _dt
 import faulthandler
+import os
 import re
+import sys
 import threading
 import time
 from pathlib import Path
@@ -798,3 +800,10 @@ class App:
 
 def main() -> None:
     App().run()
+    # Quit promptly once F10 has closed everything. Speech, capture and the
+    # hotkey pump sit in native calls on their own threads, and waiting on
+    # the interpreter to wind those down could leave the console open with
+    # nothing to say why. Every log is already written and closed.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)

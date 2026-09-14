@@ -1006,3 +1006,12 @@ not the game has focus, while the pixel fallback stays quiet unless it does.
 
 The watch mode: memory narration alone, for trying changes without the rest
 of the mod. Close the mod first.
+
+The user starts the mod with `Start SFV Access.bat`. It used to end with
+`pause`, so quitting with F10 left the console open at "Press any key"; it
+now pauses only when Python exits with an error, and `app.main` ends with
+`os._exit(0)` after flushing, so native calls on the speech, capture and
+hotkey threads cannot hold the process open after a clean quit. The
+virtual environment's python.exe is a launcher that starts the real
+interpreter as a child, so one running mod shows two `python.exe run.py`
+processes.
