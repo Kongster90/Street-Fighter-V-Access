@@ -671,8 +671,8 @@ description whose paragraphs start with a heading line ("Difficulty" /
 Win the battle!". `extra_battle_details` turns it into sentences; the
 narrator says the brief form (title, deadline, fee, difficulty, clear
 conditions, the deadline and fee added at the user's request) once before
-BEGIN BATTLE on arriving, and Alt R says all of it. Read live on
-2026-09-14; not yet heard.
+BEGIN BATTLE on arriving, and Alt R says all of it. Confirmed in play by
+the user on 2026-09-14.
 
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
@@ -1011,7 +1011,8 @@ The user starts the mod with `Start SFV Access.bat`. It used to end with
 `pause`, so quitting with F10 left the console open at "Press any key"; it
 now pauses only when Python exits with an error, and `app.main` ends with
 `os._exit(0)` after flushing, so native calls on the speech, capture and
-hotkey threads cannot hold the process open after a clean quit. The
+hotkey threads cannot hold the process open after a clean quit. The user
+confirmed the window now closes on F10 (2026-09-14). The
 virtual environment's python.exe is a launcher that starts the real
 interpreter as a child, so one running mod shows two `python.exe run.py`
 processes.
