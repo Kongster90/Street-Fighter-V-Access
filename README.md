@@ -448,7 +448,11 @@ and that model knows exactly what it is:
 
 `sfv_access/live.py` serves this. Alt P speaks it on demand, and menu
 narration falls back to it automatically whenever no highlighted text can be
-found, which is exactly the character select case.
+found, which is exactly the character select case. Memory narration no longer
+needs it there: the fighters' names are read from Scaleform and count as the
+selection on that screen (`scaleform.fighters_on_offer`), so moving through
+the roster says each name, and the costume and version panels after a pick
+read as gold menus.
 
 Making that fast enough to poll took three fixes. Objects are not allocated in
 screen order, so there is no shortcut of looking only at recently created ones;

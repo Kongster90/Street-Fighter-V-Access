@@ -57,11 +57,11 @@ In the mod itself, played by the user on 2026-09-13:
   temperature, including after backing out of character select, which took
   four rounds to fix (see "Stage select has nothing selected" and what
   follows it).
-- Character select reads in part. Once a fighter is picked, its costume
-  panel (Costume, Color, V-Comment) and version panel (V-Skill, V-Trigger)
-  read from memory, since they mark the row in gold like any menu; the user
-  confirmed costume selection reads. Moving through the roster does not. See
-  item 0 under "Where it stands".
+- Character select's costume panel (Costume, Color, V-Comment) and version
+  panel (V-Skill, V-Trigger), which mark the row in gold like any menu; the
+  user confirmed costume selection reads. Moving through the roster was
+  silent; a fix is in and not yet heard in play. See item 0 under "Where it
+  stands".
 
 From the screen, the older path, now the fallback:
 
@@ -464,9 +464,26 @@ select each of its checks scans every object for half a second. The read
 keys (R, D, A) and the snapshot key use the memory reading when there is one;
 a snapshot saves it beside the frame as `sfv-<stamp>-memory.txt`.
 
+**Character select's roster marks nothing.** It is pictures, and memory shows
+no sign of the cursor on it, but the fighter's name in the side panel follows
+the cursor: the log went CODY, ZEKU, KOLIN, URIEN, BLANKA, LUCIA while nothing
+was selected. Worse, the picture grid rule took the roster for a grid, found a
+tile standing out (most likely the CPU's cursor, since it stopped whenever
+player one's blinking "1P" tag was showing) and named it after the nearest
+text, a grey "CPU" tag, so moves said "CPU. Unavailable" and then, that being
+unchanged, nothing. `fighters_on_offer` recognises the screen by its "CHARACTER
+SELECT" heading and takes every shown text that is a fighter's name, from
+`character_names.json`, as selected; on that screen the brightness, highlight
+bar and picture grid rules are skipped, leaving gold and prompt buttons.
+Arriving says both fighters, moving says the one moved to. Replaying the
+logged visits gave exactly that. A side effect: something is always selected
+there now, so `live.py`'s readout, which runs only when nothing is, no longer
+speaks under memory narration; costume and colour come from the costume panel
+instead.
+
 Known gaps. The clock sits one object further down and is not resolved.
-Character select's roster does not read from memory, though its costume and
-version panels do. Not yet heard from memory in
+Character select's roster fix has not been heard in play, and screens other
+than Versus and Training may head their character select differently. Not yet heard from memory in
 play: the voice language grid (the brightness rule may cover it; its EN and
 JA badges are pictures and are not read), and anything in a match.
 Pixel-level things such as the health bars are untouched.
@@ -591,40 +608,28 @@ The user finds memory reading better and wants it everywhere; the pixel reader
 is kept as the fallback and for the gauges.
 What follows is roughly in order of value.
 
-0. **Character select's roster from memory.** The user's stated goal is memory
-   reading everywhere, screen by screen, and this is where they stopped: stage
-   select works, and so does most of character select. After a fighter is
-   picked, the costume panel ("Costume" and its value gold at (100, 455) for
-   player one, (1278, 455) for player two, then Color and V-Comment below)
-   and the version panel (V-Skill at y 740, V-Trigger at y 791, same two
-   columns) read from memory as ordinary gold menus; `scaleform-log.txt` at
-   11:18:55 to 11:19:22 shows both. The narration does not say which player's
-   panel it is, which may be worth adding. What is missing is the roster
-   itself. What the last session's log shows there
-   (`snapshots/scaleform-log.txt`, 11:18:40 and 12:31, Training and Versus
-   against the CPU):
+0. **Hear character select's roster in play.** The user's stated goal is
+   memory reading everywhere, screen by screen. Stage select works. On
+   character select the costume panel ("Costume" and its value gold at
+   (100, 455) for player one, (1278, 455) for player two, then Color and
+   V-Comment below) and the version panel (V-Skill at y 740, V-Trigger at
+   y 791, same two columns) read as ordinary gold menus; `scaleform-log.txt`
+   at 11:18:55 to 11:19:22 on 2026-09-13 shows both. The roster was silent,
+   and the fix described under "Character select's roster marks nothing" is
+   in but unheard. Ask the user to move through a few fighters for both sides
+   with the mod running, in Versus and in Training, and if they can, Arcade.
+   The log will show whether names are marked selected ("+") and what was
+   said. Worth asking them at the same time:
 
-   - The text Scaleform shows is "BLUE TEAM", player one's fighter name at
-     (134, 590) and again twice at (166, 619), the CPU's at (932, 590) and
-     twice at (904, 619), "CHARACTER SELECT" at (960, 685), "1P" at alpha 0.4,
-     and "CPU" at (1025, 843) in 0.65 grey.
-   - Nothing marks the cursor, so moving through the roster changes player
-     one's name and nothing is selected. Worse, "CPU" is taken as selected
-     and, being grey, said as "CPU. Unavailable". Find which rule marks it
-     (`_mark_highlighted_rows` or `_mark_by_brightness` are the candidates)
-     and keep it off this screen.
-   - Because something counts as selected, the `live.py` readout ("Player 1,
-     KEN, costume 0, colour 0"), which `app._character_select_loop` runs only
-     while nothing is selected, mostly never runs; it came through twice.
+   - whether "ZEKU. KEN" on arrival is enough, or they want player numbers,
+     which `live.py`'s readout used to give and memory narration now
+     silences on that screen;
+   - whether the costume and version panels should say whose they are, since
+     both sides' panels read the same.
 
-   A likely shape for the fix, following stage select: recognise the screen
-   (the "CHARACTER SELECT" heading, or the name fields' layout), and take
-   player one's name field as the selection so moving says the fighter.
-   Costume and colour no longer need `live.py` there, since the costume panel
-   reads them as they are chosen; whether its readout still earns its place
-   on this screen is worth asking the user. Ask them to move through a few
-   fighters with the mod running; the log will have the rest. F9 switches to
-   screen reading, which tells you whether a gap is memory's.
+   If a mode's character select does not read, look for its heading in the
+   log; `CHARACTER_SELECT_HEADING` is the only thing recognising the screen.
+   F9 switches to screen reading, which tells you whether a gap is memory's.
 
    Then the screens memory has not been heard on: the voice language grid,
    the Training pause menu mid-match, and the rest under item 1.

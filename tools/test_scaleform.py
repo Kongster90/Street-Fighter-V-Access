@@ -521,6 +521,65 @@ covered = stage_select("Dojo", panel_hidden=True, character_select="shown")
 check("but not while character select is really showing",
       [it.text for it in covered] == ["BLUE TEAM"], repr([it.text for it in covered]))
 
+# Character select, as logged: each side's fighter name drawn once and then
+# twice in layers, the heading, and a roster of pictures with nothing marking
+# the cursor that memory can see. One tile standing out and a grey "CPU" tag
+# beside the roster are what made every move say "CPU. Unavailable".
+CPU_GREY = (0.65, 0.65, 0.65, 1.0)
+
+
+def character_select(p1, p2="KEN", heading=True, costume=None):
+    mem = FakeMemory()
+    movie = display_object(mem, 0, 0, 0, WHITE)
+    text_field(mem, display_object(mem, movie, 960, 87, WHITE), 0, 0, ["BLUE TEAM"])
+    sides = display_object(mem, movie, 0, 0, WHITE)
+    for name, x, layered_x in ((p1, 134, 166), (p2, 932, 904)):
+        text_field(mem, display_object(mem, sides, x, 590, WHITE), 0, 0, [name])
+        layers = display_object(mem, sides, layered_x, 619, WHITE)
+        text_field(mem, layers, 0, 0, [name])
+        text_field(mem, layers, 0, 0, [name])
+    if costume:
+        panel = display_object(mem, movie, 100, 455, WHITE)
+        text_field(mem, panel, 0, 0, ["Costume"], tint=GOLD)
+        text_field(mem, panel, 300, 4, [costume], tint=GOLD)
+    if heading:
+        text_field(mem, display_object(mem, movie, 960, 685, WHITE), 0, 0, ["CHARACTER SELECT"])
+    cursors = display_object(mem, movie, 0, 0, WHITE)
+    roster = display_object(mem, cursors, 1400, 700, WHITE)
+    tiles = []
+    for i in range(6):
+        tile = display_object(mem, roster, 70 * i, 0, WHITE)
+        picture = display_object(mem, tile, 0, 0, WHITE if i == 2 else (0.4, 0.4, 0.4, 1.0))
+        set_children(mem, tile, [picture, display_object(mem, tile, 0, 0, WHITE)])
+        tiles.append(tile)
+    set_children(mem, roster, tiles)
+    tag = display_object(mem, cursors, 1025, 843, WHITE)
+    text_field(mem, tag, 0, 0, ["CPU"], tint=CPU_GREY)
+    set_children(mem, cursors, [roster, tag])
+    set_children(mem, movie, [cursors])
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+unrecognised = character_select("ZEKU", heading=False)
+check("the fake roster does trip the picture rule on a screen not recognised",
+      [it.text for it in unrecognised if it.selected] == ["CPU"],
+      repr([it.text for it in unrecognised if it.selected]))
+on_zeku, on_kolin = character_select("ZEKU"), character_select("KOLIN")
+check("on character select the fighters' names are selected, not the CPU tag",
+      {it.text for it in on_zeku if it.selected} == {"ZEKU", "KEN"},
+      repr([it.text for it in on_zeku if it.selected]))
+check("arriving says both fighters once each", sf.landed_on([], on_zeku) == ["ZEKU", "KEN"],
+      repr(sf.landed_on([], on_zeku)))
+check("moving through the roster says the fighter moved to",
+      sf.landed_on(on_zeku, on_kolin) == ["KOLIN"], repr(sf.landed_on(on_zeku, on_kolin)))
+mirror = character_select("KEN")
+check("moving onto the fighter the other side has is still said",
+      sf.selection_key(on_zeku) != sf.selection_key(mirror) and sf.landed_on(on_zeku, mirror) == ["KEN"],
+      repr(sf.landed_on(on_zeku, mirror)))
+dressing = character_select("ZEKU", costume="Kenji")
+check("the costume panel after a pick still reads from its gold",
+      sf.landed_on(on_zeku, dressing) == ["Costume", "Kenji"], repr(sf.landed_on(on_zeku, dressing)))
+
 # A screen being torn down: an object whose child list points at garbage that
 # does not name it as parent, and claims a great many entries.
 gmem = FakeMemory(size=0x40000 + 0x1000)
@@ -575,6 +634,9 @@ check("the name is not said before the settle time",
       all(now >= 1.0 + mn.SETTLE for now, s in said if s == "EXIT"), repr(said))
 check("idling on one entry says nothing more", narrate([(0, on_story), (1, on_story), (2, on_story)])
       == [(0, "STORY")])
+said = narrate([(0.0, on_zeku), (0.1, on_kolin), (0.2, on_kolin), (0.3, on_zeku), (0.4, mirror)])
+check("moving through the roster says each fighter as it is reached",
+      [s for _, s in said] == ["ZEKU. KEN", "KOLIN", "ZEKU", "KEN"], repr(said))
 check("phrases join without doubled punctuation",
       mn.phrase(["Are you sure?", "No", "Costume.", "Kenji"]) == "Are you sure? No. Costume. Kenji")
 # A session whose block list has missed the text's block: quick reads find

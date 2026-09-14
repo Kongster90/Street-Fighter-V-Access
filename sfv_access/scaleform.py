@@ -50,12 +50,14 @@ that never shows on the main menu is hidden by the container above it.
 
 from __future__ import annotations
 
+import json
 import math
 import struct
 import threading
 import time
 from collections import defaultdict
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -571,6 +573,48 @@ def stage_details(items: list[TextItem]) -> list[str]:
     return _unique(out)
 
 
+# ------------------------------------------------------------- character select
+#
+# Character select's roster is pictures, and nothing memory can see marks the
+# cursor on it. What follows the cursor is the fighter's name in the side
+# panel, drawn once and then twice more in layers, and the other side's name
+# likewise: moving through the roster in the log went CODY, ZEKU, KOLIN, URIEN,
+# BLANKA, LUCIA with nothing selected. So on that screen the names are the
+# selection, and a move is a name changing. The screen is recognised by its
+# heading, and a name by being one of the fighters the game has.
+#
+# The other rules for marking a selection without gold stay off that screen.
+# The picture grid rule took the roster for a grid, found a tile standing out
+# and named it after the nearest text, the grey "CPU" tag, so every move said
+# "CPU. Unavailable" or, being the same as last time, nothing. The costume and
+# version panels that follow a pick are gold, and read as any menu does.
+
+CHARACTER_SELECT_HEADING = "CHARACTER SELECT"
+ROSTER_FILE = Path(__file__).resolve().parent.parent / "character_names.json"
+_fighters: frozenset[str] | None = None
+
+
+def fighter_names() -> frozenset[str]:
+    """Every fighter's name as the game writes it, from the roster recovered from its files."""
+    global _fighters
+    if _fighters is None:
+        try:
+            data = json.loads(ROSTER_FILE.read_text(encoding="utf-8"))
+            _fighters = frozenset(data["names"].values())
+        except (OSError, ValueError, KeyError, AttributeError):
+            _fighters = frozenset()
+    return _fighters
+
+
+def fighters_on_offer(items: list[TextItem]) -> list[TextItem]:
+    """The fighters' name fields on character select, or none if this is not that screen."""
+    shown = [it for it in items if it.shown]
+    if not any(it.text.strip() == CHARACTER_SELECT_HEADING for it in shown):
+        return []
+    names = fighter_names()
+    return [it for it in shown if it.text.strip() in names]
+
+
 def _compose(outer, inner):
     """Affine (sx, shx, tx, shy, sy, ty) products: apply inner, then outer."""
     a, b = outer, inner
@@ -780,8 +824,13 @@ class ScaleformText:
         deeper, and a grid of tiles, where it is drawn brighter than the rest.
         Gold elsewhere on screen does not stop either: a prompt opened from a
         menu sits over that menu's gold entry.
+
+        On character select the fighters' names are the selection instead, and
+        besides them only gold and a prompt's buttons are trusted. See
+        `fighters_on_offer`.
         """
         shown = [it for it in items if it.shown]
+        fighters = fighters_on_offer(shown)
         groups: dict[int, dict[int, list]] = defaultdict(lambda: defaultdict(list))
         for it in shown:
             for level in range(1, len(it.chain)):
@@ -793,10 +842,14 @@ class ScaleformText:
                 continue
             if self._mark_by_layers(container, slots):
                 continue
-            self._mark_by_brightness(container, slots)
-        self._mark_highlighted_rows(shown, groups)
-        self._mark_picture_grids(shown)
+            if not fighters:
+                self._mark_by_brightness(container, slots)
+        if not fighters:
+            self._mark_highlighted_rows(shown, groups)
+            self._mark_picture_grids(shown)
         self._mark_ticks(shown)
+        for it in fighters:
+            it.chosen = True
         if not any(it.selected for it in shown):
             stage = stage_on_offer(shown)
             if stage is not None:
