@@ -1289,6 +1289,34 @@ pressed = narrate([(0.0, shop), (0.5, unavailable), (1.0, unavailable), (2.0, un
 check("the game's short message is said as it appears, once while it shows, and again when it comes back",
       [s for _, s in pressed] == ["Special", "Your selection is currently unavailable.",
                                   "Your selection is currently unavailable."], repr(pressed))
+UNAVAILABLE = (0.6, 0.6, 0.6, 1.0)
+
+
+def shop_stages(names, at=0, bought=()):
+    """The shop's Stages list as logged: each row a name and, if bought, "Purchased",
+    both in the 0.6 grey; the highlight bar's rule marks both texts on the row."""
+    out = [item("Stages", 157, 331, GOLD)]
+    for n, name in enumerate(names):
+        y = 440 + 42 * n
+        out.append(sf.TextItem(name, 491, y, UNAVAILABLE if name in bought else GREY, 7, chosen=n == at))
+        if name in bought:
+            out.append(sf.TextItem("Purchased", 1144, y + 4, UNAVAILABLE, 7, chosen=n == at))
+    sf.mark_purchased(out)
+    return out
+
+
+STAGES = ["Stage: Ring of Pride", "Stage: Skies of Honor", "Stage: Ring of Justice"]
+BOUGHT = STAGES[:2]
+scrolling = narrate([(-0.5, [item("Stages", 157, 331, GOLD)]), (0.0, shop_stages(STAGES, 0, BOUGHT)),
+                     (0.5, shop_stages(STAGES[1:], 0, BOUGHT)),
+                     (1.0, shop_stages(STAGES[1:], 1, BOUGHT))])
+check("a bought item says Already purchased, also when scrolling brings its label to the same place",
+      [s for _, s in scrolling] == ["Stages", "Stage: Ring of Pride. Already purchased",
+                                    "Stage: Skies of Honor. Already purchased",
+                                    "Stage: Ring of Justice"], repr(scrolling))
+check("the read key says it the same way",
+      mn.selection_phrase(shop_stages(STAGES, 1, BOUGHT)) == "Stages. Stage: Skies of Honor. Already purchased",
+      repr(mn.selection_phrase(shop_stages(STAGES, 1, BOUGHT))))
 check("a trial's Restart Battle in the same place is left to the trial's rule",
       sf.toast([item("Restart Battle", 95, 900)]) is None
       and sf.toast([item("ZEKU: \nReceived 5000 EXP.", 95, 900)]) == "ZEKU: Received 5000 EXP.")

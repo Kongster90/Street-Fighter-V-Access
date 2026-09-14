@@ -185,6 +185,7 @@ class TextItem:
     slot: int = 0            # the picture tile this text names, when it names one
     ticked: bool | None = None   # a checklist entry's box, when it has one
     rooted: bool = True      # the chain ends at a movie's root, not a subtree cut loose from one
+    note: str = ""           # said after the text in place of a tick or unavailability: "Already purchased"
 
     @property
     def highlighted(self) -> bool:
@@ -310,7 +311,9 @@ def landed_on(
                 continue
             seen.add(it.text)
             named.append(it.text)
-            if it.unavailable:
+            if it.note:
+                named.append(it.note)
+            elif it.unavailable:
                 named.append("Unavailable")   # its tick cannot be changed, so it goes unsaid
             elif it.ticked is not None:
                 named.append(tick_word(it.ticked))
@@ -989,6 +992,29 @@ def trial_steps(items: list[TextItem]) -> list[str]:
     """A trial's steps in order, a repeated move as often as it comes."""
     places = _trial_places([it for it in items if it.shown])
     return [text for (_x, _y, text) in sorted(places, key=lambda p: (p[1], p[0]))]
+
+
+# The shop's item lists (Stages and the rest) put "Purchased" at the end of a
+# bought item's row, both texts in the 0.6 grey the interface gives what cannot
+# be chosen, and the highlight bar marks both. That read "Stage: Ring of Pride.
+# Unavailable. Purchased. Unavailable", or left "Purchased" out when scrolling
+# brought another bought row to the same place. The user asked for "Already
+# purchased" after the name instead.
+PURCHASED_LABEL = "Purchased"
+PURCHASED_WORDS = "Already purchased"
+ROW_TOLERANCE = 10.0
+
+
+def mark_purchased(items: list[TextItem]) -> None:
+    """A selected row's "Purchased" label becomes a note on the item it belongs to."""
+    labels = [it for it in items if it.shown and it.chosen and it.text.strip() == PURCHASED_LABEL]
+    for label in labels:
+        owner = next((it for it in items
+                      if it.shown and it.selected and it is not label and it.x < label.x
+                      and abs(it.y - label.y) <= ROW_TOLERANCE and it.text.strip() != PURCHASED_LABEL), None)
+        if owner is not None:
+            label.chosen = False
+            owner.note = PURCHASED_WORDS
 
 
 def mark_trial(items: list[TextItem]) -> None:
@@ -1806,6 +1832,7 @@ class ScaleformText:
         mark_versus(shown)
         mark_trial(shown)
         mark_notice(shown)
+        mark_purchased(shown)
         self._mark_ticks(shown)
         if not any(it.selected for it in shown):
             stage = stage_on_offer(shown)

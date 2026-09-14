@@ -783,10 +783,20 @@ again if the same one returns after a second's absence (`GROUP_MEMORY`),
 clearing its repeat guard so pressing X on Special twice says it twice.
 None of the four recordings has one. Confirmed in play by the user on
 2026-09-14 on the shop's Special. The Extra Battle notice's shorter brief was
-heard and approved the same day. In the
-same session the shop's Stages list said "Stage: Ring of Pride. Unavailable.
-Purchased. Unavailable": a bought stage and its "Purchased" label both in
-the 0.6 grey; not yet asked about.
+heard and approved the same day.
+
+**The shop's item lists.** A bought item's row is its name at x 491 and
+"Purchased" at x 1144, both in the 0.6 grey, both marked by the highlight
+bar rule, so it read "Stage: Ring of Pride. Unavailable. Purchased.
+Unavailable", or without "Purchased" when scrolling brought another bought
+row's label to the same place (a move says only what is newly selected, by
+position and text). An unbought row is its name in the usual 0.27 grey
+alone; choosing one opens a gold "Buy on Steam". At the user's request
+`mark_purchased` unmarks the label and gives the name the `note` "Already
+purchased", which `landed_on` and `selection_phrase` say in place of
+Unavailable: "Stage: Ring of Pride. Already purchased". Checked live on the
+Stages list; not yet heard. Only Stages has been seen; the other categories
+likely share the list.
 
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
@@ -1124,6 +1134,7 @@ standing instruction rather than something to be asked about each time.
   commas without numbers. They do not know move names, so Display Commands
   with these words is what they use.
 - A trial's list is read again on every restart.
+- A bought item in the shop says "Already purchased" after its name.
 - Notices after logging in say each entry once, a costume battle with whose
   costumes it offers rather than one entry per costume, and end with "Press
   Alt R for more information."

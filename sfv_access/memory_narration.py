@@ -110,7 +110,9 @@ def selection_phrase(items: list[scaleform.TextItem]) -> str:
         if not it.selected:
             continue
         parts.append(it.text)
-        if it.unavailable:
+        if it.note:
+            parts.append(it.note)
+        elif it.unavailable:
             parts.append("Unavailable")
         elif it.ticked is not None:
             parts.append(scaleform.tick_word(it.ticked))
