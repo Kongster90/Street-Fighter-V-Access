@@ -1020,8 +1020,8 @@ for n, pieces in enumerate(picture_steps):
 preader = sf.ScaleformText(pmem, MODULE)
 read_steps = [it.text for it in preader.items()]
 check("command pictures inside text are put into words, as in the trial read live",
-      read_steps == ["(STANDING) heavy punch (COUNTER)", "down, down plus punch punch",
-                     "(STANDING) medium punch, then heavy punch", "quarter circle forward plus kick kick",
+      read_steps == ["heavy punch (COUNTER)", "down, down plus punch punch",
+                     "medium punch, heavy punch", "quarter circle forward plus kick kick",
                      "forward, down, down forward plus light kick", "  Fighter Profile"], repr(read_steps))
 example = ", ".join(sf.describe_inputs(step) for step in (
     [("picture", "punch_h")],
@@ -1029,6 +1029,11 @@ example = ", ".join(sf.describe_inputs(step) for step in (
     [("picture", "cmd_2"), ("picture", "cmd_2"), ("picture", "plus"), ("picture", "punch_h")]))
 check("combos read in the user's own notation",
       example == "heavy punch, quarter circle forward plus kick kick, down, down plus heavy punch", repr(example))
+linked = sf.describe_inputs([("text", "(CROUCH) M"), ("picture", "punch_m"), ("picture", "next"),
+                             ("text", "(JUMP) H"), ("picture", "punch_h"), ("picture", "next"),
+                             ("picture", "punch"), ("picture", "next"), ("picture", "punch")])
+check("the arrow meaning then is only a comma, whatever follows it",
+      linked == "(CROUCH) medium punch, (JUMP) heavy punch, punch, punch", repr(linked))
 check("a picture with no words is left as the game's space, and noted",
       preader.unknown_pictures == {"button_start"}, repr(preader.unknown_pictures))
 RED = (1.0, 0.4, 0.3, 0.5)

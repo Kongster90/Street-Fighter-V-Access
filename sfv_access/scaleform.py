@@ -1014,13 +1014,18 @@ def trial_restarted(before: list[TextItem], after: list[TextItem]) -> bool:
 # circle back), punch and kick for the white icons meaning any, punch_m and
 # punch_h for the coloured ones, plus for the plus sign and next for the arrow
 # meaning then. Directions assume facing right, as the game draws them.
+#
+# The wording is the user's. "then" is not said, only the comma where the arrow
+# was; nor is "(STANDING)", since a button with no direction before it is
+# standing already.
 
 DIRECTION_WORDS = {"1": "down back", "2": "down", "3": "down forward", "4": "back", "5": "neutral",
                    "6": "forward", "7": "up back", "8": "up", "9": "up forward"}
 MOTION_WORDS = {"236": "quarter circle forward", "214": "quarter circle back",
                 "41236": "half circle forward", "63214": "half circle back"}
 STRENGTH_WORDS = {"l": "light", "m": "medium", "h": "heavy"}
-JOINER_WORDS = {"plus": "plus", "next": "then"}
+JOINER_WORDS = {"plus": "plus", "next": ""}
+UNSAID_TEXT = re.compile(r"\(\s*STANDING\s*\)", re.IGNORECASE)
 
 
 def input_words(name: str) -> str | None:
@@ -1044,14 +1049,15 @@ def input_words(name: str) -> str | None:
 
 
 def describe_inputs(pieces: list[tuple[str, str]]) -> str:
-    """A command as speech: "down, down plus punch punch", "(STANDING) medium punch, then heavy punch".
+    """A command as speech: "down, down plus punch punch", "medium punch, heavy punch".
 
     `pieces` are ("text", ...) and ("picture", name) in order. The letter the
     game prints before a coloured button ("M" before the medium punch) is
     dropped, since the words already say it. The notation is the user's own
     example: "heavy punch, quarter circle forward plus kick kick, down, down
-    plus heavy punch", so no comma before plus, and a plain button pressed
-    twice is said twice.
+    plus heavy punch", so no comma before plus, a plain button pressed twice
+    is said twice, the arrow meaning then is only a comma, and "(STANDING)"
+    is left out.
     """
     # Each token is [kind, words, name, count]: kind "text", "input" or "joiner".
     tokens: list[list] = []
@@ -1068,23 +1074,26 @@ def describe_inputs(pieces: list[tuple[str, str]]) -> str:
             tokens[-1][3] += 1
             continue
         tokens.append(["joiner" if value in JOINER_WORDS else "input", input_words(value), value, 1])
-    out, previous = "", None
+    out, previous, comma = "", None, False
     for kind, said, name, count in tokens:
+        if kind == "text":
+            said = UNSAID_TEXT.sub("", said)
         said = " ".join(said.split())
+        if name == "next":
+            comma = True
+            continue
         if not said:
             continue
         if count > 1:
             said = " ".join([said] * count)
         if previous is None:
             gap = ""
-        elif said == JOINER_WORDS["plus"]:
-            gap = " "
-        elif kind == "joiner" or (kind == "input" and previous == "input"):
+        elif comma or (kind == "input" and previous == "input"):
             gap = ", "
         else:
             gap = " "
         out += gap + said
-        previous = kind
+        previous, comma = kind, False
     return out
 
 

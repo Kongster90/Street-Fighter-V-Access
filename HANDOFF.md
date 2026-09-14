@@ -613,12 +613,15 @@ white icons (any strength; two in a row is two buttons), punch_m and
 punch_h the yellow and red strength icons, plus the plus sign, next the
 arrow meaning then. `field_text` puts known ones into words through
 `input_words` and `describe_inputs`, so every reader sees "down, down plus
-punch punch" and "(STANDING) medium punch, then heavy punch"; the strength
-letter printed before a coloured button is dropped. The notation is the
-user's own example, given on 2026-09-14: "heavy punch, quarter circle
-forward plus kick kick, down, down plus heavy punch". No comma before plus,
-a plain button pressed twice is said twice, and a trial's steps are joined
-by commas without numbers. Other cmd_ digits are
+punch punch" and "medium punch, heavy punch"; the strength letter printed
+before a coloured button is dropped. The notation is the user's own
+example, given on 2026-09-14: "heavy punch, quarter circle forward plus
+kick kick, down, down plus heavy punch". No comma before plus, a plain
+button pressed twice is said twice, a trial's steps are joined by commas
+without numbers, the arrow meaning then is only a comma, and "(STANDING)"
+is dropped (a button with no direction before it is standing already, the
+user's reasoning). "(CROUCH)" and "(JUMP)" are still said as the game
+writes them; ask before changing them. Other cmd_ digits are
 spelled as directions and 41236/63214 named; punch_l, kick_l/m/h are
 guessed by pattern and unseen. Unknown picture names stay spaces and are
 logged once each as "pictures in text with no words: [...]", which is the
