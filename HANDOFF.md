@@ -60,9 +60,13 @@ In the mod itself, played by the user on 2026-09-13:
 - Character select's costume panel (Costume, Color, V-Comment) and version
   panel (V-Skill, V-Trigger), which mark the row in gold like any menu, and
   moving through the roster, which says each fighter's name, with two
-  players moving at once in Versus. The cursor tags were being read as well
-  ("CPU. Unavailable"); that fix is not yet heard. See item 0 under "Where it
-  stands".
+  players moving at once in Versus and against the CPU, and no cursor tags.
+  When both sides' version panels open together, both gold rows are read in
+  one sentence ("V-Skill. I - KIKO RENSEI. I - MYO-OKEN"); nobody has
+  complained.
+- The post-match results screen: "RESULT. LOSE", then Play Again, Return to
+  Character/Stage Select, Return to Battle Settings and Return to Main Menu
+  as the cursor moves.
 
 From the screen, the older path, now the fallback:
 
@@ -618,24 +622,21 @@ The user finds memory reading better and wants it everywhere; the pixel reader
 is kept as the fallback and for the gauges.
 What follows is roughly in order of value.
 
-0. **Hear character select's roster in play.** The user's stated goal is
-   memory reading everywhere, screen by screen. Stage select works. On
-   character select the costume panel ("Costume" and its value gold at
-   (100, 455) for player one, (1278, 455) for player two, then Color and
-   V-Comment below) and the version panel (V-Skill at y 740, V-Trigger at
-   y 791, same two columns) read as ordinary gold menus; `scaleform-log.txt`
-   at 11:18:55 to 11:19:22 on 2026-09-13 shows both. The roster reads by
-   fighter name, heard good in Versus with two players; the fix for the
-   cursor tags being read ("The cursor tags look like a prompt") is in but
-   not yet heard. Ask the user to try Player 1 VS CPU again, and Training and
-   Arcade if they can. The log shows names marked selected ("+") and what
-   was said. The user does not want player numbers on each move. Still worth
-   asking: whether the costume and version panels should say whose they are,
-   since both sides' panels read the same.
-
-   If a mode's character select does not read, look for its heading in the
-   log; `CHARACTER_SELECT_HEADING` is the only thing recognising the screen.
-   F9 switches to screen reading, which tells you whether a gap is memory's.
+0. **Memory reading on the remaining screens.** The user's stated goal is
+   memory reading everywhere, screen by screen. Stage select and character
+   select both work in play as of 2026-09-13, character select in Versus
+   against a second player and against the CPU. On character select the
+   costume panel ("Costume" and its value gold at (100, 455) for player one,
+   (1278, 455) for player two, then Color and V-Comment below) and the
+   version panel (V-Skill at y 740, V-Trigger at y 791, same two columns)
+   read as ordinary gold menus, and the roster by fighter name. The user
+   does not want player numbers on each move. Not yet tried: character
+   select in Training and Arcade. If a mode's character select does not
+   read, look for its heading in the log; `CHARACTER_SELECT_HEADING` is the
+   only thing recognising the screen. F9 switches to screen reading, which
+   tells you whether a gap is memory's. Still worth asking the user: whether
+   the costume and version panels should say whose they are, since both
+   sides' panels read the same.
 
    Then the screens memory has not been heard on: the voice language grid,
    the Training pause menu mid-match, and the rest under item 1.
@@ -654,8 +655,11 @@ What follows is roughly in order of value.
    screen has taken minutes rather than hours. Not yet seen: the online modes,
    so Ranked, Casual, Battle Lounge and Extra Battle; story mode and its
    chapter select; survival difficulty; the trials and tutorial lists; the
-   controller and button config page; the command list; the shop; the player
-   profile; the post-match results screen.
+   controller and button config page; the shop; the player profile. The
+   command list was reached from memory on 2026-09-13 and reads each move's
+   name, but its inputs are drawn as button pictures, and what memory has in
+   their place came out as stray letters: "OI ONIBI. M  M    OR   OR   M".
+   The user has not said how it sounded.
 
    `tools/grab_screens.py` saves a frame each time the selection moves, so the
    user plays normally and you read what comes out. Ask them what they heard as
