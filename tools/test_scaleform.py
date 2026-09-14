@@ -768,6 +768,29 @@ check("before the final stage its one opponent's card counts as showing, gold",
       repr([it.text for it in final if it.selected]))
 check("a card faded out beside NEXT STAGE stays hidden",
       not any(it.text == "SAGAT" for it in final_offer("NEXT STAGE")))
+def ending(caption="The young challenger Ryu stands before the Muay Thai emperor, Sagat.\r",
+           more=("When all is said and done, the emperor is left with a deep wound in his chest, and within his heart.",),
+           title="SFI Ryu", extra=None, caption_at=(220, 868)):
+    """An Arcade ending as read from the game: title and caption in one panel, nothing else."""
+    mem = FakeMemory()
+    movie = display_object(mem, 0, 0, 0, WHITE)
+    panel = display_object(mem, display_object(mem, movie, 0, 0, WHITE), 0, 0, WHITE)
+    text_field(mem, display_object(mem, panel, 160, 780, WHITE), 0, 0, [title])
+    text_field(mem, display_object(mem, panel, *caption_at, WHITE), 0, 0, [caption, *more])
+    if extra:
+        text_field(mem, display_object(mem, movie, 317, 946, WHITE), 0, 0, [extra])
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+ryu_ending = ending()
+check("an Arcade ending reads its title and caption as one sentence",
+      sf.ending_summary(ryu_ending) == "SFI Ryu. The young challenger Ryu stands before the Muay Thai emperor, Sagat. "
+      "When all is said and done, the emperor is left with a deep wound in his chest, and within his heart.",
+      repr(sf.ending_summary(ryu_ending)))
+check("the main menu's description line at the foot of the screen is not an ending",
+      sf.ending_summary(ending(title="Top User", caption_at=(110, 992))) is None)
+check("a third text on screen means it is not an ending",
+      sf.ending_summary(ending(extra="Fight Request OFF")) is None)
 check("Arcade's result screen before the final stage says so",
       sf.screen_summary(arcade_result("FINAL STAGE")) == (True, "FINAL STAGE")
       and sf.screen_summary(arcade_result("NEXT STAGE")) == (True, None),

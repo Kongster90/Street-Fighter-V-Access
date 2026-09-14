@@ -865,11 +865,42 @@ def versus_summary(items: list[TextItem]) -> str | None:
     return sentence + "."
 
 
+# ---------------------------------------------------------------- arcade ending
+#
+# An Arcade run ends on artwork with a caption: a title naming the path and
+# fighter ("SFI Ryu") and above nothing else a paragraph of story, both in one
+# panel, and nothing else on screen. Nothing is selected, so it was silent.
+# Among every logged screen only these and a moment of the main menu showed so
+# little with a paragraph in it, and there the paragraph is the menu's
+# description line at the foot of the screen.
+
+ENDING_TITLE_MAX = 40
+ENDING_CAPTION_MIN = 60
+ENDING_REACH = 4
+
+
+def ending_summary(items: list[TextItem]) -> str | None:
+    """"SFI Ryu. The young challenger Ryu stands before..." on an Arcade ending, else None."""
+    shown = [it for it in items if it.shown]
+    if len(shown) != 2:
+        return None
+    title, caption = sorted(shown, key=lambda it: len(it.text.strip()))
+    if len(title.text.strip()) > ENDING_TITLE_MAX or len(caption.text.strip()) < ENDING_CAPTION_MIN:
+        return None
+    if caption is footer(shown) or title.y >= caption.y:
+        return None
+    distance = _tree_distance(title.chain, caption.chain)
+    if distance is None or distance > ENDING_REACH:
+        return None
+    return f"{title.text.strip()}. {' '.join(caption.text.split())}"
+
+
 def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
     """For screens read as one sentence rather than by what is selected.
 
     Whether this is one, and the sentence once all of it is showing: the
-    result screen after a match, and the VS screen before one. Arcade's
+    result screen after a match, the VS screen before one, and the caption
+    of an Arcade ending. Arcade's
     result screen before the final stage offers one opponent and no choice,
     and says "FINAL STAGE"; its card, gold, follows (`_show_final_opponent`).
     """
@@ -878,7 +909,7 @@ def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
         if summary is None and any(it.shown and it.text.strip() == ARCADE_FINAL_STAGE for it in items):
             summary = ARCADE_FINAL_STAGE
         return True, summary
-    summary = versus_summary(items)
+    summary = versus_summary(items) or ending_summary(items)
     return summary is not None, summary
 
 

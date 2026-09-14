@@ -562,6 +562,18 @@ three modes. Replaying the Arcade recording gave exactly that sentence. The
 result screen and this share `screen_summary`, which the narrator and Alt R
 use.
 
+**Arcade endings.** A run ends on artwork with a caption: a title naming the
+path and fighter ("SFI Ryu" at (160, 780)) and a paragraph of story at
+(220, 868), in one panel, and nothing else shown, which the user clicks
+through. Read live on 2026-09-13, `ending_summary` says "SFI Ryu. The young
+challenger Ryu stands before..." once, through `screen_summary`. It needs
+exactly two shown texts, the shorter (40 characters at most) above the
+longer (60 at least), within four steps in the tree, and the longer not the
+menu's description line; a scan of every logged screen found only endings
+and one main menu moment ("Top User" and the description) of that size.
+Both endings logged so far had one caption page, then path select. Not yet
+heard; "SFI" may be read oddly by NVDA.
+
 Known gaps. The clock sits one object further down and is not resolved.
 Screens other than Versus and Training may head their character select
 differently, and a prompt drawn inside character select's own movie, if there
