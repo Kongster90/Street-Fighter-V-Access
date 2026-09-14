@@ -719,8 +719,9 @@ server..." at (960, 886), each for under a second, the title again, "Logging
 into the server..." for about eight seconds, a loading screen, then the main
 menu under the Current Missions notice. The title's "Press any button" was
 never a text field in memory (the only other text was the copyright line,
-judged hidden while drawn), so it cannot be read the usual way; whether the
-title waits for a press is unconfirmed. The first read of a new game said
+judged hidden while drawn), so it cannot be read the usual way. It does not
+matter: the user says the title carries on to the main menu by itself, with
+nothing to press until the missions notice. The first read of a new game said
 " Sub Menu", a button hint shown alone on a black frame. Status lines went
 unsaid because nothing was selected and they are not the description line,
 so the selection key never changed; `status_line` makes a screen whose one
