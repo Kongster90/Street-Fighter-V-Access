@@ -948,9 +948,10 @@ What follows is roughly in order of value.
    modes' result banners.
 
    Starting the mod with the game, asked for on 2026-09-14, is written: see
-   "Starting with the game" under "Running things". Whether the launch
-   options are set in Steam, and whether it has been heard working from a
-   real launch, is recorded there.
+   "Starting with the game" under "Running things". The user then put it on
+   hold, along with sharing the mod with friends, until every screen in the
+   game speaks properly; do not raise either until then. The launch options
+   are not set in Steam, so the mod is started by hand.
 
 1. **Screens nobody has tried.** Not yet seen from memory: online matches
    past their menus (Ranked, Casual, Battle Lounge rooms); story mode and its
