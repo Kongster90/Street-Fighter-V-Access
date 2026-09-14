@@ -57,7 +57,11 @@ In the mod itself, played by the user on 2026-09-13:
   temperature, including after backing out of character select, which took
   four rounds to fix (see "Stage select has nothing selected" and what
   follows it).
-- Character select does not read. See item 0 under "Where it stands".
+- Character select reads in part. Once a fighter is picked, its costume
+  panel (Costume, Color, V-Comment) and version panel (V-Skill, V-Trigger)
+  read from memory, since they mark the row in gold like any menu; the user
+  confirmed costume selection reads. Moving through the roster does not. See
+  item 0 under "Where it stands".
 
 From the screen, the older path, now the fallback:
 
@@ -461,7 +465,8 @@ keys (R, D, A) and the snapshot key use the memory reading when there is one;
 a snapshot saves it beside the frame as `sfv-<stamp>-memory.txt`.
 
 Known gaps. The clock sits one object further down and is not resolved.
-Character select does not read from memory. Not yet heard from memory in
+Character select's roster does not read from memory, though its costume and
+version panels do. Not yet heard from memory in
 play: the voice language grid (the brightness rule may cover it; its EN and
 JA badges are pictures and are not read), and anything in a match.
 Pixel-level things such as the health bars are untouched.
@@ -586,10 +591,18 @@ The user finds memory reading better and wants it everywhere; the pixel reader
 is kept as the fallback and for the gauges.
 What follows is roughly in order of value.
 
-0. **Character select from memory.** The user's stated goal is memory reading
-   everywhere, screen by screen, and this is where they stopped: stage select
-   works, character select does not. What the last session's log shows there
-   (`snapshots/scaleform-log.txt`, 12:31, a Versus match against the CPU):
+0. **Character select's roster from memory.** The user's stated goal is memory
+   reading everywhere, screen by screen, and this is where they stopped: stage
+   select works, and so does most of character select. After a fighter is
+   picked, the costume panel ("Costume" and its value gold at (100, 455) for
+   player one, (1278, 455) for player two, then Color and V-Comment below)
+   and the version panel (V-Skill at y 740, V-Trigger at y 791, same two
+   columns) read from memory as ordinary gold menus; `scaleform-log.txt` at
+   11:18:55 to 11:19:22 shows both. The narration does not say which player's
+   panel it is, which may be worth adding. What is missing is the roster
+   itself. What the last session's log shows there
+   (`snapshots/scaleform-log.txt`, 11:18:40 and 12:31, Training and Versus
+   against the CPU):
 
    - The text Scaleform shows is "BLUE TEAM", player one's fighter name at
      (134, 590) and again twice at (166, 619), the CPU's at (932, 590) and
@@ -605,12 +618,13 @@ What follows is roughly in order of value.
      while nothing is selected, mostly never runs; it came through twice.
 
    A likely shape for the fix, following stage select: recognise the screen
-   (the "CHARACTER SELECT" heading, or the name fields' layout), take player
-   one's name field as the selection so moving says the fighter, and add
-   costume and colour from `live.py`, or drop the Scaleform name and let
-   `live.py` speak. Ask the user to move through a few fighters and change
-   costume and colour with the mod running; the log will have the rest. F9
-   switches to screen reading, which tells you whether a gap is memory's.
+   (the "CHARACTER SELECT" heading, or the name fields' layout), and take
+   player one's name field as the selection so moving says the fighter.
+   Costume and colour no longer need `live.py` there, since the costume panel
+   reads them as they are chosen; whether its readout still earns its place
+   on this screen is worth asking the user. Ask them to move through a few
+   fighters with the mod running; the log will have the rest. F9 switches to
+   screen reading, which tells you whether a gap is memory's.
 
    Then the screens memory has not been heard on: the voice language grid,
    the Training pause menu mid-match, and the rest under item 1.
