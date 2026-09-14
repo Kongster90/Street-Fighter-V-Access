@@ -66,8 +66,10 @@ In the mod itself, played by the user on 2026-09-13:
   complained.
 - The post-match Results Menu: Play Again, Return to Character/Stage Select,
   Return to Battle Settings and Return to Main Menu as the cursor moves. The
-  result above it read wrongly, "RESULT. LOSE" after player one won; a
-  summary replacing that is in and not yet heard. See "The result screen".
+  result above it read wrongly, "RESULT. LOSE" after player one won. The
+  summary replacing that was heard once; after that the previous match's
+  screen, left behind in memory, was read instead. Both that and the order
+  (player one first) are fixed and not yet heard. See "The result screen".
 
 From the screen, the older path, now the fallback:
 
@@ -266,6 +268,15 @@ How it was found, since none of it came from documentation:
 - **Leftovers stay in the heap.** DocViews from closed dialogs keep their text
   until overwritten. They fail the walk to a render node, or come out
   detached, hidden or transparent, and `TextItem.shown` drops them.
+- **A whole screen can be left behind looking shown.** After each Versus
+  match the previous result screen stayed in memory complete, every node
+  visible and opaque, and was read in place of the new one. What gives it
+  away is the top of its chain: a subtree cut loose from its movie, whose top
+  object has no parent and flags of 0 or 1, where a movie's root has 0x1801
+  (0x1800 while hidden) and its own function table. In the stage grid and
+  music list recordings all 6,105 texts on screen hung from such a root, so
+  `TextItem.rooted` requires it (`MOVIE_ROOT_FLAGS`), and the "blind:" log
+  groups the rest as "cut loose from its movie".
 
 **Not everything selectable is text.** The main menu's icon row, Options,
 Gallery, Message Log, Login and Exit, lights no text when selected, so a
@@ -505,16 +516,20 @@ positions do not follow the columns: after player one won 1 to 0, "0.00%"
 was drawn at x 632 and "100.00%" at 772. `result_summary` finds each side's
 player and numbers by tree distance to that side's outcome, gives each
 percentage to the side whose wins it agrees with (two decimals), leaves the
-ratio out if neither way agrees, and says "PLAYER 1 wins. Wins 1 to 0. Win
-streak 1 to 0. Win ratio 100 to 0 percent." once the columns are complete.
-The user asked for win ratio and streak there. While the screen arrives,
-one fading layer of "LOSE" beside "CPU" had the shape of a prompt's chosen
-button, and was read out as the result; `mark_results` clears non-gold marks
-in that movie, and the narrator says nothing on that screen but the summary
-until the menu is selected. Alt R repeats it. Only one result screen has
-been read, a win against the CPU; a loss, a draw, two players and other
-modes are unseen, and whether the percentages always agree with the wins is
-one data point.
+ratio out if neither way agrees, and says "PLAYER 1 loses. Wins 2 to 1. Win
+streak 0 to 1. Win ratio 66.67 to 33.33 percent." once the columns are
+complete. Player one comes first whoever won and wherever it stands: the
+user did not like hearing "CPU wins" first. The user asked for win ratio and
+streak there. While the screen arrives, one fading layer of "LOSE" beside
+"CPU" had the shape of a prompt's chosen button, and was read out as the
+result; `mark_results` clears non-gold marks in that movie, and the narrator
+says nothing on that screen but the summary until the menu is selected.
+Alt R repeats it. Four matches against the CPU, two won and one lost after
+the first, gave ratios that agreed with the wins every time, player one's
+percentage always drawn at x 772. Each match left the previous result screen
+behind looking shown (see "A whole screen can be left behind"), which made
+one summary stale and the next silent until `TextItem.rooted`. Draws, two
+players and other modes are unseen.
 
 Known gaps. The clock sits one object further down and is not resolved.
 Screens other than Versus and Training may head their character select

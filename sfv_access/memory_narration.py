@@ -47,6 +47,8 @@ def _reasons(items) -> str:
     for it in items:
         if it.depth < 2:
             why = "not attached"
+        elif not it.rooted:
+            why = "cut loose from its movie"
         elif it.hidden:
             why = "parent hidden"
         elif it.tint[3] <= 0.01:
@@ -348,8 +350,9 @@ class Session:
                     placed = reader.place(view) if text else None
                     if not placed:
                         continue
-                    chain, x, y, tint, hidden = placed
-                    item = scaleform.TextItem(text, x, y, tint, len(chain), view, chain, hidden=hidden)
+                    chain, x, y, tint, hidden, rooted = placed
+                    item = scaleform.TextItem(text, x, y, tint, len(chain), view, chain, hidden=hidden,
+                                              rooted=rooted)
                     if item.shown:
                         texts.append(text)
                 if texts:

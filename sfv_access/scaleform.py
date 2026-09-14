@@ -89,6 +89,13 @@ NODE_MATRIX = 0x10           # 2 by 4 floats: sx, shx, 0, tx / shy, sy, 0, ty
 NODE_CXFORM = 0x50           # multiply r, g, b, a then add r, g, b, a
 
 NODE_VISIBLE = 0x0001
+# A movie's root carries these in its flag word, 0x1801 while showing and
+# 0x1800 while hidden. A screen that closes can leave a subtree cut loose from
+# its movie with its render state intact: after each Versus match the previous
+# result screen stayed behind whole, looking shown, and was read in place of the
+# new one. Its top object has no parent and flags of 0 or 1. In the recordings
+# every one of 6,105 texts on screen hung from a root with these bits.
+MOVIE_ROOT_FLAGS = 0x1800
 TWIPS_PER_PIXEL = 20.0
 STAGE_WIDTH, STAGE_HEIGHT = 1920, 1080
 
@@ -162,6 +169,7 @@ class TextItem:
     box: tuple[float, float] = (0.0, 0.0)   # the text box's width and height in pixels
     slot: int = 0            # the picture tile this text names, when it names one
     ticked: bool | None = None   # a checklist entry's box, when it has one
+    rooted: bool = True      # the chain ends at a movie's root, not a subtree cut loose from one
 
     @property
     def highlighted(self) -> bool:
@@ -185,9 +193,10 @@ class TextItem:
 
     @property
     def shown(self) -> bool:
-        """Attached, not hidden, not transparent, on the stage, and real text."""
+        """Attached to a movie, not hidden, not transparent, on the stage, and real text."""
         return (
             self.depth >= 2
+            and self.rooted
             and not self.hidden
             and self.tint[3] > 0.01
             and self.on_stage
@@ -646,6 +655,9 @@ def mark_fighters(items: list[TextItem]) -> None:
 
 RESULT_HEADING = "RESULT"
 RESULT_OUTCOMES = ("WIN", "LOSE")
+RESULT_VERBS = {"WIN": "wins", "LOSE": "loses"}
+# Said first whichever side won and wherever it stands, at the user's request.
+RESULT_PLAYER_ONE = "PLAYER 1"
 RESULT_WINS = "Wins"
 RESULT_STREAK = "Win Streak"
 RATIO_TOLERANCE = 0.01   # the game shows two decimals
@@ -682,9 +694,9 @@ def _percent_words(value: float) -> str:
 
 
 def result_summary(items: list[TextItem]) -> str | None:
-    """The result and both sides' records, winner first, once all of them are showing.
+    """The result and both sides' records, player one first, once all of them are showing.
 
-    "PLAYER 1 wins. Wins 1 to 0. Win streak 1 to 0. Win ratio 100 to 0 percent."
+    "PLAYER 1 loses. Wins 2 to 1. Win streak 0 to 1. Win ratio 66.67 to 33.33 percent."
     None away from the result screen, and while its columns are still arriving.
     """
     shown = [it for it in items if it.shown]
@@ -748,13 +760,12 @@ def result_summary(items: list[TextItem]) -> str | None:
 
     results = [side.text.strip() for side in sides]
     names = [player[1] for player in players]
-    if results.count("WIN") == 1:
-        first = results.index("WIN")
-        parts = [f"{names[first]} wins"]
-    else:
-        first = 0
-        parts = [f"{name} {result.lower()}" for name, result in zip(names, results)]
+    first = names.index(RESULT_PLAYER_ONE) if RESULT_PLAYER_ONE in names else 0
     second = 1 - first
+    if sorted(results) == ["LOSE", "WIN"]:
+        parts = [f"{names[first]} {RESULT_VERBS[results[first]]}"]
+    else:
+        parts = [f"{names[i]} {RESULT_VERBS.get(results[i], results[i].lower())}" for i in (first, second)]
     parts.append(f"Wins {wins[first]} to {wins[second]}")
     parts.append(f"Win streak {streaks[first]} to {streaks[second]}")
     if ratio is not None:
@@ -915,7 +926,7 @@ class ScaleformText:
         return (m[0], m[1], m[3], m[4], m[5], m[7]), cx, flags
 
     def place(self, docview: int):
-        """The owner chain, stage position, tint and hiddenness of a DocView's field."""
+        """The owner chain, stage position, tint, hiddenness and rootedness of a DocView's field."""
         listener = self.pm.ptr(docview + DOCVIEW_LISTENER)
         obj = self.pm.ptr(listener + LISTENER_OWNER) if listener else None
         if not obj:
@@ -937,8 +948,9 @@ class ScaleformText:
             world = _compose(world, matrix)
             tint = [t * c for t, c in zip(tint, cx)]
         hidden = any(not flags & NODE_VISIBLE for _m, _cx, flags in nodes[1:])
+        rooted = nodes[-1][2] & MOVIE_ROOT_FLAGS == MOVIE_ROOT_FLAGS
         x, y = world[2] / TWIPS_PER_PIXEL, world[5] / TWIPS_PER_PIXEL
-        return tuple(chain), x, y, tuple(tint), hidden
+        return tuple(chain), x, y, tuple(tint), hidden, rooted
 
     def children(self, obj: int) -> list[int]:
         """The display objects directly inside `obj`.
@@ -1141,7 +1153,8 @@ class ScaleformText:
         screen, is text under the same hidden containers as stage select's
         conditions counted as showing.
         """
-        conditions = [it for it in every if it.hidden and it.depth >= 2 and stage_condition(it.text)]
+        conditions = [it for it in every
+                      if it.hidden and it.rooted and it.depth >= 2 and stage_condition(it.text)]
         if len({stage_condition(it.text)[0] for it in conditions}) < 2:
             return
         panels = set()
@@ -1181,10 +1194,11 @@ class ScaleformText:
             if placed is None:
                 every.append(TextItem(text, -1, -1, (0, 0, 0, 0), 0, dv))
                 continue
-            chain, x, y, tint, hidden = placed
+            chain, x, y, tint, hidden, rooted = placed
             raw = self.pm.read(dv + DOCVIEW_SIZE, 8)
             box = tuple(v / TWIPS_PER_PIXEL for v in struct.unpack("<2f", raw)) if raw else (0.0, 0.0)
-            every.append(TextItem(text, x, y, tint, len(chain), dv, chain, hidden=hidden, box=box))
+            every.append(TextItem(text, x, y, tint, len(chain), dv, chain, hidden=hidden, box=box,
+                                  rooted=rooted))
         if not any(it.shown for it in every):
             self._show_hidden_stage_select(every)
         out = every if everything else [it for it in every if it.shown]

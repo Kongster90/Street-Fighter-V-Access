@@ -75,8 +75,14 @@ class FakeMemory:
 NODE_FLAG_WORD = sf.NODE_FLAGS
 
 
-def display_object(mem, parent, x, y, tint, flags=1, children=0):
-    """A display object with a render node placing it at (x, y) pixels in its parent."""
+def display_object(mem, parent, x, y, tint, flags=None, children=0):
+    """A display object with a render node placing it at (x, y) pixels in its parent.
+
+    Without a parent it is a movie's root, flagged as one, unless `flags` says
+    otherwise, as for a subtree cut loose from its movie.
+    """
+    if flags is None:
+        flags = sf.MOVIE_ROOT_FLAGS | 1 if parent == 0 else 1
     obj = mem.alloc(0x360)
     entry = mem.alloc(0x20)
     data = mem.alloc(0x80)
@@ -609,11 +615,7 @@ FADED = (0.51, 0.50, 0.60, 1.0)
 MENU_ENTRIES = ("Play Again", "Return to Character/Stage Select", "Return to Battle Settings", "Return to Main Menu")
 
 
-def result_screen(arriving=False, left=("PLAYER 1", "WIN", 1, 1), right=("CPU", "LOSE", 0, 0),
-                  ratio=(("0.00%", 632), ("100.00%", 772)), menu=None, heading="RESULT"):
-    mem = FakeMemory()
-    movie = display_object(mem, 0, 0, 0, WHITE)
-    screen = display_object(mem, display_object(mem, movie, 0, 0, WHITE), 0, 0, WHITE)
+def _result_columns(mem, screen, heading, left, right, ratio, arriving):
     text_field(mem, display_object(mem, screen, 68, 7, WHITE), 0, 0, [heading])
     for (player, outcome, wins, streak), x in ((left, 285), (right, 1646)):
         if arriving and x < 960:
@@ -639,6 +641,19 @@ def result_screen(arriving=False, left=("PLAYER 1", "WIN", 1, 1), right=("CPU", 
         text_field(mem, bottom, 1383, 953, ["KARIN"])
         text_field(mem, display_object(mem, display_object(mem, bottom, 0, 0, WHITE), 0, 0, WHITE),
                    878, 805, ["Win Ratio"])
+
+
+def result_screen(arriving=False, left=("PLAYER 1", "WIN", 1, 1), right=("CPU", "LOSE", 0, 0),
+                  ratio=(("0.00%", 632), ("100.00%", 772)), menu=None, heading="RESULT", stale=None):
+    """`stale` is the previous match's (left, right, ratio), left behind whole
+    in a subtree cut loose from its movie, as found after every match."""
+    mem = FakeMemory(size=0x21000)
+    if stale:
+        old = display_object(mem, 0, 0, 0, WHITE, flags=1)
+        _result_columns(mem, old, "RESULT", *stale, arriving=False)
+    movie = display_object(mem, 0, 0, 0, WHITE)
+    screen = display_object(mem, display_object(mem, movie, 0, 0, WHITE), 0, 0, WHITE)
+    _result_columns(mem, screen, heading, left, right, ratio, arriving)
     if menu:
         menu_movie = display_object(mem, 0, 0, 0, WHITE)
         text_field(mem, menu_movie, 460, 245, ["Results Menu"])
@@ -649,14 +664,25 @@ def result_screen(arriving=False, left=("PLAYER 1", "WIN", 1, 1), right=("CPU", 
 
 
 won = result_screen()
-check("the result screen sums up the match, winner first",
+check("the result screen sums up the match",
       sf.result_summary(won) == "PLAYER 1 wins. Wins 1 to 0. Win streak 1 to 0. Win ratio 100 to 0 percent.",
       repr(sf.result_summary(won)))
 lost = result_screen(left=("PLAYER 1", "LOSE", 1, 0), right=("CPU", "WIN", 2, 1),
                      ratio=(("66.67%", 632), ("33.33%", 772)))
-check("a percentage goes to the side whose wins it agrees with, wherever it is drawn",
-      sf.result_summary(lost) == "CPU wins. Wins 2 to 1. Win streak 1 to 0. Win ratio 66.67 to 33.33 percent.",
+check("player one comes first even when the other side won, and each percentage goes to the side it agrees with",
+      sf.result_summary(lost) == "PLAYER 1 loses. Wins 1 to 2. Win streak 0 to 1. Win ratio 33.33 to 66.67 percent.",
       repr(sf.result_summary(lost)))
+swapped = result_screen(left=("CPU", "WIN", 2, 1), right=("PLAYER 1", "LOSE", 1, 0),
+                        ratio=(("33.33%", 632), ("66.67%", 772)))
+check("player one comes first from the right-hand side too",
+      sf.result_summary(swapped) == "PLAYER 1 loses. Wins 1 to 2. Win streak 0 to 1. Win ratio 33.33 to 66.67 percent.",
+      repr(sf.result_summary(swapped)))
+latest = result_screen(left=("PLAYER 1", "WIN", 3, 1), right=("CPU", "LOSE", 1, 0),
+                       ratio=(("25.00%", 632), ("75.00%", 772)),
+                       stale=(("PLAYER 1", "LOSE", 2, 0), ("CPU", "WIN", 1, 1), (("33.33%", 632), ("66.67%", 772))))
+check("the previous match's result screen, left behind cut loose, is not shown or read",
+      sf.result_summary(latest) == "PLAYER 1 wins. Wins 3 to 1. Win streak 1 to 0. Win ratio 75 to 25 percent."
+      and [it.text for it in latest].count("RESULT") == 1, repr(sf.result_summary(latest)))
 puzzling = result_screen(ratio=(("40.00%", 632), ("60.00%", 772)))
 check("a ratio that agrees with neither side is left unsaid",
       sf.result_summary(puzzling) == "PLAYER 1 wins. Wins 1 to 0. Win streak 1 to 0.", repr(sf.result_summary(puzzling)))
