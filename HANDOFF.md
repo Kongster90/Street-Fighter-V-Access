@@ -66,10 +66,12 @@ In the mod itself, played by the user on 2026-09-13:
   complained.
 - The post-match Results Menu: Play Again, Return to Character/Stage Select,
   Return to Battle Settings and Return to Main Menu as the cursor moves. The
-  result above it read wrongly, "RESULT. LOSE" after player one won. The
-  summary replacing that was heard once; after that the previous match's
-  screen, left behind in memory, was read instead. Both that and the order
-  (player one first) are fixed and not yet heard. See "The result screen".
+  result above it is summed up once its columns are complete, player one
+  first, with wins, win streak and win ratio: "PLAYER 1 loses. Wins 5 to 2.
+  Win streak 0 to 1. Win ratio 71.43 to 28.57 percent." Confirmed by the user
+  over five matches in a row against the CPU on 2026-09-13, wins and losses,
+  each summary new and Alt R repeating the current one. See "The result
+  screen".
 
 From the screen, the older path, now the fallback:
 
@@ -675,11 +677,13 @@ What follows is roughly in order of value.
    the costume and version panels should say whose they are, since both
    sides' panels read the same.
 
-   The result screen summary ("The result screen") is next to hear: ask for
-   a loss as well as a win, and a second match in a row so the numbers are
-   not all ones and zeros. If the ratio is missing from what is said while
-   two percentages show in the log, they did not agree with the wins, and
-   the log's numbers will say what they mean instead.
+   The result screen summary works against the CPU. Unheard: two players,
+   a draw, and other modes' result screens (Arcade, Survival). If the ratio
+   is missing from what is said while two percentages show in the log, they
+   did not agree with the wins, and the log's numbers will say what they
+   mean instead. The "blind:" log lines also list "YOU WIN", "YOU LOSE",
+   "GAME OVER" and "DRAW GAME" under hidden panels, which look like other
+   modes' result banners.
 
    Then the screens memory has not been heard on: the voice language grid,
    the Training pause menu mid-match, and the rest under item 1.
