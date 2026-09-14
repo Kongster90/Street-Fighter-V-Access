@@ -411,6 +411,7 @@ def tick_state(children, x_of, chain) -> bool | None:
 # `appearance(obj)` gives its own colour multiplier and flag word, or None.
 
 GRID_MIN_TILES = 4
+SHORT_LIST_ROWS = 2   # a list's highlight bar is read from this many rows, strictly below four
 GRID_SEARCH_LIMIT = 6000
 # The walk runs on the thread that keeps the block list current, so it must not
 # run long. While a screen is torn down its objects can point into garbage, and
@@ -433,15 +434,15 @@ def _remembering(children):
     return kids
 
 
-def grid_tiles(children, obj) -> list[int]:
-    """The tiles of `obj` if it is a grid: four or more children with the same number of parts."""
+def grid_tiles(children, obj, minimum: int = GRID_MIN_TILES) -> list[int]:
+    """The tiles of `obj` if it is a grid: `minimum` or more children with the same number of parts."""
     inside = children(obj)
-    if len(inside) < GRID_MIN_TILES:
+    if len(inside) < minimum:
         return []
     parts = [len(children(k)) for k in inside]
     usual = max(set(parts), key=parts.count)
     tiles = [k for k, n in zip(inside, parts) if n == usual]
-    return tiles if usual >= 2 and len(tiles) >= GRID_MIN_TILES else []
+    return tiles if usual >= 2 and len(tiles) >= minimum else []
 
 
 def find_grids(children, roots, limit: int = GRID_SEARCH_LIMIT,
@@ -497,13 +498,20 @@ def highlighted_row(children, appearance, rows) -> int | None:
     other. The songs that cannot be chosen are never gold, so this is the only
     sign of the cursor on them. Only visibility is compared, part by part,
     since the rows also differ in tint: some names are grey and some are not.
+
+    A short list, two or three rows, is held to more: every part but one must
+    be alike in visibility on every row. The command list's Normal Throw
+    section has two moves, sixteen parts a row, and only the third part, on
+    only the row the cursor is on, differs; with so few rows, any one part
+    that happens to differ would otherwise be taken for the cursor.
     """
-    if len(rows) < GRID_MIN_TILES:
+    if len(rows) < SHORT_LIST_ROWS:
         return None
     parts = [children(row) for row in rows]
     width = len(parts[0])
     if width < 2 or any(len(p) != width for p in parts):
         return None
+    looks = []
     for index in range(width):
         shown = []
         for row, row_parts in zip(rows, parts):
@@ -512,8 +520,17 @@ def highlighted_row(children, appearance, rows) -> int | None:
                 break
             shown.append(bool(seen[1] & NODE_VISIBLE))
         else:
-            if shown.count(True) == 1:
-                return rows[shown.index(True)]
+            looks.append(shown)
+            continue
+        looks.append(None)
+    if len(rows) < GRID_MIN_TILES:
+        differing = [shown for shown in looks if shown is None or len(set(shown)) > 1]
+        if len(differing) != 1 or differing[0] is None or differing[0].count(True) != 1:
+            return None
+        return rows[differing[0].index(True)]
+    for shown in looks:
+        if shown is not None and shown.count(True) == 1:
+            return rows[shown.index(True)]
     return None
 
 
@@ -1080,7 +1097,7 @@ def describe_inputs(pieces: list[tuple[str, str]]) -> str:
             tokens[-1][3] += 1
             continue
         tokens.append(["joiner" if value in JOINER_WORDS else "input", input_words(value), value, 1])
-    out, previous, comma = "", None, False
+    out, previous, previous_name, comma = "", None, None, False
     for kind, said, name, count in tokens:
         if kind == "text":
             for pattern, words in STANCE_WORDS:
@@ -1093,14 +1110,18 @@ def describe_inputs(pieces: list[tuple[str, str]]) -> str:
             continue
         if count > 1:
             said = " ".join([said] * count)
+        # Directions one after another are separate presses, "down, down";
+        # buttons side by side are pressed together, "light punch light kick".
+        both_directions = (kind == "input" and previous == "input"
+                           and name.startswith("cmd_") and (previous_name or "").startswith("cmd_"))
         if previous is None:
             gap = ""
-        elif comma or (kind == "input" and previous == "input"):
+        elif comma or both_directions:
             gap = ", "
         else:
             gap = " "
         out += gap + said
-        previous, comma = kind, False
+        previous, previous_name, comma = kind, name, False
     return out
 
 
@@ -1479,11 +1500,11 @@ class ScaleformText:
 
         kids = _remembering(self.children)
         for container, slots in groups.items():
-            if len(slots) < GRID_MIN_TILES:
+            if len(slots) < SHORT_LIST_ROWS:
                 continue
             if any(it.highlighted for held in slots.values() for it, _level in held):
                 continue
-            row = highlighted_row(kids, appearance, grid_tiles(kids, container))
+            row = highlighted_row(kids, appearance, grid_tiles(kids, container, minimum=SHORT_LIST_ROWS))
             if row is None:
                 continue
             for it in shown:

@@ -634,6 +634,23 @@ logged once each as "pictures in text with no words: [...]", which is the
 list to extend. Costs about 4 ms on a 135 ms read. The pause menu's Command
 List uses the same pictures and should now read too; not checked.
 
+**The Command List's short sections.** The pause menu's Command List reads
+each move as its name and command from the pictures ("BUSHIN GRAM - BAN.
+forward, down, down forward plus kick"), the row marked by `highlighted_row`:
+each move's row has sixteen parts and the third is shown only on the cursor's
+row. That rule wanted four rows, so a section of two, such as Normal Throw
+(TSURIGANE OTOSHI, MIKOSHI), was silent. Lists of two or three rows are now
+read too, but only when exactly one part differs in visibility across the
+rows and it is shown on exactly one; the three recordings give no marks
+under that rule. Checked live on Normal Throw that MIKOSHI's row is the one
+marked; a screenshot to confirm the cursor was on it could not be taken, the
+game being behind. A section of one move is still silent. Also buttons drawn
+side by side are pressed together and said without a comma ("heavy punch
+heavy kick", the throw "light punch light kick"); commas stay between
+directions and at the arrow meaning then. The Icon Info page is a legend of
+icons that are not text pictures, so only its descriptions show ("Hold the
+down button") and one is taken for a selection; not handled.
+
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
 right) read from the screen before memory took over, and never from memory:

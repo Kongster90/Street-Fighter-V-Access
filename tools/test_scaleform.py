@@ -303,6 +303,34 @@ check("a notice's only button, built as a chosen one, is selected and reads the 
       sf.landed_on(behind, notice()) == [NOTICE, "Close"], repr(sf.landed_on(behind, notice())))
 check("a lone label without a message beside it is not a notice",
       not any(it.chosen for it in notice(message=None)))
+def short_list(cursor, extra_difference=False):
+    """A command list section of two moves as read live: rows of sixteen parts,
+    the third shown only on the row the cursor is on."""
+    tree = {}
+
+    def node(obj, kids=(), flags=1):
+        tree[obj] = {"kids": list(kids), "cx": (1, 1, 1, 1), "flags": flags}
+
+    rows = []
+    for r in range(2):
+        base = 100 * (r + 1)
+        parts = [base + p for p in range(16)]
+        for p, part in enumerate(parts):
+            visible = (r == cursor) if p == 2 else not (extra_difference and p == 7 and r == 1)
+            node(part, flags=1 if visible else 0)
+        node(base, parts)
+        rows.append(base)
+    node(50, [60] + rows)
+    node(60, [61])
+    node(61)
+    kids = lambda o: tree.get(o, {}).get("kids", [])
+    look = lambda o: (tree[o]["cx"], tree[o]["flags"]) if o in tree else None
+    return sf.highlighted_row(kids, look, sf.grid_tiles(kids, 50, minimum=sf.SHORT_LIST_ROWS))
+
+
+check("a list of two rows is read by its one part shown on the cursor's row",
+      short_list(cursor=1) == 200 and short_list(cursor=0) == 100)
+check("but not when a second part differs too", short_list(cursor=1, extra_difference=True) is None)
 check("nor is one under a button without the chosen button's layers",
       not any(it.chosen for it in notice(children=2)))
 
@@ -1032,6 +1060,13 @@ check("combos read in the user's own notation",
 linked = sf.describe_inputs([("text", "(CROUCH) M"), ("picture", "punch_m"), ("picture", "next"),
                              ("text", "(JUMP) H"), ("picture", "punch_h"), ("picture", "next"),
                              ("picture", "punch"), ("picture", "next"), ("picture", "punch")])
+together = [sf.describe_inputs(p) for p in (
+    [("picture", "punch_h"), ("picture", "kick_h"), ("text", " (V-TRIGGER ATTACK)")],
+    [("text", "(NEAR OPPONENT) "), ("picture", "cmd_5"), ("text", " OR "), ("picture", "cmd_6"), ("picture", "plus"),
+     ("picture", "punch_l"), ("picture", "kick_l")])]
+check("different buttons side by side are pressed together, said without a comma",
+      together == ["heavy punch heavy kick (V-TRIGGER ATTACK)",
+                   "(NEAR OPPONENT) neutral OR forward plus light punch light kick"], repr(together))
 check("the arrow meaning then is only a comma, crouch is down plus and jump stays jump",
       linked == "down plus medium punch, jump heavy punch, punch, punch", repr(linked))
 logged_trial = ", ".join(sf.describe_inputs(step) for step in (
