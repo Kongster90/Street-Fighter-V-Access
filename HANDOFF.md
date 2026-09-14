@@ -550,9 +550,17 @@ and value, the stage's name, and player one's level, LP, rank and title,
 with nothing selected. `versus_summary` recognises it by V-Skill and
 V-TRIGGER twice each, no gold and no CHARACTER SELECT or VERSION SELECT
 heading (a scan of every logged screen found only VS screens that way), and
-says "ZEKU versus ABIGAIL", left first, once. The result screen and this
-share `screen_summary`, which the narrator and Alt R use. Opponents'
-versions and the stage were left out as more speech than was asked for.
+says, once, "Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay
+Area." That wording is the user's: the opponent and version numbers, not
+version names, and the stage. The opponent is the right-hand side, where
+player one's opponent stood in Arcade, Versus and Training (only Arcade
+shows a level on just one side, player one's, if that is ever needed to
+tell). A version's number is the numeral before " - " in its value, which
+shares a holder with its label. The stage is the one text sitting directly
+in the panel, and must be a string in `strings.json`; at (644, 979) in all
+three modes. Replaying the Arcade recording gave exactly that sentence. The
+result screen and this share `screen_summary`, which the narrator and Alt R
+use.
 
 Known gaps. The clock sits one object further down and is not resolved.
 Screens other than Versus and Training may head their character select

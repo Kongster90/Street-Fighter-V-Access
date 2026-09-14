@@ -729,14 +729,15 @@ check("the opponent card you move to is read by its gold",
 
 # The VS screen before a fight, as recorded: one panel holding both names,
 # each side's V-Skill and V-TRIGGER label and value, and the stage's name.
-def versus_screen(left="ZEKU", right="ABIGAIL", heading=None, gold=False):
+def versus_screen(left="ZEKU", right="ABIGAIL", heading=None, gold=False,
+                  versions=("I - HUNGABEE", "I - MAX POWER"), stage="Metro City Bay Area"):
     mem = FakeMemory(size=0x21000)
     movie = display_object(mem, 0, 0, 0, WHITE)
     panel = display_object(mem, display_object(mem, movie, 0, 0, WHITE), 0, 0, WHITE)
     if heading:
         text_field(mem, display_object(mem, panel, 960, 524, WHITE), 0, 0, [heading])
     for name, x, values in ((left, 96, ("I - FUKURO", "I - BUSHINRYU SHINGEKIKO")),
-                            (right, 1324, ("I - HUNGABEE", "I - MAX POWER"))):
+                            (right, 1324, versions)):
         side = display_object(mem, panel, x, 619, WHITE)
         text_field(mem, side, 0, 0, [name])
         layers = display_object(mem, side, 2, 2, WHITE)
@@ -746,16 +747,24 @@ def versus_screen(left="ZEKU", right="ABIGAIL", heading=None, gold=False):
             row = display_object(mem, panel, x, 702 + 52 * i, WHITE)
             text_field(mem, row, 185, 0, [label], tint=GOLD if gold and i == 0 and x < 960 else WHITE)
             text_field(mem, row, 0, -4, [value], tint=GOLD if gold and i == 0 and x < 960 else WHITE)
-    text_field(mem, display_object(mem, panel, 644, 979, WHITE), 0, 0, ["Metro City Bay Area"])
+    if stage:
+        text_field(mem, panel, 644, 979, [stage])
     return sf.ScaleformText(mem, MODULE).items()
 
 
 versus = versus_screen()
-check("the VS screen names both fighters, left first", sf.versus_summary(versus) == "ZEKU versus ABIGAIL",
+check("the VS screen says the opponent on the right, their version numbers and the stage",
+      sf.versus_summary(versus) == "Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area.",
       repr(sf.versus_summary(versus)))
+birdie = versus_screen(right="BIRDIE", versions=("II - CHEWING TIME", "II - BIRDIE TIME"), stage="Union Station")
+check("second versions are said as 2",
+      sf.versus_summary(birdie) == "Opponent, BIRDIE, V-Skill 2, V-Trigger 2. Union Station.", repr(sf.versus_summary(birdie)))
+check("a stage the game has no such string for is left out",
+      sf.versus_summary(versus_screen(stage="Dengster")) == "Opponent, ABIGAIL, V-Skill 1, V-Trigger 1.",
+      repr(sf.versus_summary(versus_screen(stage="Dengster"))))
 check("version select, with its heading and gold, is not the VS screen",
       sf.versus_summary(versus_screen(heading="VERSION SELECT", gold=True)) is None)
-check("a mirror match names the fighter twice", sf.versus_summary(versus_screen(right="ZEKU")) == "ZEKU versus ZEKU",
+check("a mirror match still names the opponent", sf.versus_summary(versus_screen(right="ZEKU")).startswith("Opponent, ZEKU,"),
       repr(sf.versus_summary(versus_screen(right="ZEKU"))))
 
 # A screen being torn down: an object whose child list points at garbage that
@@ -820,7 +829,8 @@ said = narrate([(0.0, arriving), (0.3, arriving), (0.5, won), (0.8, won), (1.0, 
                 (1.3, result_screen(menu=MENU_ENTRIES[1])), (1.6, result_screen(menu=MENU_ENTRIES[1]))])
 before_fight = narrate([(0.0, [item("STAGE 2", 660, 660)]), (0.5, versus), (0.8, versus), (1.1, versus),
                         (5.0, [item("SCORE", 561, 48)])])
-check("the VS screen says who is fighting once", [s for _, s in before_fight] == ["ZEKU versus ABIGAIL"],
+check("the VS screen says who is fighting once",
+      [s for _, s in before_fight] == ["Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area."],
       repr(before_fight))
 check("the result screen says its summary once when complete, then the Results Menu as it moves",
       [s for _, s in said] == ["PLAYER 1 wins. Wins 1 to 0. Win streak 1 to 0. Win ratio 100 to 0 percent.",

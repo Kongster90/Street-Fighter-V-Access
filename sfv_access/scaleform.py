@@ -778,12 +778,32 @@ def result_summary(items: list[TextItem]) -> str | None:
 #
 # Before each fight the VS screen shows, in one panel, both fighters' names
 # (drawn once and then in layers), each side's V-Skill and V-Trigger as label
-# and value, the stage's name, and player one's level, LP, rank and title.
+# and value ("II - BIRDIE TIME") in a holder of their own, the stage's name
+# alone directly in the panel, and player one's level, LP, rank and title.
 # Nothing on it is selected, so it was silent. Version select shows both
 # sides' V-Skill and V-Trigger too, under its heading and with a gold row.
+#
+# The user asked for the opponent and their version numbers, not names, and
+# the stage. The opponent is the right-hand side: player one was on the left
+# in Arcade, Versus and Training alike.
 
 VERSUS_LABELS = ("V-Skill", "V-TRIGGER")
+VERSUS_WORDS = {"V-Skill": "V-Skill", "V-TRIGGER": "V-Trigger"}
+VERSION_NUMERALS = {"I": 1, "II": 2, "III": 3}
 VERSION_SELECT_HEADING = "VERSION SELECT"
+STRINGS_FILE = Path(__file__).resolve().parent.parent / "strings.json"
+_game_strings: frozenset[str] | None = None
+
+
+def game_strings() -> frozenset[str]:
+    """Every string the game can display, from its own localisation table."""
+    global _game_strings
+    if _game_strings is None:
+        try:
+            _game_strings = frozenset(json.loads(STRINGS_FILE.read_text(encoding="utf-8"))["strings"].values())
+        except (OSError, ValueError, KeyError, AttributeError):
+            _game_strings = frozenset()
+    return _game_strings
 
 
 def _versus_panel(shown: list[TextItem]) -> int | None:
@@ -810,7 +830,12 @@ def mark_versus(items: list[TextItem]) -> None:
 
 
 def versus_summary(items: list[TextItem]) -> str | None:
-    """"ZEKU versus ABIGAIL", the left side first, once both names show on the VS screen."""
+    """"Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area." on the VS screen.
+
+    None away from it, and until both fighters' names show. A version whose
+    value does not start with a numeral is said by name; a stage that is not
+    one text alone in the panel, and a string the game has, is left out.
+    """
     shown = [it for it in items if it.shown]
     panel = _versus_panel(shown)
     if panel is None:
@@ -819,7 +844,24 @@ def versus_summary(items: list[TextItem]) -> str | None:
     fighters = sorted((it for it in shown if it.text.strip() in names and panel in it.chain), key=lambda it: it.x)
     if not fighters or fighters[-1].x - fighters[0].x < STAGE_WIDTH / 4:
         return None
-    return f"{fighters[0].text.strip()} versus {fighters[-1].text.strip()}"
+    parts = [f"Opponent, {fighters[-1].text.strip()}"]
+    for label in VERSUS_LABELS:
+        right = max((it for it in shown if it.text.strip() == label), key=lambda it: it.x)
+        value = next((v.text.strip() for v in shown
+                      if v is not right and len(v.chain) > 1 and len(right.chain) > 1
+                      and v.chain[1] == right.chain[1] and v.text.strip()), None)
+        if value is None:
+            continue
+        numeral = value.partition(" - ")[0].strip()
+        parts.append(f"{VERSUS_WORDS[label]} {VERSION_NUMERALS.get(numeral, value)}")
+    sentence = ", ".join(parts)
+    known = game_strings()
+    stages = [it.text.strip() for it in shown
+              if len(it.chain) > 1 and it.chain[1] == panel and it.text.strip() in known
+              and it.text.strip() not in names and it.text.strip() not in VERSUS_LABELS]
+    if len(set(stages)) == 1:
+        sentence += f". {stages[0]}"
+    return sentence + "."
 
 
 def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
