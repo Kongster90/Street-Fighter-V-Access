@@ -740,6 +740,34 @@ def arcade_result(marker):
     return sf.ScaleformText(mem, MODULE).items()
 
 
+def final_offer(marker="FINAL STAGE"):
+    """Arcade's result screen before the final stage, as logged: SAGAT's card gold
+    in the second slot, the card at alpha zero with bounds, under the container
+    at alpha zero without."""
+    mem = FakeMemory(size=0x21000)
+    movie = display_object(mem, 0, 0, 0, WHITE)
+    screen = display_object(mem, movie, 0, 0, WHITE)
+    text_field(mem, display_object(mem, screen, 68, 7, WHITE), 0, 0, ["RESULT"])
+    column = display_object(mem, screen, 0, 0, WHITE)
+    text_field(mem, column, 259, 156, ["PLAYER 1"])
+    text_field(mem, display_object(mem, column, 272, 231, WHITE), 0, 0, ["WIN"])
+    offer = display_object(mem, 0, 0, 0, WHITE)
+    panel = display_object(mem, offer, 0, 0, WHITE)
+    text_field(mem, display_object(mem, panel, 240, 660, WHITE), 0, 0, [marker])
+    cards = display_object(mem, panel, 1146, 412, (1.0, 1.0, 1.0, 0.0), bounds=False)
+    holder = display_object(mem, cards, 0, 0, WHITE, bounds=False)
+    card = display_object(mem, holder, 0, 156, (1.0, 1.0, 1.0, 0.0))
+    for text, x, y in (("SAGAT", 46, 40), ("REWARD", 109, 99), ("16620", 260, 99)):
+        text_field(mem, display_object(mem, card, x, y, GOLD), 0, 0, [text])
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+final = final_offer()
+check("before the final stage its one opponent's card counts as showing, gold",
+      [it.text for it in final if it.selected] == ["SAGAT", "REWARD", "16620"],
+      repr([it.text for it in final if it.selected]))
+check("a card faded out beside NEXT STAGE stays hidden",
+      not any(it.text == "SAGAT" for it in final_offer("NEXT STAGE")))
 check("Arcade's result screen before the final stage says so",
       sf.screen_summary(arcade_result("FINAL STAGE")) == (True, "FINAL STAGE")
       and sf.screen_summary(arcade_result("NEXT STAGE")) == (True, None),
@@ -853,6 +881,9 @@ check("the VS screen says who is fighting once",
       repr(before_fight))
 stage_late = narrate([(0.0, versus_screen(stage=None)), (0.1, versus_screen(stage=None)), (0.2, versus),
                       (0.4, versus), (0.7, versus), (1.0, versus)])
+final_said = narrate([(0.0, arcade_result("NEXT STAGE")[:3]), (0.2, final), (0.4, final), (0.7, final), (1.0, final)])
+check("the final stage says FINAL STAGE and its opponent in one sentence",
+      [s for _, s in final_said] == ["FINAL STAGE. SAGAT. REWARD. 16620"], repr(final_said))
 check("a stage name arriving a read late is waited for, not said in a second sentence",
       [s for _, s in stage_late] == ["Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area."],
       repr(stage_late))

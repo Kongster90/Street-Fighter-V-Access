@@ -713,15 +713,21 @@ What follows is roughly in order of value.
    stage, which arrived a read late; `SUMMARY_SETTLE` now waits for a summary
    to hold still for 0.4 s, not yet heard.
 
-   Open: before the final stage (SAGAT at 21:06:57) Arcade's result screen
-   shows FINAL STAGE where NEXT STAGE was, with one opponent and no choice,
-   and no card text counted as showing, so nothing was said about him; the
-   log only keeps shown text, and the leftovers were gone by the time it was
-   looked at. It now says "FINAL STAGE", and `Session._note_arcade_offer`
-   writes "arcade offer (...)" to `scaleform-log.txt` twice per visit to
-   that screen, listing every fighter's name not shown with its reason and
-   each object above it (flag word / raw alpha, "e" for empty bounds). The
-   next run to the final stage will say what hides the card. The mod stopped by
+   Before the final stage Arcade's result screen shows FINAL STAGE where
+   NEXT STAGE was, with one opponent and no choice, and nothing was said
+   about him. `Session._note_arcade_offer` (still in: "arcade offer (...)"
+   in `scaleform-log.txt`, twice per result screen with either marker, each
+   hidden fighter's name with its reason and the flag word / raw alpha of
+   every object above it, "e" for empty bounds) caught it on the next run:
+   SAGAT, REWARD, 16620 in gold in the second card's slot, under the usual
+   zero-alpha empty-bounds container and also a card object at alpha zero
+   with bounds, for the half minute the screen stayed. Whether a sighted
+   player sees that card is unknown; no screenshot exists. The name is the
+   game's own final opponent, so `_show_final_opponent` counts gold fighter
+   cards hidden only by alpha, beside a shown FINAL STAGE, as showing, and
+   the narrator holds selections made while a summary settles and says them
+   after it: "FINAL STAGE. SAGAT. REWARD. 16620". Not yet heard. The fight's
+   own bar also says FINAL STAGE, hence the result-screen checks. The mod stopped by
    itself that evening at 20:33 on Arcade's result screen with nothing in
    either log; if it happens again, ask whether they closed it, and look for
    a console window's last lines. `scaleform-arcade-choice` is a 541-record

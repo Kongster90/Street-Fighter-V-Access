@@ -145,6 +145,7 @@ class Narrator:
         self.summary_seen_at = 0.0
         self.summary_pending = ""
         self.summary_since = 0.0
+        self.summary_held: list[str] = []
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
@@ -185,11 +186,18 @@ class Narrator:
                 parts, self.pending = None, None
             if (summary or "") != self.summary_pending:
                 self.summary_pending, self.summary_since = summary or "", now
-            if summary and summary != self.summary_said and now - self.summary_since >= SUMMARY_SETTLE:
-                self.summary_said = summary
-                parts = [summary] + (parts or [])
-        elif self.summary_said and now - self.summary_seen_at > GROUP_MEMORY:
-            self.summary_said = ""
+            if summary and summary != self.summary_said:
+                if now - self.summary_since >= SUMMARY_SETTLE:
+                    # Anything selected while it settled comes after it, once:
+                    # the final stage's opponent card arrives with FINAL STAGE.
+                    held = [p for p in self.summary_held + (parts or []) if p not in summary]
+                    self.summary_said, self.summary_held = summary, []
+                    parts = [summary] + scaleform._unique(held)
+                else:
+                    self.summary_held += parts or []
+                    parts = None
+        elif (self.summary_said or self.summary_held) and now - self.summary_seen_at > GROUP_MEMORY:
+            self.summary_said, self.summary_held = "", []
 
         said = phrase(parts or [])
         if said and said != self.said:
@@ -311,7 +319,10 @@ class Session:
         later, since the cards can arrive after it. Every fighter's name that is
         not counted as showing is described with why, and each object above it.
         """
+        # The fight's own bar says FINAL STAGE too, so only on a result screen.
         marker = next((it for it in items if it.text.strip() in ARCADE_MARKERS), None)
+        if marker is not None and not scaleform.on_results(items):
+            marker = None
         if marker is None:
             self._arcade_marker, self._arcade_notes = None, 0
             return

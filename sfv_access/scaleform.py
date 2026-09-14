@@ -871,7 +871,7 @@ def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
     Whether this is one, and the sentence once all of it is showing: the
     result screen after a match, and the VS screen before one. Arcade's
     result screen before the final stage offers one opponent and no choice,
-    and nothing on it was found to read, so it says "FINAL STAGE".
+    and says "FINAL STAGE"; its card, gold, follows (`_show_final_opponent`).
     """
     if on_results(items):
         summary = result_summary(items)
@@ -1306,6 +1306,40 @@ class ScaleformText:
                 if set(self._hidden_ancestors(it.chain)) <= panels:
                     it.hidden = False
 
+    def _show_final_opponent(self, every: list[TextItem]) -> None:
+        """Read Arcade's final opponent on the result screen offering FINAL STAGE.
+
+        With two opponents to choose from, the cards are an ordinary gold menu.
+        Before the final stage there is one, SAGAT with his reward, gold like
+        a chosen card, but the card object above his name held alpha zero with
+        real bounds for the half minute the screen stayed, which elsewhere
+        means faded out. Whether it is drawn is not known; the name is the
+        game's own final opponent, which the VS screen then confirmed. Only
+        text under a card holding a gold fighter's name, in the movie showing
+        FINAL STAGE, and hidden by nothing but alpha, is counted as showing.
+        """
+        marker = next((it for it in every if it.shown and it.text.strip() == ARCADE_FINAL_STAGE), None)
+        if marker is None or not marker.chain:
+            return
+        movie = marker.chain[-1]
+        names = fighter_names()
+
+        def only_faded(it):
+            return (it.depth >= 2 and it.rooted and not it.hidden and it.on_stage
+                    and it.tint[3] <= 0.01 and bool(it.chain) and it.chain[-1] == movie)
+
+        cards = set()
+        for it in every:
+            if it.text.strip() in names and only_faded(it) and it.highlighted:
+                for obj in it.chain[1:]:
+                    node = self._node(obj)
+                    if node is not None and node[1][3] <= 0.01:
+                        cards.add(obj)
+                        break
+        for it in every:
+            if cards.intersection(it.chain) and only_faded(it):
+                it.tint = (it.tint[0], it.tint[1], it.tint[2], 1.0)
+
     # ----------------------------------------------------------------- reads
     def items(self, everything: bool = False, quick: bool = False) -> list[TextItem]:
         """Text on screen in reading order. `everything` keeps the leftovers.
@@ -1338,6 +1372,7 @@ class ScaleformText:
                                   rooted=rooted))
         if not any(it.shown for it in every):
             self._show_hidden_stage_select(every)
+        self._show_final_opponent(every)
         out = every if everything else [it for it in every if it.shown]
         self._roots = {it.chain[-1] for it in out if it.shown and it.chain}
         if not quick and self._roots != roots_before:
