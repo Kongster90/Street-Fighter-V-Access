@@ -33,8 +33,15 @@ against the game's own words.
 This is now how the mod narrates menus: exact text, and which entry is
 selected, read out of Scaleform. See "Reading the interface from memory" below.
 The pixel reader is the fallback, used while memory cannot be read or when the
-user switches to it with F9. Character select is still read from
-Unreal's objects by `live.py`.
+user switches to it with F9. Character select reads from Scaleform too now;
+`live.py`, which reads Unreal's objects, is only used by the pixel path and
+Alt P.
+
+**Start here if you are new.** Read "Who this is for", "What works", "Where it
+stands, and what to do next" and "Working with this person", then the parts of
+"Reading the interface from memory" that touch whatever screen you are asked
+about. The long middle of this file is findings, each written where it was
+learned; search it for a screen's name before investigating that screen.
 
 ## What works
 
@@ -72,6 +79,31 @@ In the mod itself, played by the user on 2026-09-13:
   over five matches in a row against the CPU on 2026-09-13, wins and losses,
   each summary new and Alt R repeating the current one. See "The result
   screen".
+
+In the mod itself, played by the user on 2026-09-13 and 2026-09-14 (each has a
+section of its own under "Reading the interface from memory"):
+
+- Arcade: path select, each path with battles and best score, Alt R adding
+  the path's story; the choice of next opponent after a stage ("CODY. REWARD.
+  20320"); the VS screen before every fight, in Versus and Training too
+  ("Opponent, CODY, V-Skill 2, V-Trigger 1. Frosty Boulevard."); the ending
+  caption without its path code ("Ryu. The young challenger Ryu...").
+- Challenges: the Trials notice with its one Close button; trials, the combo
+  list read once as a sentence and again on every restart, in both Display
+  Move Names and Display Commands, the command pictures put into words in
+  the user's notation; Extra Battle's event panel, a short introduction on
+  arriving at BEGIN BATTLE and the rest on Alt R.
+- The pause menu's Command List, every section including those of two moves
+  and of one, each move said as name and command.
+- The Battle Lounge, Casual Match and Ranked Match menus read as ordinary
+  menus, seen in the spoken log; nothing past their menus has been tried.
+- Quitting with F10 now closes the console window.
+
+Written and checked against the game or a recording, but not yet heard in
+play: Arcade's final-stage opponent card ("FINAL STAGE. SAGAT. REWARD.
+16620"); the Special Artwork credit after an ending; `SUMMARY_SETTLE`, which
+stops a summary being said twice when part of it arrives late; the startup
+challenge notices, which probably share the Trials notice's template.
 
 From the screen, the older path, now the fallback:
 
@@ -573,9 +605,9 @@ compares buttons, so with one it never looked and the notice was silent.
 in its row, with other text in the row's panel, as a chosen button; the
 narrator then reads the panel first, as for any prompt opening. No shown
 text in the three recordings has that shape. Read live: the message, then
-"Close". Confirmed in play by the user on 2026-09-13. The startup challenge notices ("Perform a combo 10
-time(s)!" with a Close button) are probably the same template and may read
-now too; unchecked.
+"Close". Confirmed in play by the user on 2026-09-13. The startup challenge
+notices ("Perform a combo 10 time(s)!" with a Close button) are probably the
+same template and may read now too; unchecked.
 
 **Trials.** A trial lists its combo's steps down the left (x 134, from y 340,
 about 48 apart), each step drawn three times at one place: a top layer,
@@ -628,11 +660,14 @@ spelled as directions and 41236/63214 named; kick_m and kick_h, guessed by
 pattern, read correctly in play; punch_l and kick_l are still unseen. The
 user confirmed the whole trial reading in play on 2026-09-14, rereads on
 restart included: "jump heavy kick, down plus heavy punch, quarter circle
-back plus medium kick, ...". The only unknown picture logged so far is
-button_x, a controller prompt beside "Fighter Profile", left silent. Unknown picture names stay spaces and are
-logged once each as "pictures in text with no words: [...]", which is the
-list to extend. Costs about 4 ms on a 135 ms read. The pause menu's Command
-List uses the same pictures and should now read too; not checked.
+back plus medium kick, ...". punch_l then read correctly in the Command List
+("light punch, medium punch"); kick_l is the only button still unseen.
+Unknown picture names stay spaces and are logged once each as "pictures in
+text with no words: [...]", which is the list to extend; so far only
+button_x, button_a and button_y, controller prompts beside "Fighter Profile"
+and the Command List's own key hints, all rightly silent. Costs about 4 ms
+on a 135 ms read. The Command List uses the same pictures and reads with
+them, confirmed in play on 2026-09-14.
 
 **The Command List's short sections.** The pause menu's Command List reads
 each move as its name and command from the pictures ("BUSHIN GRAM - BAN.
@@ -651,14 +686,17 @@ movie is chosen, a list whose text all sits in one row of eight parts or
 more, each part a background and a holder, with no other such row beside
 it. Read live: "NOUTEN WARI. forward plus heavy punch". A trial's step
 layers behind the pause menu are still marked at that point in the pass,
-hence the check within the note's movie only. Also buttons drawn
-side by side are pressed together: the same button is said twice ("punch
-punch") and different ones get plus between them ("heavy punch plus heavy
-kick", the throw "light punch plus light kick"), from the user's example
-"KAGEROU. heavy punch, heavy punch, medium punch plus medium kick"; commas
-stay between directions and at the arrow meaning then. The Icon Info page is a legend of
-icons that are not text pictures, so only its descriptions show ("Hold the
-down button") and one is taken for a selection; not handled.
+hence the check within the note's movie only. Every section, short or
+single, was confirmed in play on 2026-09-14. Also buttons drawn side by side
+are pressed together: the same button is said twice ("punch punch") and
+different ones get plus between them ("heavy punch plus heavy kick", the
+throw "light punch plus light kick"), from the user's example "KAGEROU.
+heavy punch, heavy punch, medium punch plus medium kick"; commas stay
+between directions and at the arrow meaning then. The Icon Info page is a
+legend of icons that are not text pictures, so only its descriptions show
+("Hold the down button", "Hold the left button", "Without directional
+button", "A move corresponding to each V-Skill.") and one is taken for a
+selection; not handled, and the user has not asked.
 
 **Extra Battle's event panel.** Entering Extra Battle in Challenges puts the
 cursor on BEGIN BATTLE beside one event's panel, and only BEGIN BATTLE was
@@ -788,6 +826,16 @@ reintroduce a second one. The same goes for memory narration: `Narrator` in
 `tools/read_scaleform.py --watch` call it. A fix tried in the watch mode is a
 fix in the mod.
 
+**The selection rules run in an order, and later ones undo earlier ones.**
+`ScaleformText.mark_choices` runs the generic rules first (prompt buttons by
+layers, brightness, highlight bars, picture grids, the lone button, the
+single Command List move) and then the screen rules that clear false marks
+(`mark_fighters`, `mark_results`, `mark_versus`, `mark_trial`). A rule that
+asks "is anything else selected?" in between sees marks that are about to be
+cleared: the single-move rule was refused on its first try by a trial's step
+layers still marked behind the pause menu. Ask within the screen's own movie
+(`chain[-1]`), and put new rules where their questions get true answers.
+
 **Never let a test write to real data.** One version of `test_learning.py` wrote
 to and then deleted `character_names.json`, destroying a table that had taken a
 session in the game to build. Tests now point at scratch files and assert that
@@ -839,28 +887,37 @@ The user finds memory reading better and wants it everywhere; the pixel reader
 is kept as the fallback and for the gauges.
 What follows is roughly in order of value.
 
-0. **Memory reading on the remaining screens.** The user's stated goal is
-   memory reading everywhere, screen by screen. Stage select and character
-   select both work in play as of 2026-09-13, character select in Versus
-   against a second player and against the CPU. On character select the
-   costume panel ("Costume" and its value gold at (100, 455) for player one,
-   (1278, 455) for player two, then Color and V-Comment below) and the
-   version panel (V-Skill at y 740, V-Trigger at y 791, same two columns)
-   read as ordinary gold menus, and the roster by fighter name. The user
-   does not want player numbers on each move. Not yet tried: character
-   select in Training and Arcade. If a mode's character select does not
-   read, look for its heading in the log; `CHARACTER_SELECT_HEADING` is the
-   only thing recognising the screen. F9 switches to screen reading, which
-   tells you whether a gap is memory's. Still worth asking the user: whether
-   the costume and version panels should say whose they are, since both
-   sides' panels read the same.
+0. **Keep going screen by screen, as the user finds them.** The user's
+   stated goal is memory reading everywhere. The way the 2026-09-13/14
+   session went, and the way to continue: the user plays, finds a screen that
+   is silent or reads wrongly, and says so while still on it. Read the live
+   screen from memory at once (the snippets under "How this session found
+   things" below), and the tail of `snapshots/spoken-log.txt` and
+   `scaleform-log.txt`. Nearly every silent screen was one of four things:
+   nothing on it selected (give it a summary through `screen_summary`, or an
+   introduction as Extra Battle has); a rule mistaking layers or tags for a
+   selection (clear marks in that screen's movie, as `mark_fighters`,
+   `mark_results`, `mark_trial` do); text judged hidden that is on screen (a
+   zero alpha, a movie top, a cut-loose copy: see those sections); or the
+   selection marked by a shape no rule knew (a lone button, a short list, a
+   single row). Scope any new rule to its screen by a text only that screen
+   shows, check it against the three recordings for false marks, add a test
+   built from what memory showed, and say the result in the user's words.
 
-   Arcade, 2026-09-13: the VS screen ("Opponent, CODY, V-Skill 2,
-   V-Trigger 1. Frosty Boulevard.") and the choice of next opponent on
-   Arcade's result screen ("CODY. REWARD. 20320") both confirmed by the user
-   in play. The VS sentence was said twice once, without and then with the
-   stage, which arrived a read late; `SUMMARY_SETTLE` now waits for a summary
-   to hold still for 0.4 s, not yet heard.
+   Heard and confirmed this session: see "What works". Waiting to be heard:
+   Arcade's final-stage opponent card, the Special Artwork credit,
+   `SUMMARY_SETTLE`, and the startup challenge notices. Not yet tried at all:
+   character select in Training and Arcade (if one does not read, look for
+   its heading in the log; `CHARACTER_SELECT_HEADING` is the only thing
+   recognising the screen), the result screen with two players, a draw, or
+   Survival, the voice language grid, and anything online past its menus.
+   Still worth asking the user: whether character select's costume and
+   version panels should say whose they are, since both sides' read the
+   same; whether Icon Info in the Command List should be read.
+
+   The VS sentence was once said twice, without and then with the stage,
+   which arrived a read late; `SUMMARY_SETTLE` now waits for a summary to
+   hold still for 0.4 s.
 
    Before the final stage Arcade's result screen shows FINAL STAGE where
    NEXT STAGE was, with one opponent and no choice, and nothing was said
@@ -890,28 +947,19 @@ What follows is roughly in order of value.
    "GAME OVER" and "DRAW GAME" under hidden panels, which look like other
    modes' result banners.
 
-   Then the screens memory has not been heard on: the voice language grid,
-   the Training pause menu mid-match, and the rest under item 1.
+   One thing agreed earlier and not started: starting the mod automatically
+   with the game. Steam launch options running a small launcher were
+   recommended over starting with Windows; the user has not chosen, and
+   changing their Steam settings needs their go-ahead.
 
-   Two things the user asked for next and were agreed but not started: reading
-   the challenge notices the game opens with at startup (the reader already
-   sees their text, "Perform a combo 10 time(s)!" with a deadline, reward and
-   Close button, so this is probably a prompt-like panel to name), and
-   starting the mod automatically with the game. For the latter, Steam launch
-   options running a small launcher were recommended over starting with
-   Windows; the user has not chosen, and changing their Steam settings needs
-   their go-ahead.
-
-1. **Screens nobody has ever captured.** This is the highest value work and it
-   is cheap. Everything verified so far came from a capture pass, and each new
-   screen has taken minutes rather than hours. Not yet seen: the online modes,
-   so Ranked, Casual, Battle Lounge and Extra Battle; story mode and its
-   chapter select; survival difficulty; the trials and tutorial lists; the
-   controller and button config page; the shop; the player profile. The
-   command list was reached from memory on 2026-09-13 and reads each move's
-   name, but its inputs are drawn as button pictures, and what memory has in
-   their place came out as stray letters: "OI ONIBI. M  M    OR   OR   M".
-   The user has not said how it sounded.
+1. **Screens nobody has tried.** Not yet seen from memory: online matches
+   past their menus (Ranked, Casual, Battle Lounge rooms); story mode and its
+   chapter select; Survival; the Demonstrations and tutorial lists beyond
+   their menus; the controller and button config page; the shop; the player
+   profile; the Gallery's contents. Each screen this session took minutes to
+   an hour once the user was on it. `tools/record_scaleform.py <name>` is the
+   tool when a selection's marking is unknown and the user needs to move
+   through it; plain live reads were enough for everything else this session.
 
    `tools/grab_screens.py` saves a frame each time the selection moves, so the
    user plays normally and you read what comes out. Ask them what they heard as
@@ -978,6 +1026,51 @@ reason.
 Push every change to `origin`, which is
 github.com/Kongster90/Street-Fighter-V-Access. They asked for that as a
 standing instruction rather than something to be asked about each time.
+
+**How they want things said**, each their own choice, all in place:
+
+- Moves say the name alone; detail goes on Alt R. Exceptions they asked for
+  are the one-time summaries: the result screen, the VS screen, a trial's
+  combo list, Extra Battle's introduction.
+- No player numbers on each move at character select.
+- The result screen puts player one first, whoever won, and gives wins, win
+  streak and win ratio.
+- The VS screen: "Opponent, <name>, V-Skill <n>, V-Trigger <n>. <stage>."
+- Arcade endings leave out the path code (SFI, SFII and so on).
+- Combos, in their own examples: "heavy punch, quarter circle forward plus
+  kick kick, down, down plus heavy punch" and "KAGEROU. heavy punch, heavy
+  punch, medium punch plus medium kick". Directions are words with commas
+  between them; no comma before plus; the same button pressed twice is said
+  twice; different buttons pressed together get plus between them; the
+  game's "then" arrow is only a comma; "(STANDING)" is left out; "(CROUCH)"
+  becomes "down plus"; "(JUMP)" stays "jump"; a trial's steps are joined by
+  commas without numbers. They do not know move names, so Display Commands
+  with these words is what they use.
+- A trial's list is read again on every restart.
+
+**How this session found things.** Almost everything came from reading the
+game's memory while the user held the screen, with small scripts run from the
+repository root, for example:
+
+```bash
+.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, '.'); from sfv_access import scaleform as sf, memory_narration as mn; r = sf.attach(); every = r.items(everything=True); [print(mn.describe(it)) for it in every if it.shown]; print(mn._reasons([it for it in every if not it.shown and it.text.strip()]))"
+```
+
+That lists what is shown with selection marks and groups the rest by why it
+is hidden. From there: `reader.children(obj)` and `reader._node(obj)` walk the
+display tree around a text's `chain`; `reader.chain_states(chain)` gives each
+object's flag word, raw alpha and empty bounds; `scaleform.screen_summary`,
+`trial_summary`, `extra_battle_details` and a `memory_narration.Narrator` fed
+two readings show what would be said. When a picture matters, a
+full-resolution screenshot through `sfv_access.capture.Capture().frame()`
+works only while the game is in front (`game.find_window().is_foreground`);
+read the PNG yourself. To test a new rule against the past, the recordings in
+`snapshots/scaleform-stages`, `scaleform-bgm` and `scaleform-arcade-choice`
+hold every text with its chain and the display tree with flags, alpha and
+children, and replaying them is how each loosened rule was shown not to mark
+anything else. The logs replay too: `scaleform-log.txt` records every screen
+as it changed with its marks, which is enough to rerun `Narrator` over a
+session.
 
 ## Running things
 
