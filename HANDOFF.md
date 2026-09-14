@@ -573,7 +573,7 @@ compares buttons, so with one it never looked and the notice was silent.
 in its row, with other text in the row's panel, as a chosen button; the
 narrator then reads the panel first, as for any prompt opening. No shown
 text in the three recordings has that shape. Read live: the message, then
-"Close". Not yet heard. The startup challenge notices ("Perform a combo 10
+"Close". Confirmed in play by the user on 2026-09-13. The startup challenge notices ("Perform a combo 10
 time(s)!" with a Close button) are probably the same template and may read
 now too; unchecked.
 
