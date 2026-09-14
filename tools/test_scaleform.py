@@ -1020,9 +1020,15 @@ for n, pieces in enumerate(picture_steps):
 preader = sf.ScaleformText(pmem, MODULE)
 read_steps = [it.text for it in preader.items()]
 check("command pictures inside text are put into words, as in the trial read live",
-      read_steps == ["(STANDING) heavy punch (COUNTER)", "down, down, plus two punches",
-                     "(STANDING) medium punch, then heavy punch", "quarter circle forward, plus two kicks",
-                     "forward, down, down forward, plus light kick", "  Fighter Profile"], repr(read_steps))
+      read_steps == ["(STANDING) heavy punch (COUNTER)", "down, down plus punch punch",
+                     "(STANDING) medium punch, then heavy punch", "quarter circle forward plus kick kick",
+                     "forward, down, down forward plus light kick", "  Fighter Profile"], repr(read_steps))
+example = ", ".join(sf.describe_inputs(step) for step in (
+    [("picture", "punch_h")],
+    [("picture", "cmd_236"), ("picture", "plus"), ("picture", "kick"), ("picture", "kick")],
+    [("picture", "cmd_2"), ("picture", "cmd_2"), ("picture", "plus"), ("picture", "punch_h")]))
+check("combos read in the user's own notation",
+      example == "heavy punch, quarter circle forward plus kick kick, down, down plus heavy punch", repr(example))
 check("a picture with no words is left as the game's space, and noted",
       preader.unknown_pictures == {"button_start"}, repr(preader.unknown_pictures))
 RED = (1.0, 0.4, 0.3, 0.5)
@@ -1048,9 +1054,9 @@ def trial(landed=0, notice=False, pause=None, steps=ZEKU_STEPS):
     return out
 
 
-check("a trial's steps are said numbered, a repeated move each time",
-      sf.trial_summary(trial()) == "1, Standing Hard Punch (COUNTER). 2, SHUKUMYO. 3, BUSHIN SOUKOSOU. "
-      "4, EX BUSHIN SHO. 5, H HOZANTO. 6, SHUKUMYO. 7, EX BUSHIN GRAM - KOKU.", repr(sf.trial_summary(trial())))
+check("a trial's steps are said in order joined by commas, a repeated move each time",
+      sf.trial_summary(trial()) == "Standing Hard Punch (COUNTER), SHUKUMYO, BUSHIN SOUKOSOU, "
+      "EX BUSHIN SHO, H HOZANTO, SHUKUMYO, EX BUSHIN GRAM - KOKU.", repr(sf.trial_summary(trial())))
 check("a trial's step layers are never selected", not any(it.selected for it in trial(landed=3)))
 check("no trial away from one", sf.trial_summary(on_story) is None and sf.trial_summary(versus) is None)
 LIST = sf.trial_summary(trial())

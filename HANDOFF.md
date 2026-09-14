@@ -585,8 +585,8 @@ completes. That red tint appeared nowhere else in either log. Nothing is
 selected, but the layers rule marked some layers, and as steps lit and reset
 the marks moved, so attempts read broken parts of the list; `_unique` also
 dropped a repeated move ("SHUKUMYO" twice in one combo). `trial_summary`
-says the list once, numbered ("1, Standing Hard Punch (COUNTER). 2,
-SHUKUMYO. ..."), through `screen_summary`, and `mark_trial` clears the
+says the list once, steps joined by commas without numbers ("Standing Hard
+Punch (COUNTER), SHUKUMYO, ..."), through `screen_summary`, and `mark_trial` clears the
 marks. At the user's request it is said again on a restart
 (`trial_restarted`): "Restart Battle" appears at (95, 900) each time the
 user restarts, the steps reset to white with it, and Try Again leaving the
@@ -612,9 +612,13 @@ quarter circle back (numpad notation, facing right), punch and kick the
 white icons (any strength; two in a row is two buttons), punch_m and
 punch_h the yellow and red strength icons, plus the plus sign, next the
 arrow meaning then. `field_text` puts known ones into words through
-`input_words` and `describe_inputs`, so every reader sees "down, down, plus
-two punches" and "(STANDING) medium punch, then heavy punch"; the strength
-letter printed before a coloured button is dropped. Other cmd_ digits are
+`input_words` and `describe_inputs`, so every reader sees "down, down plus
+punch punch" and "(STANDING) medium punch, then heavy punch"; the strength
+letter printed before a coloured button is dropped. The notation is the
+user's own example, given on 2026-09-14: "heavy punch, quarter circle
+forward plus kick kick, down, down plus heavy punch". No comma before plus,
+a plain button pressed twice is said twice, and a trial's steps are joined
+by commas without numbers. Other cmd_ digits are
 spelled as directions and 41236/63214 named; punch_l, kick_l/m/h are
 guessed by pattern and unseen. Unknown picture names stay spaces and are
 logged once each as "pictures in text with no words: [...]", which is the

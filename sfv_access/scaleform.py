@@ -979,11 +979,15 @@ def mark_trial(items: list[TextItem]) -> None:
 
 
 def trial_summary(items: list[TextItem]) -> str | None:
-    """"1, Standing Hard Punch (COUNTER). 2, SHUKUMYO. ..." while a trial's steps show."""
+    """"(STANDING) heavy punch (COUNTER), down, down plus punch punch, ..." while a trial's steps show.
+
+    Steps are joined by commas without numbers, following the user's example
+    of a combo; each step ends with its button, which marks where it ends.
+    """
     steps = trial_steps(items)
     if not steps:
         return None
-    return ". ".join(f"{n}, {text}" for n, text in enumerate(steps, 1)) + "."
+    return ", ".join(steps) + "."
 
 
 def trial_restarted(before: list[TextItem], after: list[TextItem]) -> bool:
@@ -1017,7 +1021,6 @@ MOTION_WORDS = {"236": "quarter circle forward", "214": "quarter circle back",
                 "41236": "half circle forward", "63214": "half circle back"}
 STRENGTH_WORDS = {"l": "light", "m": "medium", "h": "heavy"}
 JOINER_WORDS = {"plus": "plus", "next": "then"}
-COUNT_WORDS = {2: "two", 3: "three"}
 
 
 def input_words(name: str) -> str | None:
@@ -1041,12 +1044,14 @@ def input_words(name: str) -> str | None:
 
 
 def describe_inputs(pieces: list[tuple[str, str]]) -> str:
-    """A command as speech: "down, down, plus two punches", "(STANDING) medium punch, then heavy punch".
+    """A command as speech: "down, down plus punch punch", "(STANDING) medium punch, then heavy punch".
 
     `pieces` are ("text", ...) and ("picture", name) in order. The letter the
     game prints before a coloured button ("M" before the medium punch) is
-    dropped, since the words already say it; the same plain button twice in a
-    row is counted.
+    dropped, since the words already say it. The notation is the user's own
+    example: "heavy punch, quarter circle forward plus kick kick, down, down
+    plus heavy punch", so no comma before plus, and a plain button pressed
+    twice is said twice.
     """
     # Each token is [kind, words, name, count]: kind "text", "input" or "joiner".
     tokens: list[list] = []
@@ -1069,9 +1074,11 @@ def describe_inputs(pieces: list[tuple[str, str]]) -> str:
         if not said:
             continue
         if count > 1:
-            said = f"{COUNT_WORDS.get(count, count)} {said}{'es' if name == 'punch' else 's'}"
+            said = " ".join([said] * count)
         if previous is None:
             gap = ""
+        elif said == JOINER_WORDS["plus"]:
+            gap = " "
         elif kind == "joiner" or (kind == "input" and previous == "input"):
             gap = ", "
         else:
