@@ -669,8 +669,9 @@ remaining)", REWARD whose reward is a picture, the fee, remaining plays), a
 description whose paragraphs start with a heading line ("Difficulty" /
 "Easy", "Clear Reward" / "\"Forest\" Gem, 100 EXP"), and "Clear Conditions:
 Win the battle!". `extra_battle_details` turns it into sentences; the
-narrator says the brief form (title, difficulty, clear conditions) once
-before BEGIN BATTLE on arriving, and Alt R says all of it. Read live on
+narrator says the brief form (title, deadline, fee, difficulty, clear
+conditions, the deadline and fee added at the user's request) once before
+BEGIN BATTLE on arriving, and Alt R says all of it. Read live on
 2026-09-14; not yet heard.
 
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with

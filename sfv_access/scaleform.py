@@ -1148,6 +1148,9 @@ def describe_inputs(pieces: list[tuple[str, str]]) -> str:
 
 EXTRA_BATTLE_LABELS = ("PARTICIPATION FEE (FM)", "NO. OF REMAINING PLAYS")
 EXTRA_BATTLE_BUTTON = "BEGIN BATTLE"
+# Said on arriving after the title, in the panel's order; the user asked for
+# the deadline and fee alongside difficulty and clear conditions.
+EXTRA_BATTLE_BRIEF = ("DEADLINE", "PARTICIPATION FEE", "Difficulty", "Clear Conditions")
 HEADING_MAX = 40
 
 
@@ -1179,8 +1182,8 @@ def _paragraph_sentences(text: str) -> list[str]:
 def extra_battle_details(items: list[TextItem], brief: bool = False) -> list[str]:
     """An Extra Battle event's panel as sentences, in reading order; `brief` for arriving.
 
-    Brief is the title, difficulty and clear conditions. A label with no text
-    beside it, REWARD whose reward is a picture, is left out.
+    Brief is the title, deadline, fee, difficulty and clear conditions. A
+    label with no text beside it, REWARD whose reward is a picture, is left out.
     """
     shown = [it for it in items if it.shown]
     panel = _extra_battle_panel(shown)
@@ -1202,7 +1205,7 @@ def extra_battle_details(items: list[TextItem], brief: bool = False) -> list[str
     if not brief:
         return sentences
     wanted = [sentences[0]] if sentences else []
-    wanted += [s for s in sentences[1:] if s.startswith(("Difficulty", "Clear Conditions"))]
+    wanted += [s for s in sentences[1:] if s.startswith(EXTRA_BATTLE_BRIEF)]
     return wanted
 
 

@@ -1180,9 +1180,11 @@ check("an Extra Battle's panel reads in full for the read key, a picture's label
           "Note: First completion only.", "Clear Conditions: Win the battle!"],
       repr(sf.extra_battle_details(extra_battle())))
 arrival = narrate([(0.0, [extra_battle()[0]]), (0.5, extra_battle()), (1.0, extra_battle()), (2.0, extra_battle())])
-check("arriving at BEGIN BATTLE says the event's title, difficulty and clear conditions once",
+check("arriving at BEGIN BATTLE says the event's title, deadline, fee, difficulty and clear conditions once",
       [s for _, s in arrival] == ["Extra Battle",
-                                  "[Quick & Immovable] Get the Crossover Costume! [2]. Difficulty: Easy. "
+                                  "[Quick & Immovable] Get the Crossover Costume! [2]. "
+                                  "DEADLINE: Sep 14, 2026, 9:00:00 PM (19:55 remaining). "
+                                  "PARTICIPATION FEE (FM): 2000 FM. Difficulty: Easy. "
                                   "Clear Conditions: Win the battle! BEGIN BATTLE"], repr(arrival))
 check("no Extra Battle details elsewhere", sf.extra_battle_details(on_story) == []
       and sf.extra_battle_details(extra_battle(panel=False)) == [])
