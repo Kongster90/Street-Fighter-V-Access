@@ -331,7 +331,6 @@ class App:
             self._hang_file = None
 
         threading.Thread(target=self._watch_loop, daemon=True).start()
-        threading.Thread(target=self._character_select_loop, daemon=True).start()
 
         try:
             while not self._stop.wait(0.25):
@@ -752,26 +751,6 @@ class App:
         print(f"[memory] {said}")
         self._log(said)
         self.speech.say(said)
-
-    def _character_select_loop(self) -> None:
-        """Character select from the game's own objects, while narrating from memory.
-
-        The pixel path asks for this when it finds nothing to say. From memory
-        the equivalent is a screen with nothing selected. It runs on its own
-        thread because away from character select each check scans every
-        object, about half a second, which would stall the memory narration.
-        """
-        while not self._stop.wait(MEMORY_INTERVAL):
-            if not (self.watching and self.use_memory and self.session.available):
-                continue
-            if any(it.selected for it in self.session.items):
-                self._last_memory_lines = []
-                continue
-            try:
-                self._narrate_from_memory()
-            except Exception as exc:
-                print(f"[character select error] {exc}")
-                time.sleep(1.0)
 
     def _pixel_tick(self) -> None:
         """One tick of narration from the screen."""

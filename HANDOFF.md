@@ -58,9 +58,10 @@ In the mod itself, played by the user on 2026-09-13:
   four rounds to fix (see "Stage select has nothing selected" and what
   follows it).
 - Character select's costume panel (Costume, Color, V-Comment) and version
-  panel (V-Skill, V-Trigger), which mark the row in gold like any menu; the
-  user confirmed costume selection reads. Moving through the roster was
-  silent; a fix is in and not yet heard in play. See item 0 under "Where it
+  panel (V-Skill, V-Trigger), which mark the row in gold like any menu, and
+  moving through the roster, which says each fighter's name, with two
+  players moving at once in Versus. The cursor tags were being read as well
+  ("CPU. Unavailable"); that fix is not yet heard. See item 0 under "Where it
   stands".
 
 From the screen, the older path, now the fallback:
@@ -458,32 +459,41 @@ mod's `_watch_loop` asks the session each tick; if it returns a reading the
 narrator speaks and the pixel tick is skipped, otherwise the pixel tick runs.
 `Session.read` returns None until it has seen text at least once, so a game
 update that moves the offsets falls back to the screen rather than going
-silent. Character select's `live.py` readout runs on its own thread, and only
-while nothing in the memory reading is selected, since away from character
-select each of its checks scans every object for half a second. The read
-keys (R, D, A) and the snapshot key use the memory reading when there is one;
-a snapshot saves it beside the frame as `sfv-<stamp>-memory.txt`.
+silent. The read keys (R, D, A) and the snapshot key use the memory reading
+when there is one; a snapshot saves it beside the frame as
+`sfv-<stamp>-memory.txt`. Character select's `live.py` readout ("Player 1,
+KEN, costume 0, colour 0") used to run on a thread of its own whenever nothing
+in the memory reading was selected. It was removed on 2026-09-13: memory now
+names the fighters, the costume panel names costume and colour, and the user
+said player numbers on every move are more speech than needed. It still speaks
+from the pixel path and on Alt P.
 
 **Character select's roster marks nothing.** It is pictures, and memory shows
 no sign of the cursor on it, but the fighter's name in the side panel follows
 the cursor: the log went CODY, ZEKU, KOLIN, URIEN, BLANKA, LUCIA while nothing
-was selected. Worse, the picture grid rule took the roster for a grid, found a
-tile standing out (most likely the CPU's cursor, since it stopped whenever
-player one's blinking "1P" tag was showing) and named it after the nearest
-text, a grey "CPU" tag, so moves said "CPU. Unavailable" and then, that being
-unchanged, nothing. `fighters_on_offer` recognises the screen by its "CHARACTER
-SELECT" heading and takes every shown text that is a fighter's name, from
-`character_names.json`, as selected; on that screen the brightness, highlight
-bar and picture grid rules are skipped, leaving gold and prompt buttons.
-Arriving says both fighters, moving says the one moved to. Replaying the
-logged visits gave exactly that. A side effect: something is always selected
-there now, so `live.py`'s readout, which runs only when nothing is, no longer
-speaks under memory narration; costume and colour come from the costume panel
-instead.
+was selected. `mark_fighters` recognises the screen by its "CHARACTER SELECT"
+heading and takes every shown text that is a fighter's name, from
+`character_names.json`, as selected. Arriving says both fighters, moving says
+the one moved to, for either side; the user tried two players at once in
+Versus and found it good.
+
+**The cursor tags look like a prompt.** "1P", "2P" and "CPU" sit in a holder
+beside the heading's, deeper and with more children. While exactly one tag
+shows, the heading and the tag have the shape of a prompt's two buttons, and
+`_mark_by_layers` chose the tag: "CPU. Unavailable" whenever player one's
+blinking tag was off, "KOLIN. 1P" and bare "2P" in a two player match, and
+"CAMMY. CPU" while picking the CPU's fighter. With two tags showing the holder
+has two labels and the rule stays off, which is why it came and went with the
+blinking. The first fix blamed the picture grid rule, which was a guess, and
+skipped every rule but that one; play caught it within minutes. So
+`mark_fighters` now clears every mark in the heading's movie that is not a
+fighter's name, whichever rule made it, and leaves gold and other movies
+alone. The replay of the session that caught it said only names.
 
 Known gaps. The clock sits one object further down and is not resolved.
-Character select's roster fix has not been heard in play, and screens other
-than Versus and Training may head their character select differently. Not yet heard from memory in
+Screens other than Versus and Training may head their character select
+differently, and a prompt drawn inside character select's own movie, if there
+is one, would lose its choice to `mark_fighters`. Not yet heard from memory in
 play: the voice language grid (the brightness rule may cover it; its EN and
 JA badges are pictures and are not read), and anything in a match.
 Pixel-level things such as the health bars are untouched.
@@ -614,18 +624,14 @@ What follows is roughly in order of value.
    (100, 455) for player one, (1278, 455) for player two, then Color and
    V-Comment below) and the version panel (V-Skill at y 740, V-Trigger at
    y 791, same two columns) read as ordinary gold menus; `scaleform-log.txt`
-   at 11:18:55 to 11:19:22 on 2026-09-13 shows both. The roster was silent,
-   and the fix described under "Character select's roster marks nothing" is
-   in but unheard. Ask the user to move through a few fighters for both sides
-   with the mod running, in Versus and in Training, and if they can, Arcade.
-   The log will show whether names are marked selected ("+") and what was
-   said. Worth asking them at the same time:
-
-   - whether "ZEKU. KEN" on arrival is enough, or they want player numbers,
-     which `live.py`'s readout used to give and memory narration now
-     silences on that screen;
-   - whether the costume and version panels should say whose they are, since
-     both sides' panels read the same.
+   at 11:18:55 to 11:19:22 on 2026-09-13 shows both. The roster reads by
+   fighter name, heard good in Versus with two players; the fix for the
+   cursor tags being read ("The cursor tags look like a prompt") is in but
+   not yet heard. Ask the user to try Player 1 VS CPU again, and Training and
+   Arcade if they can. The log shows names marked selected ("+") and what
+   was said. The user does not want player numbers on each move. Still worth
+   asking: whether the costume and version panels should say whose they are,
+   since both sides' panels read the same.
 
    If a mode's character select does not read, look for its heading in the
    log; `CHARACTER_SELECT_HEADING` is the only thing recognising the screen.

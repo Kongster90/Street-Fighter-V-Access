@@ -583,11 +583,14 @@ def stage_details(items: list[TextItem]) -> list[str]:
 # selection, and a move is a name changing. The screen is recognised by its
 # heading, and a name by being one of the fighters the game has.
 #
-# The other rules for marking a selection without gold stay off that screen.
-# The picture grid rule took the roster for a grid, found a tile standing out
-# and named it after the nearest text, the grey "CPU" tag, so every move said
-# "CPU. Unavailable" or, being the same as last time, nothing. The costume and
-# version panels that follow a pick are gold, and read as any menu does.
+# Nothing else in that screen's movie counts as selected unless it is gold.
+# The cursor tags, "1P", "2P" and "CPU", sit in a holder beside the heading's,
+# deeper and with more children, and while only one tag shows the pair has the
+# shape of a prompt's two buttons with the tag chosen. So moves said "CPU.
+# Unavailable" whenever player one's blinking tag was off, "1P" or "2P" in a
+# two player match, and "CPU" after each name while picking the CPU's fighter.
+# The costume and version panels that follow a pick are gold, and read as any
+# menu does.
 
 CHARACTER_SELECT_HEADING = "CHARACTER SELECT"
 ROSTER_FILE = Path(__file__).resolve().parent.parent / "character_names.json"
@@ -606,13 +609,23 @@ def fighter_names() -> frozenset[str]:
     return _fighters
 
 
-def fighters_on_offer(items: list[TextItem]) -> list[TextItem]:
-    """The fighters' name fields on character select, or none if this is not that screen."""
+def mark_fighters(items: list[TextItem]) -> None:
+    """On character select, make the fighters' names the selection and nothing else there.
+
+    Gold is left alone, and so is anything in another movie, such as a prompt
+    drawn over the screen.
+    """
     shown = [it for it in items if it.shown]
-    if not any(it.text.strip() == CHARACTER_SELECT_HEADING for it in shown):
-        return []
+    heading = next((it for it in shown if it.text.strip() == CHARACTER_SELECT_HEADING), None)
+    if heading is None:
+        return
+    movie = heading.chain[-1] if heading.chain else None
     names = fighter_names()
-    return [it for it in shown if it.text.strip() in names]
+    for it in shown:
+        if it.text.strip() in names:
+            it.chosen = True
+        elif it.chosen and it.chain and it.chain[-1] == movie:
+            it.chosen, it.group, it.slot = False, 0, 0
 
 
 def _compose(outer, inner):
@@ -825,12 +838,10 @@ class ScaleformText:
         Gold elsewhere on screen does not stop either: a prompt opened from a
         menu sits over that menu's gold entry.
 
-        On character select the fighters' names are the selection instead, and
-        besides them only gold and a prompt's buttons are trusted. See
-        `fighters_on_offer`.
+        On character select the fighters' names are the selection instead. See
+        `mark_fighters`.
         """
         shown = [it for it in items if it.shown]
-        fighters = fighters_on_offer(shown)
         groups: dict[int, dict[int, list]] = defaultdict(lambda: defaultdict(list))
         for it in shown:
             for level in range(1, len(it.chain)):
@@ -842,14 +853,11 @@ class ScaleformText:
                 continue
             if self._mark_by_layers(container, slots):
                 continue
-            if not fighters:
-                self._mark_by_brightness(container, slots)
-        if not fighters:
-            self._mark_highlighted_rows(shown, groups)
-            self._mark_picture_grids(shown)
+            self._mark_by_brightness(container, slots)
+        self._mark_highlighted_rows(shown, groups)
+        self._mark_picture_grids(shown)
+        mark_fighters(shown)
         self._mark_ticks(shown)
-        for it in fighters:
-            it.chosen = True
         if not any(it.selected for it in shown):
             stage = stage_on_offer(shown)
             if stage is not None:

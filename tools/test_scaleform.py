@@ -523,12 +523,16 @@ check("but not while character select is really showing",
 
 # Character select, as logged: each side's fighter name drawn once and then
 # twice in layers, the heading, and a roster of pictures with nothing marking
-# the cursor that memory can see. One tile standing out and a grey "CPU" tag
-# beside the roster are what made every move say "CPU. Unavailable".
+# the cursor that memory can see. The cursor tags, 1P, 2P and CPU, sit in a
+# holder beside the heading's, deeper and with more children, so while one
+# tag shows the pair looks like a prompt's buttons with the tag chosen. A tile
+# standing out beside the tag would name it too, by the picture grid rule.
 CPU_GREY = (0.65, 0.65, 0.65, 1.0)
+CPU_TAG = ("CPU", 1025, CPU_GREY)
+P1_TAG = ("1P", 1531, (1.0, 1.0, 1.0, 0.4))
 
 
-def character_select(p1, p2="KEN", heading=True, costume=None):
+def character_select(p1, p2="KEN", heading="CHARACTER SELECT", costume=None, tags=(CPU_TAG,)):
     mem = FakeMemory()
     movie = display_object(mem, 0, 0, 0, WHITE)
     text_field(mem, display_object(mem, movie, 960, 87, WHITE), 0, 0, ["BLUE TEAM"])
@@ -542,9 +546,10 @@ def character_select(p1, p2="KEN", heading=True, costume=None):
         panel = display_object(mem, movie, 100, 455, WHITE)
         text_field(mem, panel, 0, 0, ["Costume"], tint=GOLD)
         text_field(mem, panel, 300, 4, [costume], tint=GOLD)
-    if heading:
-        text_field(mem, display_object(mem, movie, 960, 685, WHITE), 0, 0, ["CHARACTER SELECT"])
-    cursors = display_object(mem, movie, 0, 0, WHITE)
+    overlay = display_object(mem, movie, 0, 0, WHITE)
+    title = display_object(mem, overlay, 960, 685, WHITE, children=1)
+    text_field(mem, title, 0, 0, [heading])
+    cursors = display_object(mem, overlay, 0, 0, WHITE)
     roster = display_object(mem, cursors, 1400, 700, WHITE)
     tiles = []
     for i in range(6):
@@ -553,18 +558,22 @@ def character_select(p1, p2="KEN", heading=True, costume=None):
         set_children(mem, tile, [picture, display_object(mem, tile, 0, 0, WHITE)])
         tiles.append(tile)
     set_children(mem, roster, tiles)
-    tag = display_object(mem, cursors, 1025, 843, WHITE)
-    text_field(mem, tag, 0, 0, ["CPU"], tint=CPU_GREY)
-    set_children(mem, cursors, [roster, tag])
-    set_children(mem, movie, [cursors])
+    held = [roster]
+    for text, x, tint in tags:
+        tag = display_object(mem, cursors, x, 843, WHITE)
+        text_field(mem, tag, 0, 0, [text], tint=tint)
+        held.append(tag)
+    set_children(mem, cursors, held)
+    set_children(mem, overlay, [title, cursors])
+    set_children(mem, movie, [overlay])
     return sf.ScaleformText(mem, MODULE).items()
 
 
-unrecognised = character_select("ZEKU", heading=False)
-check("the fake roster does trip the picture rule on a screen not recognised",
+unrecognised = character_select("ZEKU", heading="TEAM SELECT")
+check("the fake's CPU tag does get taken for a selection on a screen not recognised",
       [it.text for it in unrecognised if it.selected] == ["CPU"],
       repr([it.text for it in unrecognised if it.selected]))
-on_zeku, on_kolin = character_select("ZEKU"), character_select("KOLIN")
+on_zeku, on_kolin = character_select("ZEKU"), character_select("KOLIN", tags=(P1_TAG, CPU_TAG))
 check("on character select the fighters' names are selected, not the CPU tag",
       {it.text for it in on_zeku if it.selected} == {"ZEKU", "KEN"},
       repr([it.text for it in on_zeku if it.selected]))
@@ -572,6 +581,17 @@ check("arriving says both fighters once each", sf.landed_on([], on_zeku) == ["ZE
       repr(sf.landed_on([], on_zeku)))
 check("moving through the roster says the fighter moved to",
       sf.landed_on(on_zeku, on_kolin) == ["KOLIN"], repr(sf.landed_on(on_zeku, on_kolin)))
+blinked = character_select("KOLIN")
+check("player one's tag blinking off says nothing",
+      sf.selection_key(on_kolin) == sf.selection_key(blinked) and sf.landed_on(on_kolin, blinked) == [],
+      repr(sf.landed_on(on_kolin, blinked)))
+two_players = character_select("ZEKU", "CAMMY", tags=(("2P", 1181, (1.0, 1.0, 1.0, 0.4)),))
+check("in a two player match the other side's move says only its fighter",
+      sf.landed_on(on_zeku, two_players) == ["CAMMY"], repr(sf.landed_on(on_zeku, two_players)))
+picking_cpu = character_select("ORO", "CAMMY", tags=(("CPU", 1095, WHITE),))
+check("picking the CPU's fighter says the fighter without the tag",
+      sf.landed_on(character_select("ORO", tags=(("CPU", 1025, WHITE),)), picking_cpu) == ["CAMMY"],
+      repr(sf.landed_on(character_select("ORO", tags=(("CPU", 1025, WHITE),)), picking_cpu)))
 mirror = character_select("KEN")
 check("moving onto the fighter the other side has is still said",
       sf.selection_key(on_zeku) != sf.selection_key(mirror) and sf.landed_on(on_zeku, mirror) == ["KEN"],
@@ -634,8 +654,9 @@ check("the name is not said before the settle time",
       all(now >= 1.0 + mn.SETTLE for now, s in said if s == "EXIT"), repr(said))
 check("idling on one entry says nothing more", narrate([(0, on_story), (1, on_story), (2, on_story)])
       == [(0, "STORY")])
-said = narrate([(0.0, on_zeku), (0.1, on_kolin), (0.2, on_kolin), (0.3, on_zeku), (0.4, mirror)])
-check("moving through the roster says each fighter as it is reached",
+said = narrate([(0.0, on_zeku), (0.1, on_kolin), (0.2, blinked), (0.3, on_kolin), (0.6, blinked),
+                (0.7, on_zeku), (0.8, mirror)])
+check("moving through the roster says each fighter as it is reached, and the tag's blinking nothing",
       [s for _, s in said] == ["ZEKU. KEN", "KOLIN", "ZEKU", "KEN"], repr(said))
 check("phrases join without doubled punctuation",
       mn.phrase(["Are you sure?", "No", "Costume.", "Kenji"]) == "Are you sure? No. Costume. Kenji")
