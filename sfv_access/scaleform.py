@@ -78,6 +78,16 @@ DOCVIEW_SIZE = 0x88          # two floats, the text box's width and height in tw
 LISTENER_OWNER = -0x98       # pointer to that field, relative to the listener
 TEXT_PARAGRAPHS = 0x18       # array of Paragraph*
 TEXT_PARAGRAPH_COUNT = 0x20
+PARAGRAPH_CHARS = 0x00       # UTF-16 text, then its length counting the terminator
+PARAGRAPH_SIZE = 0x08
+PARAGRAPH_RUNS = 0x20        # format runs: start, length, TextFormat*, each 0x18 bytes
+PARAGRAPH_RUN_COUNT = 0x28
+RUN_STRIDE = 0x18
+FORMAT_IMAGE = 0x30          # the picture drawn in place of the run's character, if any
+IMAGE_URL = 0x50             # String, a pointer tagged in its low two bits
+STRING_SIZE = 0x00           # its data: length (top bit a flag), refcount, then the chars
+STRING_CHARS = 0x0C
+MAX_RUNS = 64
 DISPLAY_PARENT = 0x38
 DISPLAY_RENDER_NODE = 0x48
 DISPLAY_CHILDREN = 0xD8      # array of children, an object pointer per entry
@@ -990,6 +1000,87 @@ def trial_restarted(before: list[TextItem], after: list[TextItem]) -> bool:
     return on_try_again and not any(it.shown and it.text.strip() == TRIAL_TRY_AGAIN for it in after)
 
 
+# --------------------------------------------------------- pictures in text
+#
+# Command displays draw inputs as pictures inside the text, each in place of a
+# space: "(STANDING) M  H " is medium punch, then heavy punch. Each space's
+# format names the picture, "img:///Game/CommonAsset/TaggedImages/punch_m...",
+# and read against a screenshot of a trial the names are plain: directions in
+# numpad notation (cmd_2 down, cmd_236 quarter circle forward, cmd_214 quarter
+# circle back), punch and kick for the white icons meaning any, punch_m and
+# punch_h for the coloured ones, plus for the plus sign and next for the arrow
+# meaning then. Directions assume facing right, as the game draws them.
+
+DIRECTION_WORDS = {"1": "down back", "2": "down", "3": "down forward", "4": "back", "5": "neutral",
+                   "6": "forward", "7": "up back", "8": "up", "9": "up forward"}
+MOTION_WORDS = {"236": "quarter circle forward", "214": "quarter circle back",
+                "41236": "half circle forward", "63214": "half circle back"}
+STRENGTH_WORDS = {"l": "light", "m": "medium", "h": "heavy"}
+JOINER_WORDS = {"plus": "plus", "next": "then"}
+COUNT_WORDS = {2: "two", 3: "three"}
+
+
+def input_words(name: str) -> str | None:
+    """Words for a command picture's name, or None if it is not one known."""
+    if name in JOINER_WORDS:
+        return JOINER_WORDS[name]
+    if name.startswith("cmd_"):
+        digits = name[4:]
+        if digits in MOTION_WORDS:
+            return MOTION_WORDS[digits]
+        if digits and all(d in DIRECTION_WORDS for d in digits):
+            return ", ".join(DIRECTION_WORDS[d] for d in digits)
+        return None
+    button, _, strength = name.partition("_")
+    if button in ("punch", "kick"):
+        if not strength:
+            return button
+        if strength in STRENGTH_WORDS:
+            return f"{STRENGTH_WORDS[strength]} {button}"
+    return None
+
+
+def describe_inputs(pieces: list[tuple[str, str]]) -> str:
+    """A command as speech: "down, down, plus two punches", "(STANDING) medium punch, then heavy punch".
+
+    `pieces` are ("text", ...) and ("picture", name) in order. The letter the
+    game prints before a coloured button ("M" before the medium punch) is
+    dropped, since the words already say it; the same plain button twice in a
+    row is counted.
+    """
+    # Each token is [kind, words, name, count]: kind "text", "input" or "joiner".
+    tokens: list[list] = []
+    for kind, value in pieces:
+        if kind == "text":
+            tokens.append(["text", value.replace("\0", ""), None, 1])
+            continue
+        strength = value.partition("_")[2]
+        if strength in STRENGTH_WORDS and tokens and tokens[-1][0] == "text":
+            before = tokens[-1][1].rstrip()
+            if before[-1:].lower() == strength and (len(before) == 1 or not before[-2].isalnum()):
+                tokens[-1][1] = before[:-1]
+        if value in ("punch", "kick") and tokens and tokens[-1][2] == value:
+            tokens[-1][3] += 1
+            continue
+        tokens.append(["joiner" if value in JOINER_WORDS else "input", input_words(value), value, 1])
+    out, previous = "", None
+    for kind, said, name, count in tokens:
+        said = " ".join(said.split())
+        if not said:
+            continue
+        if count > 1:
+            said = f"{COUNT_WORDS.get(count, count)} {said}{'es' if name == 'punch' else 's'}"
+        if previous is None:
+            gap = ""
+        elif kind == "joiner" or (kind == "input" and previous == "input"):
+            gap = ", "
+        else:
+            gap = " "
+        out += gap + said
+        previous = kind
+    return out
+
+
 PATH_STORY_MIN = 60
 
 
@@ -1070,6 +1161,8 @@ class ScaleformText:
         self._grids: dict[int, list[int]] = {}
         self._text_grids: set[int] = set()   # grids seen holding text, never pictures
         self._roots: set[int] = set()
+        # Pictures inside text with no words yet, by image name, for the log.
+        self.unknown_pictures: set[str] = set()
 
     # ------------------------------------------------------------- discovery
     def keep_pages_current(self, stop: threading.Event, interval: float = PAGE_REFRESH) -> None:
@@ -1161,15 +1254,63 @@ class ScaleformText:
             para = self.pm.ptr(data + i * 8)
             if not para:
                 continue
-            chars = self.pm.ptr(para)
-            size = self.pm.u64(para + 8)
+            head = self.pm.read(para, PARAGRAPH_RUN_COUNT + 8)
+            if not head:
+                continue
+            chars, size = struct.unpack_from("<QQ", head, PARAGRAPH_CHARS)
             if not chars or not size or size > MAX_PARAGRAPH_CHARS:
                 continue
             raw = self.pm.read(chars, size * 2)
-            if raw:
-                parts.append(raw.decode("utf-16-le", "replace").rstrip("\0"))
+            if not raw:
+                continue
+            text = raw.decode("utf-16-le", "replace")
+            runs, run_count = struct.unpack_from("<QQ", head, PARAGRAPH_RUNS)
+            if runs and 1 < run_count <= min(size + 1, MAX_RUNS):
+                text = self._with_pictures(text, runs, run_count)
+            parts.append(text.rstrip("\0"))
         # Scaleform ends a paragraph with a carriage return.
         return "\n".join(p.rstrip("\r") for p in parts)
+
+    def _picture_name(self, desc: int) -> str | None:
+        """"punch_h" for a picture drawn from "img:///Game/CommonAsset/TaggedImages/punch_h.punch_h"."""
+        tagged = self.pm.u64(desc + IMAGE_URL)
+        if not tagged:
+            return None
+        data = tagged & ~3
+        size = (self.pm.u64(data + STRING_SIZE) or 0) & 0x7FFFFFFFFFFFFFFF
+        if not 0 < size <= MAX_PARAGRAPH_CHARS:
+            return None
+        raw = self.pm.read(data + STRING_CHARS, size)
+        if not raw:
+            return None
+        return raw.decode("ascii", "replace").rsplit("/", 1)[-1].split(".", 1)[0]
+
+    def _with_pictures(self, text: str, runs: int, count: int) -> str:
+        """The paragraph with its known pictures put into words, others left as the game's spaces."""
+        raw = self.pm.read(runs, count * RUN_STRIDE)
+        if not raw:
+            return text
+        pieces: list[tuple[str, str]] = []
+        found = False
+        for i in range(count):
+            start, length, fmt = struct.unpack_from("<QQQ", raw, i * RUN_STRIDE)
+            if start >= len(text) or not length:
+                continue
+            chunk = text[start:start + length]
+            desc = self.pm.ptr(fmt + FORMAT_IMAGE) if fmt else None
+            name = self._picture_name(desc) if desc else None
+            if name is None:
+                pieces.append(("text", chunk))
+                continue
+            if input_words(name) is None:
+                self.unknown_pictures.add(name)
+                pieces.append(("text", chunk))
+                continue
+            found = True
+            pieces.append(("picture", name))
+            if chunk[1:]:
+                pieces.append(("text", chunk[1:]))
+        return describe_inputs(pieces) if found else text
 
     # ------------------------------------------------------------- placement
     def _node(self, obj: int):

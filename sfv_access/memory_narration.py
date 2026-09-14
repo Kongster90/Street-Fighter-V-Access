@@ -239,6 +239,7 @@ class Session:
         self._wide_thread: threading.Thread | None = None
         self._next_wide_sweep = 0.0
         self.attached_now = False   # set when a read has just attached or reattached
+        self._pictures_noted: set[str] = set()
         self._arcade_marker: str | None = None
         self._arcade_seen_at = 0.0
         self._arcade_notes = 0
@@ -314,6 +315,12 @@ class Session:
         self.items = items
         if self._log_screens:
             self._log_screen(items, now)
+            new_pictures = self.reader.unknown_pictures - self._pictures_noted
+            if new_pictures:
+                # Command pictures with no words yet: the name says what to add
+                # to scaleform.input_words, as cmd_2 and punch_h did.
+                self._pictures_noted |= new_pictures
+                self.note(f"pictures in text with no words: {sorted(new_pictures)}")
             try:
                 self._note_arcade_offer(items, now)
             except Exception as exc:   # a diagnostic must never cost the narration

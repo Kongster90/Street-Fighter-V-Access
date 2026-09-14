@@ -597,6 +597,30 @@ Commands draws most inputs as button pictures with no text: "(STANDING) M
 H" and steps made only of pictures are absent, so its numbering skips them;
 Display Move Names gives every step. Not yet heard.
 
+**Pictures inside text are named.** The command display's pictures are
+inline images in the text field, each in place of a space character, not
+separate display objects. A paragraph (the pointer in StyledText's array)
+holds its chars at +0x00, length at +0x08, and format runs at +0x20 with
+their count at +0x28: start, length and TextFormat pointer, 0x18 bytes each.
+A run's TextFormat has an image description at +0x30 (null for plain text);
+the description's URL is a GFx String at +0x50, a pointer tagged in its low
+two bits to data holding the length (top bit a flag) at +0x00 and ASCII
+chars from +0x0C: "img:///Game/CommonAsset/TaggedImages/punch_h.punch_h".
+Matched against a full-resolution screenshot of Zeku's first trial on
+2026-09-13: cmd_2 down arrow, cmd_236 quarter circle forward, cmd_214
+quarter circle back (numpad notation, facing right), punch and kick the
+white icons (any strength; two in a row is two buttons), punch_m and
+punch_h the yellow and red strength icons, plus the plus sign, next the
+arrow meaning then. `field_text` puts known ones into words through
+`input_words` and `describe_inputs`, so every reader sees "down, down, plus
+two punches" and "(STANDING) medium punch, then heavy punch"; the strength
+letter printed before a coloured button is dropped. Other cmd_ digits are
+spelled as directions and 41236/63214 named; punch_l, kick_l/m/h are
+guessed by pattern and unseen. Unknown picture names stay spaces and are
+logged once each as "pictures in text with no words: [...]", which is the
+list to extend. Costs about 4 ms on a 135 ms read. The pause menu's Command
+List uses the same pictures and should now read too; not checked.
+
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
 right) read from the screen before memory took over, and never from memory:

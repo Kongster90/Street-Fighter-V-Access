@@ -972,6 +972,59 @@ check("moving through the roster says each fighter as it is reached, and the tag
 said = narrate([(0.0, arriving), (0.3, arriving), (0.5, won), (0.8, won), (0.95, won),
                 (1.0, result_screen(menu="Play Again")),
                 (1.3, result_screen(menu=MENU_ENTRIES[1])), (1.6, result_screen(menu=MENU_ENTRIES[1]))])
+def picture_field(mem, parent, x, y, pieces):
+    """A text field whose paragraph draws pictures in place of spaces, laid out as
+    read from a trial: format runs of start, length and TextFormat, a picture's
+    format pointing at an image description whose tagged URL names it."""
+    docview = text_field(mem, parent, x, y, [""])
+    styled = mem.ptr(docview + sf.DOCVIEW_TEXT)
+    para = mem.ptr(mem.ptr(styled + sf.TEXT_PARAGRAPHS))
+    text, runs = "", []
+    for kind, value in pieces:
+        fmt = mem.alloc(0x50)
+        if kind == "picture":
+            url = f"img:///Game/CommonAsset/TaggedImages/{value}.{value}".encode("ascii")
+            data = mem.alloc(sf.STRING_CHARS + len(url) + 1)
+            mem.put(data, "<Q", len(url) | 1 << 63)
+            mem.buf[data - HEAP + sf.STRING_CHARS:data - HEAP + sf.STRING_CHARS + len(url)] = url
+            desc = mem.alloc(0x60)
+            mem.put(desc + sf.IMAGE_URL, "<Q", data | 1)
+            mem.put(fmt + sf.FORMAT_IMAGE, "<Q", desc)
+            value = " "
+        runs.append((len(text), len(value), fmt))
+        text += value
+    encoded = (text + "\0").encode("utf-16-le")
+    chars = mem.alloc(len(encoded))
+    mem.buf[chars - HEAP:chars - HEAP + len(encoded)] = encoded
+    array = mem.alloc(sf.RUN_STRIDE * len(runs))
+    for i, (start, length, fmt) in enumerate(runs):
+        last = i == len(runs) - 1
+        mem.put(array + i * sf.RUN_STRIDE, "<QQQ", start, length + (1 if last else 0), fmt)
+    mem.put(para, "<QQ", chars, len(text) + 1)
+    mem.put(para + sf.PARAGRAPH_RUNS, "<QQ", array, len(runs))
+    return docview
+
+
+pmem = FakeMemory()
+proot = display_object(pmem, 0, 0, 0, WHITE)
+picture_steps = [
+    [("text", "(STANDING) H"), ("picture", "punch_h"), ("text", " (COUNTER)")],
+    [("picture", "cmd_2"), ("picture", "cmd_2"), ("picture", "plus"), ("picture", "punch"), ("picture", "punch")],
+    [("text", "(STANDING) M"), ("picture", "punch_m"), ("picture", "next"), ("text", "H"), ("picture", "punch_h")],
+    [("picture", "cmd_236"), ("picture", "plus"), ("picture", "kick"), ("picture", "kick")],
+    [("picture", "cmd_623"), ("picture", "plus"), ("picture", "kick_l")],
+    [("picture", "button_start"), ("text", " Fighter Profile")],
+]
+for n, pieces in enumerate(picture_steps):
+    picture_field(pmem, display_object(pmem, proot, 134, 340 + 48 * n, WHITE), 0, 0, pieces)
+preader = sf.ScaleformText(pmem, MODULE)
+read_steps = [it.text for it in preader.items()]
+check("command pictures inside text are put into words, as in the trial read live",
+      read_steps == ["(STANDING) heavy punch (COUNTER)", "down, down, plus two punches",
+                     "(STANDING) medium punch, then heavy punch", "quarter circle forward, plus two kicks",
+                     "forward, down, down forward, plus light kick", "  Fighter Profile"], repr(read_steps))
+check("a picture with no words is left as the game's space, and noted",
+      preader.unknown_pictures == {"button_start"}, repr(preader.unknown_pictures))
 RED = (1.0, 0.4, 0.3, 0.5)
 LANDED = (1.0, 0.8, 0.0, 0.5)
 ZEKU_STEPS = ["Standing Hard Punch (COUNTER)", "SHUKUMYO", "BUSHIN SOUKOSOU", "EX BUSHIN SHO", "H HOZANTO",
