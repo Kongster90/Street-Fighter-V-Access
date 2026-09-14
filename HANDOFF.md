@@ -573,8 +573,12 @@ exactly two shown texts, the shorter (40 characters at most) above the
 longer (60 at least), within four steps in the tree, and the longer not the
 menu's description line; a scan of every logged screen found only endings
 and one main menu moment ("Top User" and the description) of that size.
-Both endings logged so far had one caption page, then path select. Not yet
-heard in play.
+Both endings logged so far had one caption page, then path select. The
+ending itself was heard in play. After it came a page crediting an unlocked
+picture, "Special Artwork: BENGUS" alone at (160, 911); the game has 57
+strings of that kind ("Special Artwork: <artist>", "SF Legacy: ...
+Artwork"), so a single shown text containing "Artwork" that is one of the
+game's strings is read too. Checked live, not yet heard.
 
 Known gaps. The clock sits one object further down and is not resolved.
 Screens other than Versus and Training may head their character select

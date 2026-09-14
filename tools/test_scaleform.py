@@ -795,6 +795,12 @@ check("the main menu's description line at the foot of the screen is not an endi
       sf.ending_summary(ending(title="Top User", caption_at=(110, 992))) is None)
 check("a third text on screen means it is not an ending",
       sf.ending_summary(ending(extra="Fight Request OFF")) is None)
+artwork = [item("Special Artwork: BENGUS", 160, 911)]
+check("an unlocked picture's credit alone on screen is read",
+      sf.screen_summary(artwork) == (True, "Special Artwork: BENGUS"), repr(sf.screen_summary(artwork)))
+check("other text alone on screen is not",
+      sf.ending_summary([item("FINAL STAGE", 660, 660)]) is None
+      and sf.ending_summary([item("Artwork by nobody the game knows", 160, 911)]) is None)
 check("Arcade's result screen before the final stage says so",
       sf.screen_summary(arcade_result("FINAL STAGE")) == (True, "FINAL STAGE")
       and sf.screen_summary(arcade_result("NEXT STAGE")) == (True, None),

@@ -880,11 +880,22 @@ ENDING_REACH = 4
 # The title starts with the path's game, SFI, SFII, SFIII, SFIV or SFV (and
 # Alpha's, if it follows the pattern), which the user asked to leave unsaid.
 ENDING_PATH = re.compile(r"^SF[IVXAZ]*\s+")
+# Unlocked pictures follow, each credited alone on screen: "Special Artwork:
+# BENGUS", or "SF Legacy: Street Fighter IV Artwork". The game has 57 such
+# strings, all with this word in them.
+ENDING_ARTWORK = "Artwork"
 
 
 def ending_summary(items: list[TextItem]) -> str | None:
-    """"Ryu. The young challenger Ryu stands before..." on an Arcade ending, else None."""
+    """"Ryu. The young challenger Ryu stands before..." on an Arcade ending, else None.
+
+    Or an unlocked picture's credit, the only text on screen and one of the
+    game's own artwork strings: "Special Artwork: BENGUS".
+    """
     shown = [it for it in items if it.shown]
+    if len(shown) == 1:
+        credit = shown[0].text.strip()
+        return credit if ENDING_ARTWORK in credit and credit in game_strings() else None
     if len(shown) != 2:
         return None
     title, caption = sorted(shown, key=lambda it: len(it.text.strip()))
