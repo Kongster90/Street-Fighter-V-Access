@@ -794,9 +794,8 @@ position and text). An unbought row is its name in the usual 0.27 grey
 alone; choosing one opens a gold "Buy on Steam". At the user's request
 `mark_purchased` unmarks the label and gives the name the `note` "Already
 purchased", which `landed_on` and `selection_phrase` say in place of
-Unavailable: "Stage: Ring of Pride. Already purchased". Checked live on the
-Stages list; not yet heard. Only Stages has been seen; the other categories
-likely share the list.
+Unavailable: "Stage: Ring of Pride. Already purchased". Confirmed in play by
+the user on 2026-09-14 in Stages and the other categories.
 
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
