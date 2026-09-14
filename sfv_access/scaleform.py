@@ -912,6 +912,31 @@ def ending_summary(items: list[TextItem]) -> str | None:
     return f"{name}. {story}" if name else story
 
 
+PATH_STORY_MIN = 60
+
+
+def path_story(items: list[TextItem]) -> list[str]:
+    """The story of the path you are on in Arcade's path select, line by line, for the read key.
+
+    Beside the paths is the chosen one's story: "Launched in August 1987, ...",
+    "Story Chronological Order: 1", "A young Ryu and Ken test ...". It is the
+    longest text in the paths' movie that is not selected. Moving says only
+    the path; the user asked for the story on the read key.
+    """
+    shown = [it for it in items if it.shown]
+    if not any(it.text.strip().startswith(PATH_SELECT_PROMPT) for it in shown):
+        return []
+    chosen = next((it for it in shown if it.highlighted and it.chain), None)
+    if chosen is None:
+        return []
+    stories = [it for it in shown if not it.selected and it.chain and it.chain[-1] == chosen.chain[-1]
+               and len(it.text.strip()) >= PATH_STORY_MIN]
+    if not stories:
+        return []
+    story = max(stories, key=lambda it: len(it.text))
+    return [line.strip() for line in story.text.splitlines() if line.strip()]
+
+
 def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
     """For screens read as one sentence rather than by what is selected.
 

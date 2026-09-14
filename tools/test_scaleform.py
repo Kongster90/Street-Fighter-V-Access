@@ -795,12 +795,18 @@ check("the main menu's description line at the foot of the screen is not an endi
       sf.ending_summary(ending(title="Top User", caption_at=(110, 992))) is None)
 check("a third text on screen means it is not an ending",
       sf.ending_summary(ending(extra="Fight Request OFF")) is None)
+PATH_STORY = ("Launched in August 1987, this is the game that started the Street Fighter legacy.\r", "\r",
+              "Story Chronological Order: 1\r",
+              "A young Ryu and Ken test the fruits of their training against the strongest fighters in the world.")
+
+
 def path_select(on="STREET FIGHTER I", prompt="Please select a path. Your best score can be recorded."):
     """Arcade's path select as read live: its movie's top node at alpha zero, the
-    description line in a movie of its own."""
+    chosen path's story beside the list, the description line in a movie of its own."""
     mem = FakeMemory(size=0x21000)
     movie = display_object(mem, 0, 0, 0, WHITE)
     top = display_object(mem, movie, 0, 0, (1.0, 1.0, 1.0, 0.0), flags=sf.MOVIE_ROOT_FLAGS | 1)
+    text_field(mem, display_object(mem, top, 1231, 618, WHITE), 0, 0, list(PATH_STORY))
     listing = display_object(mem, top, 0, 0, (1.0, 1.0, 1.0, 0.0), bounds=False)
     for i, (name, battles) in enumerate((("STREET FIGHTER I", 4), ("STREET FIGHTER II", 8))):
         row = display_object(mem, listing, 198, 175 + 125 * i, WHITE)
@@ -815,6 +821,14 @@ def path_select(on="STREET FIGHTER I", prompt="Please select a path. Your best s
 check("Arcade's path select reads under its movie's zero alpha, as a gold menu",
       sf.landed_on(path_select(), path_select("STREET FIGHTER II")) == ["STREET FIGHTER II", "NO. OF BATTLES: 8"],
       repr(sf.landed_on(path_select(), path_select("STREET FIGHTER II"))))
+from sfv_access.memory_narration import phrase as _phrase  # noqa: E402
+
+check("the chosen path's story is there for the read key, line by line",
+      _phrase(["STREET FIGHTER I"] + sf.path_story(path_select())) ==
+      "STREET FIGHTER I. Launched in August 1987, this is the game that started the Street Fighter legacy. "
+      "Story Chronological Order: 1. A young Ryu and Ken test the fruits of their training against the strongest "
+      "fighters in the world.", repr(sf.path_story(path_select())))
+check("no story away from path select", sf.path_story(ryu_ending) == [] and sf.path_story(on_story) == [])
 check("without its description line, a movie at zero alpha stays hidden",
       [it.text for it in path_select(prompt="Change the battle settings.")] == ["Change the battle settings."],
       repr([it.text for it in path_select(prompt="Change the battle settings.")]))

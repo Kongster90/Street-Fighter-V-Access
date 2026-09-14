@@ -399,7 +399,12 @@ class App:
         if items is not None:
             said = memory_narration.selection_phrase(items)
             foot = scaleform.footer(items)
-            if foot is not None and not foot.selected:
+            story = scaleform.path_story(items)
+            if story:
+                # Path select's description line is the same for every path;
+                # the story is what the user asked to hear.
+                said = memory_narration.phrase([said] + story)
+            elif foot is not None and not foot.selected:
                 said = memory_narration.phrase([said, foot.text])
             # Stage conditions do not affect play, so moving through stage
             # select leaves them out; asking for a reading includes them.
