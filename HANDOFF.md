@@ -769,6 +769,16 @@ banner advert was said every fifteen seconds while idle on it in an earlier
 session ("Aug 31, 2026 - Sep 30, 2026. UPGRADE KIT AVAILABLE NOW", 13:45:31
 to 13:46:36 on 2026-09-14); not yet looked into.
 
+**Reattaching after the game restarts picked the launcher.** On 2026-09-14
+the user quit the game with the mod running and launched it again; memory
+narration logged nothing more and the pixel reader spoke the change ticket
+prompt ("... used in the Yes is selected."). `find_pid` took a name match when
+nothing matched `Binaries\Win64`, and the launcher in the install root starts
+a moment before the game and stays running, so the session's retry attached
+to it and read nothing while `_still_there` kept passing. `scaleform.attach`
+and `live` now pass `require_path=True`; `game.is_running` keeps the fallback,
+since the launcher running does mean the game is starting.
+
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
 unavailable." at (95, 900) for a few seconds, selecting nothing, so nothing

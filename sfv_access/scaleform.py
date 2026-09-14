@@ -2198,7 +2198,7 @@ class ScaleformText:
 
 
 def attach() -> ScaleformText | None:
-    pid = find_pid(EXE, GAME_PATH_HINT)
+    pid = find_pid(EXE, GAME_PATH_HINT, require_path=True)
     if pid is None:
         return None
     try:

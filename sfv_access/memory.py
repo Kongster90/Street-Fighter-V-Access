@@ -326,18 +326,24 @@ def list_processes(exe_name: str) -> list[tuple[int, str]]:
     return out
 
 
-def find_pid(exe_name: str, path_contains: str | None = None) -> int | None:
+def find_pid(exe_name: str, path_contains: str | None = None, require_path: bool = False) -> int | None:
     """Process id for an executable, narrowed by a path fragment.
 
     Street Fighter V ships two executables with the same name: a small launcher
     in the install root and the real game under Binaries\\Win64. Matching on
     name alone picks the launcher, whose memory holds nothing of interest.
+
+    Without `require_path` a name match is taken when nothing matches the
+    path. Anything that will read the game's memory must require it: the
+    launcher starts a moment before the game, and the mod, looking for the game
+    again after it restarted, attached to the launcher and read nothing for
+    the rest of the session.
     """
     matches = list_processes(exe_name)
     if not matches:
         return None
     if path_contains:
         narrowed = [m for m in matches if path_contains.lower() in m[1].lower()]
-        if narrowed:
+        if narrowed or require_path:
             matches = narrowed
-    return matches[0][0]
+    return matches[0][0] if matches else None

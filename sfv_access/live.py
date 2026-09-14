@@ -180,7 +180,7 @@ class Live:
             if self.still_alive():
                 return True
             self.detach()
-            pid = find_pid(EXE, GAME_PATH_HINT)
+            pid = find_pid(EXE, GAME_PATH_HINT, require_path=True)
             if pid is None:
                 return False
             try:
