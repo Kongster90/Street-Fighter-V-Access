@@ -406,7 +406,7 @@ class App:
             details = scaleform.stage_details(items)
             if said and details:
                 said = memory_narration.phrase([said] + details)
-            summary = scaleform.result_summary(items)
+            _summary_screen, summary = scaleform.screen_summary(items)
             if summary:
                 said = memory_narration.phrase([summary, said])
             if said:

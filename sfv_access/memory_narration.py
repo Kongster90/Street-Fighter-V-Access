@@ -126,10 +126,10 @@ class Narrator:
         # as the question, however long the gap between one answer and the next.
         self.recent_groups: dict[int, int] = {}
         self.groups_seen_at = 0.0
-        # The result screen's summary, once said, is not said again while the
-        # screen stays, however its columns flicker.
-        self.result_said = ""
-        self.results_seen_at = 0.0
+        # A summary screen's sentence, once said, is not said again while the
+        # screen stays, however its parts flicker.
+        self.summary_said = ""
+        self.summary_seen_at = 0.0
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
@@ -160,19 +160,19 @@ class Narrator:
             self.pending = None
         self.previous = items
 
-        # The result screen arrives in pieces with nothing selected, and saying
-        # what changed would read them out one by one. It gets one summary
-        # instead, when complete, and the Results Menu reads as any menu.
-        if scaleform.on_results(items):
-            self.results_seen_at = now
+        # The result and VS screens arrive in pieces with nothing selected, and
+        # saying what changed would read them out one by one. Each gets one
+        # sentence instead, when complete; a menu on them reads as any menu.
+        summary_screen, summary = scaleform.screen_summary(items)
+        if summary_screen:
+            self.summary_seen_at = now
             if not any(it.selected for it in items):
                 parts, self.pending = None, None
-            summary = scaleform.result_summary(items)
-            if summary and summary != self.result_said:
-                self.result_said = summary
+            if summary and summary != self.summary_said:
+                self.summary_said = summary
                 parts = [summary] + (parts or [])
-        elif self.result_said and now - self.results_seen_at > GROUP_MEMORY:
-            self.result_said = ""
+        elif self.summary_said and now - self.summary_seen_at > GROUP_MEMORY:
+            self.summary_said = ""
 
         said = phrase(parts or [])
         if said and said != self.said:

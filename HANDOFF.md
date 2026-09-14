@@ -270,6 +270,17 @@ How it was found, since none of it came from documentation:
 - **Leftovers stay in the heap.** DocViews from closed dialogs keep their text
   until overwritten. They fail the walk to a render node, or come out
   detached, hidden or transparent, and `TextItem.shown` drops them.
+- **Zero alpha on a node with empty bounds means nothing.** Arcade's choice
+  of next opponent, two cards beside NEXT STAGE on its result screen, sat
+  for minutes under a container whose colour multiplier had alpha 0 while
+  the cards were plainly on screen, so the reader called them transparent
+  and nothing was said. That container's approximate bounds (node data
+  `+0x70`, two rectangles) were all zero; every really faded-out node kept
+  its bounds. The same rule, checked against the stage grid, music list and
+  Arcade recordings, also revealed the main menu's entries at the start of
+  one recording and a music list row in another, and every one of those was
+  showing in its screenshot. `_node` treats such an alpha as 1. The cards
+  themselves are an ordinary gold menu: "CODY. REWARD. 20320".
 - **A whole screen can be left behind looking shown.** After each Versus
   match the previous result screen stayed in memory complete, every node
   visible and opaque, and was read in place of the new one. What gives it
@@ -533,6 +544,16 @@ behind looking shown (see "A whole screen can be left behind"), which made
 one summary stale and the next silent until `TextItem.rooted`. Draws, two
 players and other modes are unseen.
 
+**The VS screen.** Before each fight (Arcade, Versus and Training alike) one
+panel shows both fighters' names, each side's V-Skill and V-TRIGGER as label
+and value, the stage's name, and player one's level, LP, rank and title,
+with nothing selected. `versus_summary` recognises it by V-Skill and
+V-TRIGGER twice each, no gold and no CHARACTER SELECT or VERSION SELECT
+heading (a scan of every logged screen found only VS screens that way), and
+says "ZEKU versus ABIGAIL", left first, once. The result screen and this
+share `screen_summary`, which the narrator and Alt R use. Opponents'
+versions and the stage were left out as more speech than was asked for.
+
 Known gaps. The clock sits one object further down and is not resolved.
 Screens other than Versus and Training may head their character select
 differently, and a prompt drawn inside character select's own movie, if there
@@ -676,6 +697,14 @@ What follows is roughly in order of value.
    tells you whether a gap is memory's. Still worth asking the user: whether
    the costume and version panels should say whose they are, since both
    sides' panels read the same.
+
+   Arcade, 2026-09-13: the VS screen ("ZEKU versus ABIGAIL") and the choice
+   of next opponent on Arcade's result screen are in, the second checked
+   live against the game, neither heard in play yet. The mod stopped by
+   itself that evening at 20:33 on Arcade's result screen with nothing in
+   either log; if it happens again, ask whether they closed it, and look for
+   a console window's last lines. `scaleform-arcade-choice` is a 541-record
+   recording of that screen, the stage card, the VS screen and a fight.
 
    The result screen summary works against the CPU. Unheard: two players,
    a draw, and other modes' result screens (Arcade, Survival). If the ratio

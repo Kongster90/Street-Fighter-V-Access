@@ -75,17 +75,18 @@ class FakeMemory:
 NODE_FLAG_WORD = sf.NODE_FLAGS
 
 
-def display_object(mem, parent, x, y, tint, flags=None, children=0):
+def display_object(mem, parent, x, y, tint, flags=None, children=0, bounds=True):
     """A display object with a render node placing it at (x, y) pixels in its parent.
 
     Without a parent it is a movie's root, flagged as one, unless `flags` says
-    otherwise, as for a subtree cut loose from its movie.
+    otherwise, as for a subtree cut loose from its movie. Its node has bounds,
+    as real nodes do, unless `bounds` is False.
     """
     if flags is None:
         flags = sf.MOVIE_ROOT_FLAGS | 1 if parent == 0 else 1
     obj = mem.alloc(0x360)
     entry = mem.alloc(0x20)
-    data = mem.alloc(0x80)
+    data = mem.alloc(0xA0)
     mem.put(obj + sf.DISPLAY_PARENT, "<Q", parent)
     mem.put(obj + sf.DISPLAY_RENDER_NODE, "<Q", entry)
     mem.put(obj + sf.DISPLAY_CHILD_COUNT, "<I", children)
@@ -93,6 +94,8 @@ def display_object(mem, parent, x, y, tint, flags=None, children=0):
     mem.put(data + NODE_FLAG_WORD, "<H", flags)
     mem.put(data + sf.NODE_MATRIX, "<8f", 1, 0, 0, x * 20, 0, 1, 0, y * 20)
     mem.put(data + sf.NODE_CXFORM, "<8f", *tint, 0, 0, 0, 0)
+    if bounds:
+        mem.put(data + sf.NODE_BOUNDS, "<8f", -40, -20, 4000, 900, -40, -20, 4000, 900)
     return obj
 
 
@@ -696,6 +699,65 @@ check("while the result screen arrives, nothing on it is selected and there is n
 check("the result summary is only for the result screen", sf.result_summary(on_zeku) is None
       and sf.result_summary(on_dojo) is None)
 
+# Arcade's choice of next opponent, as recorded: two cards beside NEXT STAGE,
+# the one you are on with its name, REWARD and amount in gold, the other in
+# 0.27 grey, both under a container whose alpha is zero and whose bounds are
+# empty while the cards are plainly on screen.
+def opponent_cards(on, empty_bounds=True):
+    mem = FakeMemory(size=0x21000)
+    movie = display_object(mem, 0, 0, 0, WHITE)
+    panel = display_object(mem, movie, 0, 0, WHITE)
+    text_field(mem, display_object(mem, panel, 240, 660, WHITE), 0, 0, ["NEXT STAGE"])
+    cards = display_object(mem, panel, 1146, 412, (1.0, 1.0, 1.0, 0.0), bounds=not empty_bounds)
+    holder = display_object(mem, cards, 0, 0, WHITE)
+    for i, (name, reward) in enumerate((("POISON", "16850"), ("ABIGAIL", "15070"))):
+        card = display_object(mem, holder, 0, 152 * i, WHITE)
+        tint = GOLD if name == on else GREY
+        for text, x, y in ((name, 46, 40), ("REWARD", 109, 99), (reward, 260, 99)):
+            text_field(mem, display_object(mem, card, x, y, tint), 0, 0, [text])
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+on_poison, on_abigail = opponent_cards("POISON"), opponent_cards("ABIGAIL")
+check("a zero alpha on a node with empty bounds does not hide what is under it",
+      "POISON" in [it.text for it in on_poison] and "NEXT STAGE" in [it.text for it in on_poison])
+check("a zero alpha on a node with bounds still does",
+      [it.text for it in opponent_cards("POISON", empty_bounds=False)] == ["NEXT STAGE"],
+      repr([it.text for it in opponent_cards("POISON", empty_bounds=False)]))
+check("the opponent card you move to is read by its gold",
+      sf.landed_on(on_poison, on_abigail) == ["ABIGAIL", "REWARD", "15070"], repr(sf.landed_on(on_poison, on_abigail)))
+
+# The VS screen before a fight, as recorded: one panel holding both names,
+# each side's V-Skill and V-TRIGGER label and value, and the stage's name.
+def versus_screen(left="ZEKU", right="ABIGAIL", heading=None, gold=False):
+    mem = FakeMemory(size=0x21000)
+    movie = display_object(mem, 0, 0, 0, WHITE)
+    panel = display_object(mem, display_object(mem, movie, 0, 0, WHITE), 0, 0, WHITE)
+    if heading:
+        text_field(mem, display_object(mem, panel, 960, 524, WHITE), 0, 0, [heading])
+    for name, x, values in ((left, 96, ("I - FUKURO", "I - BUSHINRYU SHINGEKIKO")),
+                            (right, 1324, ("I - HUNGABEE", "I - MAX POWER"))):
+        side = display_object(mem, panel, x, 619, WHITE)
+        text_field(mem, side, 0, 0, [name])
+        layers = display_object(mem, side, 2, 2, WHITE)
+        text_field(mem, layers, 0, 0, [name])
+        text_field(mem, layers, 0, 0, [name])
+        for i, (label, value) in enumerate(zip(("V-Skill", "V-TRIGGER"), values)):
+            row = display_object(mem, panel, x, 702 + 52 * i, WHITE)
+            text_field(mem, row, 185, 0, [label], tint=GOLD if gold and i == 0 and x < 960 else WHITE)
+            text_field(mem, row, 0, -4, [value], tint=GOLD if gold and i == 0 and x < 960 else WHITE)
+    text_field(mem, display_object(mem, panel, 644, 979, WHITE), 0, 0, ["Metro City Bay Area"])
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+versus = versus_screen()
+check("the VS screen names both fighters, left first", sf.versus_summary(versus) == "ZEKU versus ABIGAIL",
+      repr(sf.versus_summary(versus)))
+check("version select, with its heading and gold, is not the VS screen",
+      sf.versus_summary(versus_screen(heading="VERSION SELECT", gold=True)) is None)
+check("a mirror match names the fighter twice", sf.versus_summary(versus_screen(right="ZEKU")) == "ZEKU versus ZEKU",
+      repr(sf.versus_summary(versus_screen(right="ZEKU"))))
+
 # A screen being torn down: an object whose child list points at garbage that
 # does not name it as parent, and claims a great many entries.
 gmem = FakeMemory(size=0x40000 + 0x1000)
@@ -756,6 +818,10 @@ check("moving through the roster says each fighter as it is reached, and the tag
       [s for _, s in said] == ["ZEKU. KEN", "KOLIN", "ZEKU", "KEN"], repr(said))
 said = narrate([(0.0, arriving), (0.3, arriving), (0.5, won), (0.8, won), (1.0, result_screen(menu="Play Again")),
                 (1.3, result_screen(menu=MENU_ENTRIES[1])), (1.6, result_screen(menu=MENU_ENTRIES[1]))])
+before_fight = narrate([(0.0, [item("STAGE 2", 660, 660)]), (0.5, versus), (0.8, versus), (1.1, versus),
+                        (5.0, [item("SCORE", 561, 48)])])
+check("the VS screen says who is fighting once", [s for _, s in before_fight] == ["ZEKU versus ABIGAIL"],
+      repr(before_fight))
 check("the result screen says its summary once when complete, then the Results Menu as it moves",
       [s for _, s in said] == ["PLAYER 1 wins. Wins 1 to 0. Win streak 1 to 0. Win ratio 100 to 0 percent.",
                                "Play Again", "Return to Character/Stage Select"], repr(said))

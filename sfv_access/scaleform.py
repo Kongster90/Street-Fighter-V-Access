@@ -87,6 +87,7 @@ RENDER_NODE_DATA = 0x10
 NODE_FLAGS = 0x0A            # u16; bit 0 set while visible, for parents at least
 NODE_MATRIX = 0x10           # 2 by 4 floats: sx, shx, 0, tx / shy, sy, 0, ty
 NODE_CXFORM = 0x50           # multiply r, g, b, a then add r, g, b, a
+NODE_BOUNDS = 0x70           # two rectangles of four floats, its approximate bounds
 
 NODE_VISIBLE = 0x0001
 # A movie's root carries these in its flag word, 0x1801 while showing and
@@ -773,6 +774,66 @@ def result_summary(items: list[TextItem]) -> str | None:
     return ". ".join(parts) + "."
 
 
+# ------------------------------------------------------------------- VS screen
+#
+# Before each fight the VS screen shows, in one panel, both fighters' names
+# (drawn once and then in layers), each side's V-Skill and V-Trigger as label
+# and value, the stage's name, and player one's level, LP, rank and title.
+# Nothing on it is selected, so it was silent. Version select shows both
+# sides' V-Skill and V-Trigger too, under its heading and with a gold row.
+
+VERSUS_LABELS = ("V-Skill", "V-TRIGGER")
+VERSION_SELECT_HEADING = "VERSION SELECT"
+
+
+def _versus_panel(shown: list[TextItem]) -> int | None:
+    """The panel holding the VS screen, or None if this is not that screen."""
+    if any(it.highlighted or it.text.strip() in (CHARACTER_SELECT_HEADING, VERSION_SELECT_HEADING)
+           for it in shown):
+        return None
+    labels = [it for it in shown if it.text.strip() in VERSUS_LABELS and it.chain]
+    if sorted(it.text.strip() for it in labels) != sorted(VERSUS_LABELS * 2):
+        return None
+    common = set(labels[0].chain)
+    for it in labels[1:]:
+        common &= set(it.chain)
+    return next((obj for obj in labels[0].chain if obj in common), None)
+
+
+def mark_versus(items: list[TextItem]) -> None:
+    """On the VS screen, nothing in its panel is selected."""
+    shown = [it for it in items if it.shown]
+    panel = _versus_panel(shown)
+    for it in shown:
+        if panel is not None and it.chosen and panel in it.chain:
+            it.chosen, it.group, it.slot = False, 0, 0
+
+
+def versus_summary(items: list[TextItem]) -> str | None:
+    """"ZEKU versus ABIGAIL", the left side first, once both names show on the VS screen."""
+    shown = [it for it in items if it.shown]
+    panel = _versus_panel(shown)
+    if panel is None:
+        return None
+    names = fighter_names()
+    fighters = sorted((it for it in shown if it.text.strip() in names and panel in it.chain), key=lambda it: it.x)
+    if not fighters or fighters[-1].x - fighters[0].x < STAGE_WIDTH / 4:
+        return None
+    return f"{fighters[0].text.strip()} versus {fighters[-1].text.strip()}"
+
+
+def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
+    """For screens read as one sentence rather than by what is selected.
+
+    Whether this is one, and the sentence once all of it is showing: the
+    result screen after a match, and the VS screen before one.
+    """
+    if on_results(items):
+        return True, result_summary(items)
+    summary = versus_summary(items)
+    return summary is not None, summary
+
+
 def _compose(outer, inner):
     """Affine (sx, shx, tx, shy, sy, ty) products: apply inner, then outer."""
     a, b = outer, inner
@@ -913,9 +974,18 @@ class ScaleformText:
 
     # ------------------------------------------------------------- placement
     def _node(self, obj: int):
+        """An object's transform, colour multiplier and flag word, from its render node.
+
+        A zero alpha on a node whose bounds are empty does not count. The
+        Arcade opponent cards sat under such a node for minutes while plainly
+        on screen, as did the main menu's entries at the start of one
+        recording and a row of the menu music list in another; every text a
+        node like that hid, in 667 records, was showing in the screenshot. A
+        node really faded out keeps its bounds.
+        """
         entry = self.pm.ptr(obj + DISPLAY_RENDER_NODE)
         data = self.pm.ptr(entry + RENDER_NODE_DATA) if entry else None
-        raw = self.pm.read(data, NODE_CXFORM + 0x20) if data else None
+        raw = self.pm.read(data, NODE_BOUNDS + 0x20) if data else None
         if not raw:
             return None
         flags = struct.unpack_from("<H", raw, NODE_FLAGS)[0]
@@ -923,6 +993,8 @@ class ScaleformText:
         cx = struct.unpack_from("<4f", raw, NODE_CXFORM)
         if not all(math.isfinite(v) and abs(v) < 1e7 for v in m + cx):
             return None
+        if cx[3] <= 0.01 and not any(struct.unpack_from("<8f", raw, NODE_BOUNDS)):
+            cx = (cx[0], cx[1], cx[2], 1.0)
         return (m[0], m[1], m[3], m[4], m[5], m[7]), cx, flags
 
     def place(self, docview: int):
@@ -1004,6 +1076,7 @@ class ScaleformText:
         self._mark_picture_grids(shown)
         mark_fighters(shown)
         mark_results(shown)
+        mark_versus(shown)
         self._mark_ticks(shown)
         if not any(it.selected for it in shown):
             stage = stage_on_offer(shown)
