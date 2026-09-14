@@ -1110,14 +1110,19 @@ def describe_inputs(pieces: list[tuple[str, str]]) -> str:
             continue
         if count > 1:
             said = " ".join([said] * count)
-        # Directions one after another are separate presses, "down, down";
-        # buttons side by side are pressed together, "light punch light kick".
-        both_directions = (kind == "input" and previous == "input"
-                           and name.startswith("cmd_") and (previous_name or "").startswith("cmd_"))
+        # Directions one after another are separate presses, "down, down".
+        # Buttons side by side are pressed together: the same one is said
+        # twice, "punch punch", and different ones get plus between them,
+        # "medium punch plus medium kick", in the user's words.
+        both_inputs = kind == "input" and previous == "input"
+        both_directions = both_inputs and name.startswith("cmd_") and (previous_name or "").startswith("cmd_")
+        both_buttons = both_inputs and not name.startswith("cmd_") and not (previous_name or "cmd_").startswith("cmd_")
         if previous is None:
             gap = ""
         elif comma or both_directions:
             gap = ", "
+        elif both_buttons and name != previous_name:
+            gap = " plus "
         else:
             gap = " "
         out += gap + said

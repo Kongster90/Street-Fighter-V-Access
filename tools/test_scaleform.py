@@ -1064,9 +1064,13 @@ together = [sf.describe_inputs(p) for p in (
     [("picture", "punch_h"), ("picture", "kick_h"), ("text", " (V-TRIGGER ATTACK)")],
     [("text", "(NEAR OPPONENT) "), ("picture", "cmd_5"), ("text", " OR "), ("picture", "cmd_6"), ("picture", "plus"),
      ("picture", "punch_l"), ("picture", "kick_l")])]
-check("different buttons side by side are pressed together, said without a comma",
-      together == ["heavy punch heavy kick (V-TRIGGER ATTACK)",
-                   "(NEAR OPPONENT) neutral OR forward plus light punch light kick"], repr(together))
+check("different buttons side by side are pressed together, with plus between them",
+      together == ["heavy punch plus heavy kick (V-TRIGGER ATTACK)",
+                   "(NEAR OPPONENT) neutral OR forward plus light punch plus light kick"], repr(together))
+kagerou = sf.describe_inputs([("picture", "punch_h"), ("picture", "next"), ("picture", "punch_h"),
+                              ("picture", "next"), ("picture", "punch_m"), ("picture", "kick_m")])
+check("the user's KAGEROU example", kagerou == "heavy punch, heavy punch, medium punch plus medium kick",
+      repr(kagerou))
 check("the arrow meaning then is only a comma, crouch is down plus and jump stays jump",
       linked == "down plus medium punch, jump heavy punch, punch, punch", repr(linked))
 logged_trial = ", ".join(sf.describe_inputs(step) for step in (

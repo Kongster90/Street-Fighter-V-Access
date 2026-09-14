@@ -645,9 +645,11 @@ rows and it is shown on exactly one; the three recordings give no marks
 under that rule. Checked live on Normal Throw that MIKOSHI's row is the one
 marked; a screenshot to confirm the cursor was on it could not be taken, the
 game being behind. A section of one move is still silent. Also buttons drawn
-side by side are pressed together and said without a comma ("heavy punch
-heavy kick", the throw "light punch light kick"); commas stay between
-directions and at the arrow meaning then. The Icon Info page is a legend of
+side by side are pressed together: the same button is said twice ("punch
+punch") and different ones get plus between them ("heavy punch plus heavy
+kick", the throw "light punch plus light kick"), from the user's example
+"KAGEROU. heavy punch, heavy punch, medium punch plus medium kick"; commas
+stay between directions and at the arrow meaning then. The Icon Info page is a legend of
 icons that are not text pictures, so only its descriptions show ("Hold the
 down button") and one is taken for a selection; not handled.
 
