@@ -64,9 +64,10 @@ In the mod itself, played by the user on 2026-09-13:
   When both sides' version panels open together, both gold rows are read in
   one sentence ("V-Skill. I - KIKO RENSEI. I - MYO-OKEN"); nobody has
   complained.
-- The post-match results screen: "RESULT. LOSE", then Play Again, Return to
-  Character/Stage Select, Return to Battle Settings and Return to Main Menu
-  as the cursor moves.
+- The post-match Results Menu: Play Again, Return to Character/Stage Select,
+  Return to Battle Settings and Return to Main Menu as the cursor moves. The
+  result above it read wrongly, "RESULT. LOSE" after player one won; a
+  summary replacing that is in and not yet heard. See "The result screen".
 
 From the screen, the older path, now the fallback:
 
@@ -494,6 +495,27 @@ skipped every rule but that one; play caught it within minutes. So
 fighter's name, whichever rule made it, and leaves gold and other movies
 alone. The replay of the session that caught it said only names.
 
+**The result screen.** After a Versus match the big "AKIRA / WINS" banner
+shows with the winner's quote, then over about ten seconds the result
+columns, then the Results Menu, the first thing on the screen that is really
+selected. Each side has a column: player ("PLAYER 1", "CPU"), "WIN" or "LOSE"
+in three layers, and "Wins" and "Win Streak" each in a holder with its
+number. "Win Ratio" and two percentages sit below both columns, and their
+positions do not follow the columns: after player one won 1 to 0, "0.00%"
+was drawn at x 632 and "100.00%" at 772. `result_summary` finds each side's
+player and numbers by tree distance to that side's outcome, gives each
+percentage to the side whose wins it agrees with (two decimals), leaves the
+ratio out if neither way agrees, and says "PLAYER 1 wins. Wins 1 to 0. Win
+streak 1 to 0. Win ratio 100 to 0 percent." once the columns are complete.
+The user asked for win ratio and streak there. While the screen arrives,
+one fading layer of "LOSE" beside "CPU" had the shape of a prompt's chosen
+button, and was read out as the result; `mark_results` clears non-gold marks
+in that movie, and the narrator says nothing on that screen but the summary
+until the menu is selected. Alt R repeats it. Only one result screen has
+been read, a win against the CPU; a loss, a draw, two players and other
+modes are unseen, and whether the percentages always agree with the wins is
+one data point.
+
 Known gaps. The clock sits one object further down and is not resolved.
 Screens other than Versus and Training may head their character select
 differently, and a prompt drawn inside character select's own movie, if there
@@ -637,6 +659,12 @@ What follows is roughly in order of value.
    tells you whether a gap is memory's. Still worth asking the user: whether
    the costume and version panels should say whose they are, since both
    sides' panels read the same.
+
+   The result screen summary ("The result screen") is next to hear: ask for
+   a loss as well as a win, and a second match in a row so the numbers are
+   not all ones and zeros. If the ratio is missing from what is said while
+   two percentages show in the log, they did not agree with the wins, and
+   the log's numbers will say what they mean instead.
 
    Then the screens memory has not been heard on: the voice language grid,
    the Training pause menu mid-match, and the rest under item 1.

@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import struct
 import threading
 import time
@@ -628,6 +629,139 @@ def mark_fighters(items: list[TextItem]) -> None:
             it.chosen, it.group, it.slot = False, 0, 0
 
 
+# ---------------------------------------------------------------- match result
+#
+# After a Versus match the result screen gives each side a column of its own:
+# the player ("PLAYER 1", "CPU"), "WIN" or "LOSE" drawn in layers, and "Wins"
+# and "Win Streak", each holding its number beside it. Below, outside either
+# column, are "Win Ratio" and two percentages whose positions do not say whose
+# is whose: after player one won the first match of a session, "0.00%" was
+# drawn left of "100.00%". So a percentage goes to the side whose wins it
+# agrees with, and is left unsaid if neither assignment agrees.
+#
+# The columns animate in over about ten seconds before the Results Menu, the
+# first thing on the screen that is really selected. A fading copy of "LOSE"
+# was taken for a selection meanwhile and read out as the result when player
+# one had won, so only gold counts on that screen.
+
+RESULT_HEADING = "RESULT"
+RESULT_OUTCOMES = ("WIN", "LOSE")
+RESULT_WINS = "Wins"
+RESULT_STREAK = "Win Streak"
+RATIO_TOLERANCE = 0.01   # the game shows two decimals
+_WHOLE_NUMBER = re.compile(r"^\d+$")
+_PERCENTAGE = re.compile(r"^(\d+(?:\.\d+)?)%$")
+
+
+def _results_movie(shown: list[TextItem]) -> int | None:
+    """The movie showing a match result, or None if this is not that screen."""
+    heading = next((it for it in shown if it.text.strip() == RESULT_HEADING and it.chain), None)
+    if heading is None:
+        return None
+    movie = heading.chain[-1]
+    if not any(it.text.strip() in RESULT_OUTCOMES and it.chain and it.chain[-1] == movie for it in shown):
+        return None
+    return movie
+
+
+def on_results(items: list[TextItem]) -> bool:
+    return _results_movie([it for it in items if it.shown]) is not None
+
+
+def mark_results(items: list[TextItem]) -> None:
+    """On the result screen, nothing in its movie is selected unless it is gold."""
+    shown = [it for it in items if it.shown]
+    movie = _results_movie(shown)
+    for it in shown:
+        if movie is not None and it.chosen and it.chain and it.chain[-1] == movie:
+            it.chosen, it.group, it.slot = False, 0, 0
+
+
+def _percent_words(value: float) -> str:
+    return f"{value:.2f}".rstrip("0").rstrip(".")
+
+
+def result_summary(items: list[TextItem]) -> str | None:
+    """The result and both sides' records, winner first, once all of them are showing.
+
+    "PLAYER 1 wins. Wins 1 to 0. Win streak 1 to 0. Win ratio 100 to 0 percent."
+    None away from the result screen, and while its columns are still arriving.
+    """
+    shown = [it for it in items if it.shown]
+    movie = _results_movie(shown)
+    if movie is None:
+        return None
+    shown = [it for it in shown if it.chain and it.chain[-1] == movie]
+    outcomes: dict[tuple[int, int], TextItem] = {}
+    for it in shown:
+        if it.text.strip() in RESULT_OUTCOMES:
+            outcomes.setdefault((round(it.x), round(it.y)), it)
+    sides = sorted(outcomes.values(), key=lambda it: it.x)
+    if len(sides) != 2:
+        return None
+
+    def side_of(it: TextItem) -> int | None:
+        """The side whose outcome is nearest in the tree; None if both are as near."""
+        near = [(d, i) for i, side in enumerate(sides)
+                if (d := _tree_distance(it.chain, side.chain)) is not None]
+        if not near:
+            return None
+        best = min(near)
+        return best[1] if [d for d, _i in near].count(best[0]) == 1 else None
+
+    players: list[tuple[int, str] | None] = [None, None]
+    wins: list[int | None] = [None, None]
+    streaks: list[int | None] = [None, None]
+    known = {RESULT_HEADING, RESULT_WINS, RESULT_STREAK, *RESULT_OUTCOMES}
+    for it in shown:
+        text = it.text.strip()
+        if text in (RESULT_WINS, RESULT_STREAK):
+            side = side_of(it)
+            value = next((v.text.strip() for v in shown
+                          if v is not it and len(v.chain) > 1 and len(it.chain) > 1
+                          and v.chain[1] == it.chain[1] and _WHOLE_NUMBER.match(v.text.strip())), None)
+            if side is not None and value is not None:
+                (wins if text == RESULT_WINS else streaks)[side] = int(value)
+        elif text and text not in known and not _WHOLE_NUMBER.match(text) and not _PERCENTAGE.match(text):
+            side = side_of(it)
+            if side is not None:
+                distance = _tree_distance(it.chain, sides[side].chain)
+                if players[side] is None or distance < players[side][0]:
+                    players[side] = (distance, text)
+    if None in players or None in wins or None in streaks:
+        return None
+
+    ratio = None
+    percentages = {(round(it.x), round(it.y)): float(m[1])
+                   for it in shown if (m := _PERCENTAGE.match(it.text.strip()))}
+    if len(percentages) == 2:
+        a, b = percentages.values()
+        total = wins[0] + wins[1]
+        if a == b:
+            ratio = (a, b)
+        elif total:
+            expected = 100 * wins[0] / total
+            if abs(a - expected) <= RATIO_TOLERANCE and abs(b - (100 - expected)) <= RATIO_TOLERANCE:
+                ratio = (a, b)
+            elif abs(b - expected) <= RATIO_TOLERANCE and abs(a - (100 - expected)) <= RATIO_TOLERANCE:
+                ratio = (b, a)
+
+    results = [side.text.strip() for side in sides]
+    names = [player[1] for player in players]
+    if results.count("WIN") == 1:
+        first = results.index("WIN")
+        parts = [f"{names[first]} wins"]
+    else:
+        first = 0
+        parts = [f"{name} {result.lower()}" for name, result in zip(names, results)]
+    second = 1 - first
+    parts.append(f"Wins {wins[first]} to {wins[second]}")
+    parts.append(f"Win streak {streaks[first]} to {streaks[second]}")
+    if ratio is not None:
+        parts.append(f"Win ratio {_percent_words(ratio[first])} to {_percent_words(ratio[second])} percent")
+    return ". ".join(parts) + "."
+
+
 def _compose(outer, inner):
     """Affine (sx, shx, tx, shy, sy, ty) products: apply inner, then outer."""
     a, b = outer, inner
@@ -857,6 +991,7 @@ class ScaleformText:
         self._mark_highlighted_rows(shown, groups)
         self._mark_picture_grids(shown)
         mark_fighters(shown)
+        mark_results(shown)
         self._mark_ticks(shown)
         if not any(it.selected for it in shown):
             stage = stage_on_offer(shown)

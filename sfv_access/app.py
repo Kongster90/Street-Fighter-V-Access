@@ -406,6 +406,9 @@ class App:
             details = scaleform.stage_details(items)
             if said and details:
                 said = memory_narration.phrase([said] + details)
+            summary = scaleform.result_summary(items)
+            if summary:
+                said = memory_narration.phrase([summary, said])
             if said:
                 self.lines, self.footer = items, foot.text if foot else ""
                 self.cursor = next((i for i, it in enumerate(items) if it.selected), 0)

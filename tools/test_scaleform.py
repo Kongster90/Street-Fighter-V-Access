@@ -600,6 +600,76 @@ dressing = character_select("ZEKU", costume="Kenji")
 check("the costume panel after a pick still reads from its gold",
       sf.landed_on(on_zeku, dressing) == ["Costume", "Kenji"], repr(sf.landed_on(on_zeku, dressing)))
 
+# The result screen after a Versus match, laid out as read from the game: a
+# column per side holding the player, the outcome in three layers, and "Wins"
+# and "Win Streak" each beside its number; below both, the two percentages,
+# the fighters and "Win Ratio". Arriving, the CPU's column showed its name and
+# one fading layer of LOSE, which the prompt rule took for a chosen button.
+FADED = (0.51, 0.50, 0.60, 1.0)
+MENU_ENTRIES = ("Play Again", "Return to Character/Stage Select", "Return to Battle Settings", "Return to Main Menu")
+
+
+def result_screen(arriving=False, left=("PLAYER 1", "WIN", 1, 1), right=("CPU", "LOSE", 0, 0),
+                  ratio=(("0.00%", 632), ("100.00%", 772)), menu=None, heading="RESULT"):
+    mem = FakeMemory()
+    movie = display_object(mem, 0, 0, 0, WHITE)
+    screen = display_object(mem, display_object(mem, movie, 0, 0, WHITE), 0, 0, WHITE)
+    text_field(mem, display_object(mem, screen, 68, 7, WHITE), 0, 0, [heading])
+    for (player, outcome, wins, streak), x in ((left, 285), (right, 1646)):
+        if arriving and x < 960:
+            continue
+        column = display_object(mem, screen, 0, 0, WHITE)
+        text_field(mem, column, x, 156, [player])
+        layers = display_object(mem, column, x + 10, 231, WHITE, children=3)
+        if arriving:
+            text_field(mem, layers, 0, 0, [outcome], tint=FADED)
+            continue
+        text_field(mem, layers, 0, 0, [outcome])
+        text_field(mem, layers, 0, 0, [outcome])
+        text_field(mem, layers, 0, 0, [outcome], tint=(1, 1, 1, 0))
+        for label, value, y in (("Wins", wins, 395), ("Win Streak", streak, 444)):
+            row = display_object(mem, column, x - 160, y, WHITE)
+            text_field(mem, row, 0, 0, [label + "\r", "\r"])
+            text_field(mem, row, 368, 9, [str(value)])
+    if not arriving:
+        bottom = display_object(mem, screen, 0, 0, WHITE)
+        for text, x in ratio:
+            text_field(mem, bottom, x, 914, [text])
+        text_field(mem, bottom, 537, 953, ["AKIRA"])
+        text_field(mem, bottom, 1383, 953, ["KARIN"])
+        text_field(mem, display_object(mem, display_object(mem, bottom, 0, 0, WHITE), 0, 0, WHITE),
+                   878, 805, ["Win Ratio"])
+    if menu:
+        menu_movie = display_object(mem, 0, 0, 0, WHITE)
+        text_field(mem, menu_movie, 460, 245, ["Results Menu"])
+        for i, entry in enumerate(MENU_ENTRIES):
+            holder = display_object(mem, menu_movie, 460, 306 + 42 * i, GOLD if entry == menu else GREY)
+            text_field(mem, holder, 0, 0, [entry])
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+won = result_screen()
+check("the result screen sums up the match, winner first",
+      sf.result_summary(won) == "PLAYER 1 wins. Wins 1 to 0. Win streak 1 to 0. Win ratio 100 to 0 percent.",
+      repr(sf.result_summary(won)))
+lost = result_screen(left=("PLAYER 1", "LOSE", 1, 0), right=("CPU", "WIN", 2, 1),
+                     ratio=(("66.67%", 632), ("33.33%", 772)))
+check("a percentage goes to the side whose wins it agrees with, wherever it is drawn",
+      sf.result_summary(lost) == "CPU wins. Wins 2 to 1. Win streak 1 to 0. Win ratio 66.67 to 33.33 percent.",
+      repr(sf.result_summary(lost)))
+puzzling = result_screen(ratio=(("40.00%", 632), ("60.00%", 772)))
+check("a ratio that agrees with neither side is left unsaid",
+      sf.result_summary(puzzling) == "PLAYER 1 wins. Wins 1 to 0. Win streak 1 to 0.", repr(sf.result_summary(puzzling)))
+arriving = result_screen(arriving=True)
+check("the fake's fading LOSE does get taken for a selection on a screen not recognised",
+      [it.text for it in result_screen(arriving=True, heading="RESULTS?") if it.selected] == ["LOSE"],
+      repr([it.text for it in result_screen(arriving=True, heading="RESULTS?") if it.selected]))
+check("while the result screen arrives, nothing on it is selected and there is no summary yet",
+      not any(it.selected for it in arriving) and sf.result_summary(arriving) is None,
+      repr(([it.text for it in arriving if it.selected], sf.result_summary(arriving))))
+check("the result summary is only for the result screen", sf.result_summary(on_zeku) is None
+      and sf.result_summary(on_dojo) is None)
+
 # A screen being torn down: an object whose child list points at garbage that
 # does not name it as parent, and claims a great many entries.
 gmem = FakeMemory(size=0x40000 + 0x1000)
@@ -658,6 +728,11 @@ said = narrate([(0.0, on_zeku), (0.1, on_kolin), (0.2, blinked), (0.3, on_kolin)
                 (0.7, on_zeku), (0.8, mirror)])
 check("moving through the roster says each fighter as it is reached, and the tag's blinking nothing",
       [s for _, s in said] == ["ZEKU. KEN", "KOLIN", "ZEKU", "KEN"], repr(said))
+said = narrate([(0.0, arriving), (0.3, arriving), (0.5, won), (0.8, won), (1.0, result_screen(menu="Play Again")),
+                (1.3, result_screen(menu=MENU_ENTRIES[1])), (1.6, result_screen(menu=MENU_ENTRIES[1]))])
+check("the result screen says its summary once when complete, then the Results Menu as it moves",
+      [s for _, s in said] == ["PLAYER 1 wins. Wins 1 to 0. Win streak 1 to 0. Win ratio 100 to 0 percent.",
+                               "Play Again", "Return to Character/Stage Select"], repr(said))
 check("phrases join without doubled punctuation",
       mn.phrase(["Are you sure?", "No", "Costume.", "Kenji"]) == "Are you sure? No. Costume. Kenji")
 # A session whose block list has missed the text's block: quick reads find
