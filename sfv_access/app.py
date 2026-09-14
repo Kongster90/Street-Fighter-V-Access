@@ -447,6 +447,10 @@ class App:
                 said = memory_narration.phrase([said] + story)
             elif foot is not None and not foot.selected:
                 said = memory_narration.phrase([said, foot.text])
+            # A prompt's message before its button, as arriving says it.
+            message = scaleform.prompt_message(items)
+            if said and message:
+                said = memory_narration.phrase(message + [said])
             # Stage conditions do not affect play, so moving through stage
             # select leaves them out; asking for a reading includes them.
             details = scaleform.stage_details(items)

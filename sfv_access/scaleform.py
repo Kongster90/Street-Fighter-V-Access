@@ -254,6 +254,28 @@ def _unique(texts: list[str]) -> list[str]:
     return [t for t in texts if not (t in seen or seen.add(t))]
 
 
+def _panel_texts(items: list[TextItem], buttons: list[TextItem]) -> list[str]:
+    """The rest of the panel holding each chosen button's group: a prompt's question."""
+    groups = {it.group for it in buttons if it.chosen and it.group in it.chain}
+    panels = set()
+    for it in buttons:
+        if it.group in groups:
+            at = it.chain.index(it.group)
+            if at + 1 < len(it.chain):
+                panels.add(it.chain[at + 1])
+    return [it.text for it in items
+            if not it.selected and panels.intersection(it.chain) and not groups.intersection(it.chain)]
+
+
+def prompt_message(items: list[TextItem]) -> list[str]:
+    """For the read key, the message of the prompt whose button is selected.
+
+    Arriving at a prompt says its message and then its button; the read key
+    said only the button, "Next", where the user expected the message again.
+    """
+    return _unique(_panel_texts([it for it in items if it.shown], [it for it in items if it.shown and it.chosen]))
+
+
 def landed_on(
     before: list[TextItem], after: list[TextItem], recent_groups: frozenset = frozenset()
 ) -> list[str]:
@@ -291,19 +313,7 @@ def landed_on(
     if fresh:
         old_groups = {it.group for it in before if it.chosen} | set(recent_groups)
         new_groups = {it.group for it in fresh if it.chosen and it.group not in old_groups}
-        panels = set()
-        for it in fresh:
-            if it.group in new_groups and it.group in it.chain:
-                at = it.chain.index(it.group)
-                if at + 1 < len(it.chain):
-                    panels.add(it.chain[at + 1])
-        intro = [
-            it.text
-            for it in after
-            if not it.selected
-            and panels.intersection(it.chain)
-            and not new_groups.intersection(it.chain)
-        ]
+        intro = _panel_texts(after, [it for it in fresh if it.group in new_groups])
         named = []
         seen = set(intro)
         for it in fresh:

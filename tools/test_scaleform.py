@@ -263,6 +263,9 @@ on_yes = exit_prompt("Yes")
 chosen = [it.text.strip() for it in on_no if it.chosen]
 check("the button with the outline is the selected one", chosen == ["No"], repr(chosen))
 check("and it follows the selection", [it.text.strip() for it in on_yes if it.chosen] == ["Yes"])
+check("the read key has the prompt's question to say before its button, and nothing from behind",
+      sf.prompt_message(on_yes) == ["Are you sure you want to close the application?"]
+      and sf.prompt_message(exit_prompt(None)) == [], repr(sf.prompt_message(on_yes)))
 check("the question is shown though its flag word is clear",
       any("Are you sure" in it.text for it in on_no))
 check("opening the prompt reads the question, then the answer",
