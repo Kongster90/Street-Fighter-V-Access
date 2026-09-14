@@ -1056,6 +1056,18 @@ STANCE_WORDS = (
 )
 
 
+# Pictures standing for a currency, said after the amount that follows them:
+# the missions notice draws "Reward: <Fight Money picture>50".
+ICON_WORDS = {"icon_FM": "Fight Money"}
+
+
+def _icon_amounts(text: str) -> str:
+    """"Reward:  Fight Money 50" as "Reward: 50 Fight Money"."""
+    for words in ICON_WORDS.values():
+        text = re.sub(rf" *{re.escape(words)} *([\d,]+)", rf" \1 {words}", text)
+    return text
+
+
 def input_words(name: str) -> str | None:
     """Words for a command picture's name, or None if it is not one known."""
     if name in JOINER_WORDS:
@@ -1209,6 +1221,125 @@ def extra_battle_details(items: list[TextItem], brief: bool = False) -> list[str
     return wanted
 
 
+# -------------------------------------------------------------------- missions
+#
+# After logging in, the main menu opens under a notice of Current Missions: one
+# scrolling text holding every mission as a line of what to do ("Perform a
+# cross-up 10 time(s)!") and a line "DEADLINE:Sep 15, 2026, 9:00:00 PM (Days
+# left: 1) Reward: 50", a Fight Money picture before the amount, then a blank
+# line. Below it one Close button, plain white and not built as a prompt's
+# chosen button, so no rule marked it. The main menu's cursor starts on the
+# advert banner behind, which is marked, and the notice said only "UPGRADE KIT
+# AVAILABLE NOW". The title field, "Current Missions", sits at zero alpha while
+# plainly drawn, so the title is taken as known rather than read.
+
+MISSIONS_TITLE = "Current Missions"
+MISSIONS_BUTTON = "Close"
+MISSION_DETAIL = re.compile(
+    r"^DEADLINE:\s*(?P<deadline>.*?)\s*\(Days left:\s*(?P<days>\d+)\)\s*Reward:\s*(?P<reward>.*?)\s*$")
+# How far above the missions text and the Close button their shared panel may be.
+MISSIONS_PANEL_LEVELS = 4
+MONTH_WORDS = {"Jan": "January", "Feb": "February", "Mar": "March", "Apr": "April", "Jun": "June",
+               "Jul": "July", "Aug": "August", "Sep": "September", "Oct": "October", "Nov": "November",
+               "Dec": "December"}
+
+
+def missions(text: str) -> list[tuple[str, str, int, str]]:
+    """Each mission in a Current Missions text: what to do, deadline, days left, reward."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    out = []
+    for task, detail in zip(lines, lines[1:]):
+        m = MISSION_DETAIL.match(detail)
+        if m and not MISSION_DETAIL.match(task):
+            out.append((task, m["deadline"], int(m["days"]), m["reward"]))
+    return out
+
+
+def _counted(text: str) -> str:
+    """"10 time(s)" as "10 times" and "1 match(es)" as "1 match", by the first number."""
+    number = re.search(r"\d+", text)
+    one = number is not None and int(number.group()) == 1
+    return re.sub(r"(\w)\((e?s)\)", lambda m: m.group(1) + ("" if one else m.group(2)), text)
+
+
+def _spoken_date(text: str) -> str:
+    """"Sep 15, 2026, 9:00:00 PM" as "September 15, 2026, 9:00 PM"."""
+    text = re.sub(r"\b(\d{1,2}:\d\d):\d\d\b", r"\1", text)
+    return re.sub(r"\b(" + "|".join(MONTH_WORDS) + r")\b", lambda m: MONTH_WORDS[m.group()], text)
+
+
+def _missions_notice(shown: list[TextItem]) -> tuple[TextItem, TextItem] | None:
+    """The Current Missions text and its Close button, while the notice shows."""
+    for text in shown:
+        if not text.chain or "DEADLINE:" not in text.text or not missions(text.text):
+            continue
+        for button in shown:
+            if button.text.strip() != MISSIONS_BUTTON or not button.chain:
+                continue
+            panel = next((obj for obj in text.chain[1:MISSIONS_PANEL_LEVELS + 1] if obj in button.chain), None)
+            if panel is not None and button.chain.index(panel) <= MISSIONS_PANEL_LEVELS:
+                return text, button
+    return None
+
+
+def mark_missions(shown: list[TextItem]) -> None:
+    """Close is the notice's selection, and nothing behind the notice is.
+
+    Gold behind it stays gold, as behind any prompt; only marks made by the
+    rules without gold, such as the banner's, are cleared outside the
+    notice's movie.
+    """
+    found = _missions_notice(shown)
+    if found is None:
+        return
+    text, button = found
+    for it in shown:
+        if it.chosen and it.chain and it.chain[-1] != text.chain[-1]:
+            it.chosen = False
+    button.chosen = True
+
+
+def missions_details(items: list[TextItem], brief: bool = False) -> list[str]:
+    """The Current Missions notice as sentences; `brief`, for arriving, only what each asks.
+
+    In full each mission says what to do, the days left and deadline, and the
+    reward: "Perform a cross-up 10 times! 1 day left, deadline September 15,
+    2026, 9:00 PM. Reward 50 Fight Money."
+    """
+    found = _missions_notice([it for it in items if it.shown])
+    if found is None:
+        return []
+    sentences = [MISSIONS_TITLE]
+    for task, deadline, days, reward in missions(found[0].text):
+        sentences.append(_counted(task))
+        if brief:
+            continue
+        left = f"{days} day{'' if days == 1 else 's'} left"
+        sentences.append(f"{left}, deadline {_spoken_date(deadline)}")
+        if reward:
+            sentences.append(f"Reward {reward}")
+    return sentences
+
+
+# ---------------------------------------------------------------- status lines
+#
+# Starting the game shows one line at a time at the foot of the title screen,
+# "Applying Title Update Ver.07.011...", "Connecting to server...", "Logging
+# into the server...", with nothing else and nothing selected, so nothing was
+# said. In every log so far only these were a screen's one text ending "...".
+
+STATUS_MAX = 60
+
+
+def status_line(items: list[TextItem]) -> str | None:
+    """A screen's only text when it is a status line such as "Logging into the server..."."""
+    shown = [it for it in items if it.shown and it.text.strip()]
+    if len(shown) != 1 or shown[0].selected:
+        return None
+    text = shown[0].text.strip()
+    return text if text.endswith("...") and len(text) <= STATUS_MAX else None
+
+
 PATH_STORY_MIN = 60
 
 
@@ -1248,7 +1379,7 @@ def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
         if summary is None and any(it.shown and it.text.strip() == ARCADE_FINAL_STAGE for it in items):
             summary = ARCADE_FINAL_STAGE
         return True, summary
-    summary = versus_summary(items) or ending_summary(items) or trial_summary(items)
+    summary = versus_summary(items) or ending_summary(items) or trial_summary(items) or status_line(items)
     return summary is not None, summary
 
 
@@ -1419,7 +1550,7 @@ class ScaleformText:
         if not raw:
             return text
         pieces: list[tuple[str, str]] = []
-        found = False
+        found = icons = False
         for i in range(count):
             start, length, fmt = struct.unpack_from("<QQQ", raw, i * RUN_STRIDE)
             if start >= len(text) or not length:
@@ -1430,6 +1561,10 @@ class ScaleformText:
             if name is None:
                 pieces.append(("text", chunk))
                 continue
+            if name in ICON_WORDS:
+                icons = True
+                pieces.append(("text", f" {ICON_WORDS[name]} {chunk[1:]}"))
+                continue
             if input_words(name) is None:
                 self.unknown_pictures.add(name)
                 pieces.append(("text", chunk))
@@ -1438,7 +1573,11 @@ class ScaleformText:
             pieces.append(("picture", name))
             if chunk[1:]:
                 pieces.append(("text", chunk[1:]))
-        return describe_inputs(pieces) if found else text
+        if found:
+            text = describe_inputs(pieces)
+        elif icons:
+            text = "".join(value for _kind, value in pieces)
+        return _icon_amounts(text) if icons else text
 
     # ------------------------------------------------------------- placement
     def _node(self, obj: int):
@@ -1566,6 +1705,7 @@ class ScaleformText:
         mark_results(shown)
         mark_versus(shown)
         mark_trial(shown)
+        mark_missions(shown)
         self._mark_ticks(shown)
         if not any(it.selected for it in shown):
             stage = stage_on_offer(shown)

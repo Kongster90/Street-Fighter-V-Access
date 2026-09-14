@@ -712,6 +712,43 @@ conditions, the deadline and fee added at the user's request) once before
 BEGIN BATTLE on arriving, and Alt R says all of it. Confirmed in play by
 the user on 2026-09-14.
 
+**Starting the game.** Recorded on 2026-09-14 with a quiet recorder beside
+the mod (`snapshots/scaleform-startup`, from the Capcom title onward): black,
+the title with "Applying Title Update Ver.07.011..." and then "Connecting to
+server..." at (960, 886), each for under a second, the title again, "Logging
+into the server..." for about eight seconds, a loading screen, then the main
+menu under the Current Missions notice. The title's "Press any button" was
+never a text field in memory (the only other text was the copyright line,
+judged hidden while drawn), so it cannot be read the usual way; whether the
+title waits for a press is unconfirmed. The first read of a new game said
+" Sub Menu", a button hint shown alone on a black frame. Status lines went
+unsaid because nothing was selected and they are not the description line,
+so the selection key never changed; `status_line` makes a screen whose one
+text ends "..." (at most 60 characters) a summary through `screen_summary`,
+said once it holds for `SUMMARY_SETTLE`, so only the login line is heard. No
+other logged screen had one text ending that way.
+
+**The Current Missions notice.** One text field holds every mission, each a
+line of what to do ("Perform a cross-up 10 time(s)!") and a line
+"DEADLINE:Sep 15, 2026, 9:00:00 PM (Days left: 1) Reward: 50" with an
+`icon_FM` picture before the amount, then a blank line; it scrolls. Close
+below it is plain white with no chosen-button layers, and the title field
+"Current Missions" is at zero alpha while drawn. The main menu's cursor
+starts on the advert banner behind it, which `_mark_highlighted_rows`
+marks, so the notice said "UPGRADE KIT AVAILABLE NOW". `mark_missions` finds
+the text (by `MISSION_DETAIL` lines) and a Close sharing a panel within four
+levels, marks Close, and clears non-gold marks in other movies;
+`missions_details` gives "Current Missions" and each mission, counts made
+plain ("10 times", "1 match"), and for Alt R the days left, the deadline
+with the month in full and no seconds, and the reward. The narrator's
+introduction before a button, Extra Battle's until now, takes it too:
+"Current Missions. Perform a cross-up 10 times! ... Close". `ICON_WORDS`
+says the Fight Money picture after its amount everywhere ("Reward: 50 Fight
+Money"). Checked live on the notice; not yet heard. On the main menu the
+banner advert was said every fifteen seconds while idle on it in an earlier
+session ("Aug 31, 2026 - Sep 30, 2026. UPGRADE KIT AVAILABLE NOW", 13:45:31
+to 13:46:36 on 2026-09-14); not yet looked into.
+
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
 right) read from the screen before memory took over, and never from memory:

@@ -1188,6 +1188,63 @@ check("arriving at BEGIN BATTLE says the event's title, deadline, fee, difficult
                                   "Clear Conditions: Win the battle! BEGIN BATTLE"], repr(arrival))
 check("no Extra Battle details elsewhere", sf.extra_battle_details(on_story) == []
       and sf.extra_battle_details(extra_battle(panel=False)) == [])
+
+MISSIONS_TEXT = (" Perform a cross-up 10 time(s)!\nDEADLINE:Sep 15, 2026, 9:00:00 PM (Days left: 1) Reward: 50 Fight Money\n\n"
+                 " Win 1 Battle Lounge match(es)!\nDEADLINE:Sep 17, 2026, 9:00:00 PM (Days left: 3) Reward: 500 Fight Money\n\n")
+
+
+def missions_notice(notice=True):
+    """The Current Missions notice over the main menu as read live: the missions
+    text and Close under one panel in their own movie, the banner behind marked."""
+    out = [sf.TextItem("UPGRADE KIT AVAILABLE NOW", 799, 452, WHITE, 7, chain=(1, 2, 3, 4, 5, 6, 7), chosen=True),
+           sf.TextItem("Go to the purchase screen for content displayed in the Information section.", 110, 992,
+                       WHITE, 5, chain=(8, 9, 5, 6, 7))]
+    if notice:
+        out += [sf.TextItem(MISSIONS_TEXT, 520, 440, (0.62, 0.62, 0.62, 0.5), 6, chain=(20, 21, 22, 23, 24, 25)),
+                sf.TextItem("Close", 960, 690, WHITE, 7, chain=(30, 31, 32, 22, 23, 24, 25))]
+    sf.mark_missions(out)
+    return out
+
+
+check("the missions notice's Close is selected and the banner behind it is not",
+      [it.text for it in missions_notice() if it.selected] == ["Close"],
+      repr([it.text for it in missions_notice() if it.selected]))
+check("the banner stays marked once the notice has gone",
+      [it.text for it in missions_notice(notice=False) if it.selected] == ["UPGRADE KIT AVAILABLE NOW"])
+check("missions read in full for the read key, counts and dates in words",
+      sf.missions_details(missions_notice()) == [
+          "Current Missions", "Perform a cross-up 10 times!", "1 day left, deadline September 15, 2026, 9:00 PM",
+          "Reward 50 Fight Money", "Win 1 Battle Lounge match!", "3 days left, deadline September 17, 2026, 9:00 PM",
+          "Reward 500 Fight Money"], repr(sf.missions_details(missions_notice())))
+opening = narrate([(0.0, missions_notice(notice=False)), (0.5, missions_notice()), (1.0, missions_notice()),
+                   (1.5, missions_notice(notice=False))])
+check("the notice says its missions once as Close is reached, and closing says where the cursor is",
+      [s for _, s in opening] == ["UPGRADE KIT AVAILABLE NOW",
+                                  "Current Missions. Perform a cross-up 10 times! Win 1 Battle Lounge match! Close",
+                                  "UPGRADE KIT AVAILABLE NOW"],
+      repr(opening))
+check("no missions elsewhere", sf.missions_details(on_story) == [] and sf.missions_details(extra_battle()) == [])
+
+imem = FakeMemory()
+iroot = display_object(imem, 0, 0, 0, WHITE)
+picture_field(imem, display_object(imem, iroot, 520, 440, WHITE), 0, 0,
+              [("text", "DEADLINE:Sep 15, 2026, 9:00:00 PM (Days left: 1) Reward: "), ("picture", "icon_FM"),
+               ("text", "50")])
+ireader = sf.ScaleformText(imem, MODULE)
+reward = [it.text for it in ireader.items()]
+check("a Fight Money picture is said after its amount",
+      reward == ["DEADLINE:Sep 15, 2026, 9:00:00 PM (Days left: 1) Reward: 50 Fight Money"] and not ireader.unknown_pictures,
+      repr(reward))
+
+logging_in = [item("Logging into the server...", 960, 886)]
+check("a startup status line is a screen's summary",
+      sf.screen_summary(logging_in) == (True, "Logging into the server..."), repr(sf.screen_summary(logging_in)))
+check("a line ending in dots among other text is not",
+      sf.status_line(logging_in + [item("Dengster", 1379, 53)]) is None and sf.status_line(on_story) is None)
+startup = narrate([(0.0, []), (0.1, [item("Applying Title Update Ver.07.011...", 960, 886)]), (0.3, []),
+                   (1.0, logging_in), (1.2, logging_in), (1.5, logging_in), (3.0, logging_in), (4.0, [])])
+check("status lines are said once when they stay, not when they flash past",
+      [s for _, s in startup] == ["Logging into the server..."], repr(startup))
 before_fight = narrate([(0.0, [item("STAGE 2", 660, 660)]), (0.5, versus), (0.8, versus), (1.1, versus),
                         (5.0, [item("SCORE", 561, 48)])])
 check("the VS screen says who is fighting once",
