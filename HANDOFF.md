@@ -572,7 +572,8 @@ menu left loaded behind another screen might be hidden the same way (a
 78-text movie showed nothing behind the Versus results for reasons not
 recorded), so `_show_path_select` ignores that alpha only while the
 description line "Please select a path..." shows. Read live: "STREET FIGHTER
-I. NO. OF BATTLES: 4. BEST SCORE 123220". Not yet heard. Alt R there adds
+I. NO. OF BATTLES: 4. BEST SCORE 123220". Confirmed in play by the user on
+2026-09-13, all six paths, stories included. Alt R there adds
 the path's story, its lines said as sentences (`path_story`: "Launched in
 August 1987, ... Story Chronological Order: 1. A young Ryu and Ken..."), in
 place of the description line, at the user's request. If another screen
