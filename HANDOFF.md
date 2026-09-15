@@ -800,8 +800,15 @@ tiles resolve to codes. At the user's request the tab (the grid's nearest
 text, which the picture rule used to take) is marked selected too, so
 switching with LB or RB says it before the country, "Asia. Afghanistan", and
 the country's `slot` is tied to the tab as well as the tile so the flag
-landed on is named even when it is the same one. Checked live ("All.
-Bulgaria"); not yet heard. Still to come in that flow: the Fighter ID entry
+landed on is named even when it is the same one. The user heard the tabs
+All, Asia, Africa, South America and Oceania with their countries. North
+America was silent: its grid holds Canada and the United States (three parts
+each) and six empty places of one part, too few alike for `grid_tiles`. While
+the description line is `HOME_PROMPT` (`on_home_screen`), `_tiles_of` lets a
+container count as a grid by its flag tiles alone, and `_flag_under_cursor`
+takes the one flag with every part shown (the outline among them) when
+`selected_tile` cannot decide. Checked live ("North America. United
+States"); not yet heard. Still to come in that flow: the Fighter ID entry
 and the confirmation.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do

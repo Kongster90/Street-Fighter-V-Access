@@ -1319,6 +1319,41 @@ switching = narrate([(0.0, home("All", "Other", 0)), (0.5, home("All", "Afghanis
                      (1.0, home("Asia", "Afghanistan", 1)), (1.5, home("Asia", "Bahrain", 2))])
 check("moving says the country, and switching tabs says the tab first",
       [s for _, s in switching] == ["All. Other", "Afghanistan", "Asia. Afghanistan", "Bahrain"], repr(switching))
+
+# The North America tab as read live: Canada and the United States among empty
+# places of one part, the cursor's tile with its outline shown.
+sf._country_names.update({"CAN": "Canada", "USA": "United States"})
+nmem2 = FakeMemory()
+nroot2 = display_object(nmem2, 0, 0, 0, WHITE)
+ngrid2 = display_object(nmem2, nroot2, 360, 260, WHITE)
+ntree = {nroot2: [ngrid2], ngrid2: []}
+for n, code in enumerate(("CAN", "USA", None, None, None)):
+    tile = display_object(nmem2, ngrid2, 152 * n, 0, WHITE)
+    ntree[ngrid2].append(tile)
+    if code is None:
+        ntree[tile] = [display_object(nmem2, tile, 0, 0, WHITE, flags=1 & ~sf.NODE_VISIBLE)]
+        continue
+    script, node, chars = nmem2.alloc(0x100), nmem2.alloc(0x20), nmem2.alloc(8)
+    nmem2.put(tile + sf.TILE_SCRIPT_OBJECT, "<Q", script)
+    nmem2.put(script + sf.SCRIPT_COUNTRY_STRING, "<Q", node)
+    nmem2.put(node, "<Q", chars)
+    nmem2.buf[chars - HEAP:chars - HEAP + 4] = code.encode("ascii") + b"\0"
+    outline = 1 | sf.NODE_VISIBLE if code == "USA" else 1 & ~sf.NODE_VISIBLE
+    ntree[tile] = [display_object(nmem2, tile, 0, 0, WHITE),
+                   display_object(nmem2, tile, 0, 0, WHITE, flags=outline),
+                   display_object(nmem2, tile, 0, 0, WHITE)]
+nreader = sf.ScaleformText(nmem2, MODULE)
+nreader.children = lambda obj: ntree.get(obj, [])
+north = [sf.TextItem("North America", 755, 192, WHITE, 3, chain=(nmem2.alloc(8), nroot2 + 1, nroot2)),
+         sf.TextItem("Please select your Home.", 110, 992, WHITE, 3, chain=(nmem2.alloc(8), nroot2 + 2, nroot2))]
+nreader.on_home_screen = True
+nreader._grids = sf.find_grids(nreader.children, {nroot2}, tiles_of=nreader._tiles_of)
+nreader.mark_choices(north)
+check("a tab of two flags among empty places is still read, on the Home screen",
+      [it.text for it in north if it.selected] == ["North America", "United States"],
+      repr([(it.text, it.selected) for it in north]))
+nreader.on_home_screen = False
+check("and nowhere else", sf.find_grids(nreader.children, {nroot2}, tiles_of=nreader._tiles_of) == {})
 sf._country_names = None
 check("a startup status line is a screen's summary",
       sf.screen_summary(logging_in) == (True, "Logging into the server..."), repr(sf.screen_summary(logging_in)))

@@ -456,8 +456,8 @@ def grid_tiles(children, obj, minimum: int = GRID_MIN_TILES) -> list[int]:
 
 
 def find_grids(children, roots, limit: int = GRID_SEARCH_LIMIT,
-               seconds: float = GRID_WALK_SECONDS) -> dict[int, list[int]]:
-    """Containers holding four or more tiles built alike, by number of parts."""
+               seconds: float = GRID_WALK_SECONDS, tiles_of=grid_tiles) -> dict[int, list[int]]:
+    """Containers holding four or more tiles built alike, by number of parts, or as `tiles_of` says."""
     kids = _remembering(children)
     grids = {}
     stack = list(roots)
@@ -469,7 +469,7 @@ def find_grids(children, roots, limit: int = GRID_SEARCH_LIMIT,
             continue
         seen.add(obj)
         stack.extend(kids(obj))
-        tiles = grid_tiles(kids, obj)
+        tiles = tiles_of(kids, obj)
         if tiles:
             grids[obj] = tiles
     return grids
@@ -560,6 +560,11 @@ COUNTRY_OTHER_WORDS = "Other"
 # Tiles that must resolve to a country, the selected one among them, before a
 # grid counts as the flags: three capital letters could turn up by chance.
 COUNTRY_CHECK_TILES = 3
+# The Home screen's description line. Its region tabs can hold very few flags:
+# North America has Canada and the United States and six empty places, too few
+# alike for the usual grid rule, so on this screen alone a grid is any container
+# with flag tiles, and the tile the cursor is on the one with every part shown.
+HOME_PROMPT = "Please select your Home."
 GEOCLASS_NATION = 16
 GEO_ISO3 = 5
 GEO_FRIENDLYNAME = 8
@@ -1617,6 +1622,9 @@ class ScaleformText:
         self._roots: set[int] = set()
         # Pictures inside text with no words yet, by image name, for the log.
         self.unknown_pictures: set[str] = set()
+        # Whether the last read was the Home screen, where flag tiles are looked
+        # for in grids too small or too gappy for the usual rule.
+        self.on_home_screen = False
 
     # ------------------------------------------------------------- discovery
     def keep_pages_current(self, stop: threading.Event, interval: float = PAGE_REFRESH) -> None:
@@ -1641,7 +1649,7 @@ class ScaleformText:
 
     def refresh_grids(self) -> None:
         """Walk the display tree under the movies last seen showing text for picture grids."""
-        self._grids = find_grids(self.children, set(self._roots))
+        self._grids = find_grids(self.children, set(self._roots), tiles_of=self._tiles_of)
         # Forget grids that have gone, so a new object at a reused address is
         # not taken for a list it happens to share an address with.
         self._text_grids &= set(self._grids)
@@ -2007,10 +2015,12 @@ class ScaleformText:
                 # nearest text, which read out "BGM LIST" with every scroll.
                 self._text_grids.add(grid)
                 continue
-            tiles = grid_tiles(kids, grid)
+            tiles = self._tiles_of(kids, grid)
             if not tiles:
                 continue  # gone since the last walk
             tile = selected_tile(kids, appearance, tiles)
+            if tile is None and self.on_home_screen:
+                tile = self._flag_under_cursor(kids, tiles)
             if tile is None:
                 continue
             up = [grid]
@@ -2043,6 +2053,30 @@ class ScaleformText:
                 label.chosen = True
                 label.group = grid
                 label.slot = tile
+
+    def _tiles_of(self, kids, obj: int) -> list[int]:
+        """A grid's tiles by the usual rule, or on the Home screen its flag tiles however few."""
+        tiles = grid_tiles(kids, obj)
+        if tiles or not self.on_home_screen:
+            return tiles
+        inside = kids(obj)
+        candidates = [k for k in inside if len(kids(k)) >= 2]
+        if not candidates or tile_country(self.pm.ptr, self.pm.read, candidates[0]) is None:
+            return []
+        return [k for k in candidates if tile_country(self.pm.ptr, self.pm.read, k) is not None]
+
+    def _flag_under_cursor(self, kids, tiles: list[int]) -> int | None:
+        """The flag tile with every part shown, its outline among them, when no other is."""
+        def shown_parts(tile):
+            parts = kids(tile)
+            nodes = [self._node(part) for part in parts]
+            return sum(1 for node in nodes if node is not None and node[2] & NODE_VISIBLE), len(parts)
+
+        # Only flags: the row of dots marking the tab is a grid on this screen too.
+        counts = {tile: shown_parts(tile) for tile in tiles
+                  if tile_country(self.pm.ptr, self.pm.read, tile) is not None}
+        whole = [tile for tile, (visible, total) in counts.items() if visible == total]
+        return whole[0] if len(whole) == 1 else None
 
     def _grid_country(self, tiles: list[int], tile: int) -> str | None:
         """The selected tile's country, if this grid is the Home screen's flags."""
@@ -2306,6 +2340,7 @@ class ScaleformText:
         self._roots = {it.chain[-1] for it in out if it.shown and it.chain}
         if not quick and self._roots != roots_before:
             self.refresh_grids()
+        self.on_home_screen = any(it.shown and it.text.strip() == HOME_PROMPT for it in out)
         self.mark_choices(out)
         out.sort(key=lambda it: (round(it.y), it.x))
         return out
