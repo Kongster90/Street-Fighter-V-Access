@@ -2,9 +2,11 @@
 
 Steam runs a game's launch options as a command, putting the game's own
 command where they say %command%. `tools/steam_launch_options.py --apply` sets
-Street Fighter V's to run this with the virtual environment's pythonw.exe:
+Street Fighter V's to run this with the pythonw.exe beside the Python that ran
+it, the virtual environment's in a development copy and the bundled one in a
+copy installed for players:
 
-    "<this folder>\\.venv\\Scripts\\pythonw.exe" "<this folder>\\start_with_game.pyw" %command%
+    "<that Python's folder>\\pythonw.exe" "<this folder>\\start_with_game.pyw" %command%
 
 It starts the mod unless a copy is already running, then starts the game and
 waits for it, so Steam sees the game running for as long as it really is.
@@ -27,7 +29,8 @@ sys.path.insert(0, str(HERE))
 
 from sfv_access import instance  # noqa: E402
 
-PYTHONW = HERE / ".venv" / "Scripts" / "pythonw.exe"
+# The mod runs under the Python that runs this, without a console.
+PYTHONW = Path(sys.executable).with_name("pythonw.exe")
 LOG = HERE / "snapshots" / "console-log.txt"
 
 

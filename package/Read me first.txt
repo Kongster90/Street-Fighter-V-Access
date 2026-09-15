@@ -1,0 +1,74 @@
+Street Fighter V Access
+
+A mod that makes Street Fighter V speak through your screen reader. It reads the menus, character and stage select, and much more straight from the game, and speaks through NVDA.
+
+This is a test version. Thank you for trying it.
+
+
+What you need
+
+Street Fighter V: Champion Edition on Steam, with the game in English.
+Windows 10 or 11.
+NVDA running. Without a screen reader it falls back to the Windows voices.
+Nothing else: the mod carries everything it needs.
+
+
+Installing
+
+1. Extract the zip. In File Explorer, press the Applications key on the zip file and choose Extract All.
+2. Open the extracted SFV Access folder and run Install SFV Access. If Windows asks whether to run it, choose Run.
+3. Listen to what the installer says. If Steam is open, it asks you to press Enter, closes Steam for a moment, and opens it again.
+
+That is all. The mod is installed in your programs folder, so you can delete the zip and the extracted folder afterwards.
+
+
+Playing
+
+Start Street Fighter V from Steam as usual. The mod starts with the game and closes when the game closes.
+
+The first time, it says "Setting up the game's text for the first time", then "The game's text is ready" a few seconds later.
+
+Menus are read as you move through them. Keys that work while the mod runs:
+
+Alt R: say again what is selected, with more detail where there is some.
+Alt K: list all the keys.
+Alt X: stop speaking.
+Alt B: say buttons as Xbox, PlayStation or keyboard keys.
+Alt T: turn story subtitles on or off. They are off to start with, since the story voices are in English.
+Alt M: turn menu reading off or on.
+F10: close the mod until the next time you start the game.
+
+While the mod runs, these Alt keys are taken from other programs, so close the game when you want them back.
+
+
+What reads so far
+
+Menus and settings, including Controller Settings with each button's action, Button Preview and Keyboard Settings.
+Character select, stage select and the VS screen before a fight.
+Arcade, Versus and Training, including the result screen and Training's attack data.
+Trials, with each combo in words, and Demonstrations.
+The Story tutorial's instructions and tips.
+The shop, notices and missions after logging in, and Extra Battle.
+
+Not yet: online matches past their menus, Survival, story chapters, and the fights themselves. There are no sounds for health or distance yet.
+
+
+Keyboard players
+
+If you redo your keyboard mapping in Options, Other Settings, Keyboard Settings, press the key the mod names at each step. The game's own instructions have left and right swapped, and heavy kick and all three punches swapped too, so the mod names each step by what the key really does.
+
+
+Reporting a problem
+
+Say which screen you were on, what you did, and what you heard, or that nothing was said.
+
+It helps a lot to send the logs from this folder:
+%LOCALAPPDATA%\Programs\SFV Access\snapshots
+The useful files are spoken-log.txt, scaleform-log.txt and console-log.txt. Be aware that they record everything on screen, including your Fighter ID and anything else the game shows.
+
+Mention the version, which is in VERSION.txt in the same folder as this file.
+
+
+Uninstalling
+
+Open %LOCALAPPDATA%\Programs\SFV Access and run Uninstall SFV Access. It takes the mod out of Steam, closing Steam for a moment the same way. Then you can delete that folder.

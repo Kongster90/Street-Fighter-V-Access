@@ -1602,6 +1602,30 @@ find_properties.py <class>` lists a live object's properties. The pak index
 (`tools/pak_index.py`) lists every picture the game has, which is how all 22
 command pictures were checked at once.
 
+## Sharing with testers
+
+On 2026-09-15 the user judged it ready for a few friends to test: all NVDA
+users, the same Steam Champion Edition, the game in English. They asked for
+an installer that does it all in one go. `tools/build_package.py` builds a zip
+with its own Python (the base install copied without tests, Tk or docs, plus
+the virtual environment's packages less pip and capstone), checked by
+importing everything with it in isolated mode; `package/` holds the two batch
+files and `Read me first.txt`, the testers' guide. `tools/install.py` copies
+the package to `%LOCALAPPDATA%\Programs\SFV Access` (keeping settings,
+strings.json, pak_key.txt and snapshots on an update), strips the downloaded
+mark from every file so nothing prompts when Steam starts pythonw, closes
+Steam with `steam.exe -shutdown` after the player presses Enter, sets the
+launch options with `steam_launch_options.change`, and opens Steam again.
+Launch options now name the pythonw beside whichever Python runs the tool, so
+a development copy keeps its `.venv` and an installed one uses its bundle.
+
+A tester has no strings.json, so `gametext.ensure` makes it the first time the
+mod reads any text from the game: the key search over the executable's data
+took 2.9 s and the extraction 0.24 s on the user's machine, giving the same
+key and the same 50,417 strings. The pak folder comes from the running game's
+path, no longer the user's G drive. The repository is private (an
+unauthenticated API request gives 404), so testers get the zip, not a clone.
+
 ## Running things
 
 Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod

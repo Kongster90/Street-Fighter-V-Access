@@ -34,9 +34,10 @@ APP_ID = "310950"
 BLOCK = ("UserLocalConfigStore", "Software", "Valve", "Steam", "apps", APP_ID)
 KEY = "LaunchOptions"
 LAUNCHER = ROOT / "start_with_game.pyw"
-OURS = (
-    f'"{ROOT / ".venv" / "Scripts" / "pythonw.exe"}" "{LAUNCHER}" %command%'
-)
+# pythonw.exe beside the Python running this: the virtual environment's in a
+# development copy, the bundled one in a copy installed for players.
+PYTHONW = Path(sys.executable).with_name("pythonw.exe")
+OURS = f'"{PYTHONW}" "{LAUNCHER}" %command%'
 BACKUP_SUFFIX = ".before-sfv-access"
 
 # A quoted string with its escapes, a brace, a comment or whitespace. Steam
@@ -134,58 +135,74 @@ def config_files() -> list[Path]:
     return sorted((steam / "userdata").glob("*/config/localconfig.vdf"))
 
 
+def steam_running() -> bool:
+    return bool(list_processes("steam.exe"))
+
+
+def change(path: Path, value: str | None) -> str:
+    """Set one user's launch options to value, or take ours out with None.
+
+    Returns what happened: "set", "removed", "already", "not ours" (other
+    launch options were there and are left alone) or "no game" (this Steam
+    user has never launched Street Fighter V).
+    """
+    with path.open(encoding="utf-8", newline="") as fh:
+        text = fh.read()
+    try:
+        current = launch_options(text)
+    except LookupError:
+        return "no game"
+    if value is not None:
+        if current and not is_ours(current):
+            return "not ours"
+        new = with_launch_options(text, value)
+    else:
+        if not current:
+            return "already"
+        if not is_ours(current):
+            return "not ours"
+        new = without_launch_options(text)
+    if new == text:
+        return "already"
+    backup = path.with_name(path.name + BACKUP_SUFFIX)
+    if not backup.exists():
+        backup.write_bytes(path.read_bytes())
+    temp = path.with_name(path.name + ".sfv-access-writing")
+    with temp.open("w", encoding="utf-8", newline="") as fh:
+        fh.write(new)
+    os.replace(temp, path)
+    return "set" if value is not None else "removed"
+
+
 def main() -> int:
     apply = "--apply" in sys.argv
     remove = "--remove" in sys.argv
-    if (apply or remove) and list_processes("steam.exe"):
+    if (apply or remove) and steam_running():
         print("Steam is running. Close Steam first: it rewrites this file when it exits, "
               "which would undo the change.")
         return 1
 
     status = 0
     for path in config_files():
-        with path.open(encoding="utf-8", newline="") as fh:
-            text = fh.read()
-        try:
-            current = launch_options(text)
-        except LookupError as exc:
-            print(f"{path}: {exc}")
-            continue
-        print(f"{path}")
-        print(f"  launch options now: {current if current else '(none)'}")
-
-        if apply:
-            if current and not is_ours(current):
-                print("  Left alone: these launch options were not set by this tool. "
-                      "Clear them on the game's Properties page, or add this there yourself:")
-                print(f"  {OURS}")
-                status = 1
+        if not (apply or remove):
+            with path.open(encoding="utf-8", newline="") as fh:
+                text = fh.read()
+            try:
+                current = launch_options(text)
+            except LookupError as exc:
+                print(f"{path}: {exc}")
                 continue
-            new = with_launch_options(text, OURS)
-        elif remove:
-            if not current:
-                continue
-            if not is_ours(current):
-                print("  Left alone: these launch options were not set by this tool.")
-                status = 1
-                continue
-            new = without_launch_options(text)
-        else:
+            print(f"{path}")
+            print(f"  launch options now: {current if current else '(none)'}")
             print(f"  --apply would set: {OURS}")
             continue
-
-        if new == text:
-            print("  Already so, nothing written.")
-            continue
-        backup = path.with_name(path.name + BACKUP_SUFFIX)
-        if not backup.exists():
-            backup.write_bytes(path.read_bytes())
-            print(f"  Copy of the file as it was: {backup}")
-        temp = path.with_name(path.name + ".sfv-access-writing")
-        with temp.open("w", encoding="utf-8", newline="") as fh:
-            fh.write(new)
-        os.replace(temp, path)
-        print(f"  launch options now: {launch_options(new) or '(none)'}")
+        outcome = change(path, OURS if apply else None)
+        print(f"{path}: {outcome}")
+        if outcome == "not ours":
+            print("  Left alone: these launch options were not set by this tool. "
+                  "Clear them on the game's Properties page, or add this there yourself:")
+            print(f"  {OURS}")
+            status = 1
     return status
 
 

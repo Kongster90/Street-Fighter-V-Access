@@ -39,7 +39,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from tools.extract_strings import PAKS, load_key, read_file, read_index  # noqa: E402
+from sfv_access.gametext import KEY_FILE, read_file, read_index, running_game  # noqa: E402
 
 VTRIGGER_ASSET = "DA_VTriggerNameAsset"
 VSKILL_ASSET = "DA_VSkillNameAsset"
@@ -115,8 +115,11 @@ NAMED_BY_VTRIGGER = {
 
 def _asset_words(fragment: str) -> list[str]:
     """The readable strings held in the first pak asset matching `fragment`."""
-    key = load_key()
-    for pak in sorted(PAKS.glob("*.pak")):
+    game = running_game()
+    if game is None:
+        raise SystemExit("Start the game first, so where it is installed is known.")
+    key = bytes.fromhex(KEY_FILE.read_text(encoding="utf-8").strip())
+    for pak in sorted(game[1].glob("*.pak")):
         _mount, entries = read_index(pak)
         for entry in entries:
             if fragment in entry.name:

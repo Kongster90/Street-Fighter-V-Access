@@ -25,8 +25,12 @@ falls back to the Windows voices when there is none.
 
 ## 3. The game's own text
 
-This is what lets recognised text be corrected against what the game really
-says, turning "RANKED MAT H" back into "RANKED MATCH". With the game running:
+Stage names, the Tutorial's instructions, and the correction of recognised text
+("RANKED MAT H" back to "RANKED MATCH") all come from the game's localisation
+table. The mod makes `strings.json` by itself the first time it finds the game
+running without one, saying so as it starts and when it is ready, in about
+three seconds (`sfv_access/gametext.py`). To do it by hand instead, with the
+game running:
 
 ```bash
 .venv\Scripts\python.exe tools\find_pak_key.py
@@ -36,25 +40,13 @@ says, turning "RANKED MAT H" back into "RANKED MATCH". With the game running:
 .venv\Scripts\python.exe tools\extract_strings.py
 ```
 
-The first finds the pak encryption key in the running process, in a couple of
-seconds. The second uses it to unpack the English localisation table. Both
-write files that stay on your machine.
-
-Without them everything still works; menu text is simply read as recognised,
-mistakes and all.
+Both write files that stay on your machine.
 
 ## 4. Character names
 
-Character select reports each fighter's internal code, such as `Z21`. Turning
-those into names needs a table, which is built by hovering the roster while the
-game tells the tool which code is selected:
-
-```bash
-.venv\Scripts\python.exe tools\learn_names.py
-```
-
-`character_names.json` in the repository already has a good number of them, so
-this only needs running for the ones still missing.
+These come from the game's own files and are already in the repository, in
+`roster.json` and `character_names.json`; `tools/names_from_data.py` rebuilds
+them, with the game running.
 
 ## 5. Run it
 
@@ -72,6 +64,20 @@ To have Steam start it with the game instead, close Steam and run:
 
 The launch options it writes name this folder, so run it again if the folder
 moves. See "Starting with the game" in `README.md`.
+
+## Building a package for players
+
+```bash
+.venv\Scripts\python.exe tools\build_package.py
+```
+
+This writes `dist\SFV-Access-<date>-<commit>.zip`, which carries its own
+Python, so a player needs nothing installed. They extract it and run
+`Install SFV Access.bat`, which copies it to
+`%LOCALAPPDATA%\Programs\SFV Access` and sets the Steam launch options,
+closing and reopening Steam for them. `package\Read me first.txt` is their
+guide. Commit first: the build refuses uncommitted changes to the mod, so a
+package always matches a commit.
 
 ## Checking it works
 

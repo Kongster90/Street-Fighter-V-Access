@@ -124,7 +124,9 @@ added = [ln for ln in applied.split("\n") if ln not in SAMPLE.split("\n")]
 check("adds exactly one line, indented with the game's entries",
       len(added) == 1 and added[0].startswith("\t" * 6 + '"LaunchOptions"'), repr(added))
 check("the quotes and backslashes are escaped",
-      '\\"' in added[0] and "\\\\.venv\\\\Scripts\\\\pythonw.exe" in added[0], added[0])
+      '\\"' in added[0] and "\\\\pythonw.exe" in added[0], added[0])
+check("launch options use the pythonw beside the Python running the tool",
+      slo.PYTHONW.parent == Path(sys.executable).parent and slo.PYTHONW.exists(), str(slo.PYTHONW))
 check("another game's launch options are untouched",
       "StardewModdingAPI.exe\\\" %command%" in applied)
 check("applying twice changes nothing", slo.with_launch_options(applied, slo.OURS) == applied)
@@ -140,6 +142,62 @@ try:
     check("a file without the game says so", False)
 except LookupError:
     check("a file without the game says so", True)
+
+# Changing a real file's launch options, on a scratch copy.
+scratch_config = scratch / "localconfig.vdf"
+assert scratch in scratch_config.parents
+scratch_config.write_text(SAMPLE, encoding="utf-8", newline="")
+check("setting on a file says so", slo.change(scratch_config, slo.OURS) == "set")
+check("and keeps a copy of the file as it was",
+      (scratch / ("localconfig.vdf" + slo.BACKUP_SUFFIX)).read_text(encoding="utf-8") == SAMPLE)
+check("setting again says it already is", slo.change(scratch_config, slo.OURS) == "already")
+check("taking it out says so, and leaves the file as it was",
+      slo.change(scratch_config, None) == "removed" and scratch_config.read_text(encoding="utf-8") == SAMPLE)
+other = scratch / "other.vdf"
+other.write_text(slo.with_launch_options(SAMPLE, "-dx11"), encoding="utf-8", newline="")
+check("another tool's launch options are left alone either way",
+      slo.change(other, slo.OURS) == "not ours" and slo.change(other, None) == "not ours"
+      and slo.launch_options(other.read_text(encoding="utf-8")) == "-dx11")
+never = scratch / "never.vdf"
+never.write_text('"UserLocalConfigStore"\n{\n}\n', encoding="utf-8", newline="")
+check("an account that never played the game says so", slo.change(never, slo.OURS) == "no game")
+
+# ----------------------------------------------------------------------- installer
+from sfv_access import gametext  # noqa: E402
+from tools import install  # noqa: E402
+
+check("the paks are found from wherever the game runs",
+      gametext.paks_for(r"D:\Games\steamapps\common\StreetFighterV\StreetFighterV\Binaries\Win64\StreetFighterV.exe")
+      == Path(r"D:\Games\steamapps\common\StreetFighterV\StreetFighterV\Content\Paks"))
+check("the installer's target is its own folder under the player's programs",
+      install.TARGET.name == "SFV Access" and install.TARGET.parent.name == "Programs")
+package = scratch / "package"
+(package / "sfv_access").mkdir(parents=True)
+(package / "sfv_access" / "app.py").write_text("new", encoding="utf-8")
+(package / "run.py").write_text("new", encoding="utf-8")
+installed = scratch / "installed"
+(installed / "sfv_access").mkdir(parents=True)
+(installed / "sfv_access" / "old_module.py").write_text("old", encoding="utf-8")
+(installed / "snapshots").mkdir()
+(installed / "snapshots" / "spoken-log.txt").write_text("log", encoding="utf-8")
+(installed / "settings.json").write_text("{}", encoding="utf-8")
+(installed / "strings.json").write_text("text", encoding="utf-8")
+install.copy_package(package, installed)
+check("updating replaces the code and keeps the player's settings, game text and logs",
+      (installed / "run.py").read_text(encoding="utf-8") == "new"
+      and not (installed / "sfv_access" / "old_module.py").exists()
+      and (installed / "settings.json").exists() and (installed / "strings.json").exists()
+      and (installed / "snapshots" / "spoken-log.txt").exists())
+marked = installed / "run.py"
+with open(f"{marked}:Zone.Identifier", "w", encoding="utf-8") as fh:
+    fh.write("[ZoneTransfer]\nZoneId=3\n")
+install.unblock(installed)
+try:
+    open(f"{marked}:Zone.Identifier", encoding="utf-8").close()
+    still_marked = True
+except OSError:
+    still_marked = False
+check("the downloaded mark is taken off installed files", not still_marked and marked.exists())
 
 print()
 print("ALL PASS" if ok else "SOME CHECKS FAILED")

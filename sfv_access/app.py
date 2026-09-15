@@ -23,7 +23,7 @@ import time
 from pathlib import Path
 
 from . import capture as _capture
-from . import buttons, game, hud, instance, memory_narration, menu, ocr, pads, scaleform, screens, strings
+from . import buttons, game, gametext, hud, instance, memory_narration, menu, ocr, pads, scaleform, screens, strings
 from .capture import Capture
 from .hotkeys import Hotkeys
 from .speech import Speaker
@@ -833,6 +833,10 @@ class App:
                     if self.session.attached_now:
                         self.narrator.reset()
                     if items is not None:
+                        # A new copy has none of the game's text until it is
+                        # recovered from the game, once, in the background,
+                        # after the game has drawn its first text.
+                        gametext.ensure(self._say_and_log, self.session.note)
                         self._narrate_memory(items)
                         continue
                 self._pixel_tick()
@@ -850,6 +854,11 @@ class App:
                         self._hang_file.flush()
                 time.sleep(memory_narration.POLL if self.use_memory and self.session.available
                            else WATCH_INTERVAL)
+
+    def _say_and_log(self, said: str) -> None:
+        print(said)
+        self._log(said)
+        self.speech.say(said)
 
     def _on_preview_press(self, number: int) -> None:
         said = scaleform.press_words(number, self.session.key_config_bytes)
