@@ -2425,7 +2425,7 @@ class ScaleformText:
                 continue
             if len(name) == 3 and name.isupper() and (name == COUNTRY_OTHER or name in country_names()):
                 # A flag before a Fighter ID, as on the change's confirmation:
-                # " Kongster" drawn after the United States flag.
+                # " Player123" drawn after the United States flag.
                 icons = True
                 pieces.append(("text", f"{country_name(name)}, {chunk[1:]}"))
                 continue
