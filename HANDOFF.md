@@ -1141,6 +1141,26 @@ first demonstrations with it on 2026-09-15 ("Everything during the
 demonstrations read out properly"); the tips screen has not been heard yet,
 the mod having been restarted after the load.
 
+**Story's Tutorial.** Begun on 2026-09-15. It opens on a scene with
+subtitles, speaker at (160, 810) and line at (960, 914) in one holder, which
+`ending_summary` had been reading by accident when the line was 60
+characters or more ("GOUKEN. Ryu, you'll never find..."; "Ponder my...
+fist?" went unsaid). The user's story voices are English, so reading them
+talks over the actors; at their request subtitles are said only when turned
+on with Alt T (`buttons.subtitles_on`, saved in settings.json, off by
+default), every line with its speaker, and never otherwise (`subtitle`,
+`Narrator.subtitles`). Ken's line during the fight, "What's wrong? Come over
+here!" at (960, 920) in the HUD's movie, is not a subtitle of that shape and
+stays unsaid. The fight's instructions sit where a demonstration's caption
+does, (960, 257), with no button; `tutorial_instruction` knows them by their
+first line, which opens one of the game's `_Stor_Tuto_` strings, and says each
+once through `screen_summary`, so Alt R repeats it. The button pictures in
+them are the default pad's with the action in brackets, "{button_X} (Light
+{punch})", said as the action alone, "pressing either light punch, or light
+kick". A "TIP" box with "Press any button" and "Next" sits hidden in the
+tutorial's movie; `tips_screen` will take "TIP" as a heading if it shows.
+The first instruction was checked live; nothing past it yet.
+
 Known gaps. The clock sits one object further down and is not resolved.
 Screens other than Versus and Training may head their character select
 differently, and a prompt drawn inside character select's own movie, if there

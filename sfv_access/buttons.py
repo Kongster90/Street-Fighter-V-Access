@@ -58,16 +58,33 @@ def style() -> str:
     return chosen if chosen in STYLES else STYLES[0]
 
 
-def next_style() -> str:
-    """Move to the next naming style, save it, and return it."""
-    chosen = STYLES[(STYLES.index(style()) + 1) % len(STYLES)]
+def _save(name: str, value) -> None:
     settings = _load()
-    settings["button_names"] = chosen
+    settings[name] = value
     try:
         SETTINGS.write_text(json.dumps(settings, indent=2), encoding="utf-8")
     except OSError:
         pass
+
+
+def next_style() -> str:
+    """Move to the next naming style, save it, and return it."""
+    chosen = STYLES[(STYLES.index(style()) + 1) % len(STYLES)]
+    _save("button_names", chosen)
     return chosen
+
+
+# Story scenes' subtitles live in the same settings file: off unless the player
+# turns them on, since the story voices are often in English.
+def subtitles_on() -> bool:
+    return _load().get("subtitles") is True
+
+
+def toggle_subtitles() -> bool:
+    """Turn subtitles on or off, save it, and return whether they are on."""
+    on = not subtitles_on()
+    _save("subtitles", on)
+    return on
 
 
 def key_words(key: str) -> str:

@@ -127,7 +127,9 @@ class Narrator:
     replayed through it in a test.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, subtitles: bool = False) -> None:
+        # Whether story scenes' subtitles are said: the player's choice, kept across resets.
+        self.subtitles = subtitles
         self.reset()
 
     def reset(self) -> None:
@@ -180,6 +182,7 @@ class Narrator:
         # Redo keyboard mapping: the instruction last said, and the key column then.
         self.mapping_prompt: str | None = None
         self.mapping_rows: list[str] | None = None
+        self.subtitle_said: tuple[str, str] | None = None
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
@@ -375,6 +378,16 @@ class Narrator:
             self.preview_seen_at = now
         elif self.preview_hinted and now - self.preview_seen_at > GROUP_MEMORY:
             self.preview_hinted = False
+
+        # A story scene's subtitles, speaker and line, as each line comes, if
+        # the player has them on; never otherwise, whatever else would name them.
+        line = scaleform.subtitle(items)
+        if line is not None:
+            parts = [p for p in (parts or []) if " ".join(p.split()) not in line] or None
+            if line != self.subtitle_said and self.subtitles:
+                parts = (parts or []) + [phrase(list(line))]
+                self.said = ""
+            self.subtitle_said = line
 
         # The game's short messages select nothing, so they are said as they
         # appear: once while they show, and again if the same one comes back,

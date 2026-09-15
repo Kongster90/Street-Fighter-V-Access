@@ -1769,6 +1769,46 @@ check("the tips heading alone says nothing, waiting for its tip",
       sf.screen_summary([tips_heading]) == (True, None) and sf.demonstration_page(moving) is None)
 check("the read key says the page",
       sf.screen_summary(pause_over) == (True, f"Moving. {MOVING} Start Demonstration"))
+
+# Story's Tutorial, as logged on 2026-09-15: subtitles over its opening scene,
+# English voices, then the first instruction over the fight.
+def scene(speaker, line):
+    return [sf.TextItem(speaker, 160, 810, WHITE, 4, chain=(801, 810, 820, 830)),
+            sf.TextItem(line, 960, 914, WHITE, 4, chain=(802, 810, 820, 830))]
+
+
+gouken = scene("GOUKEN", "Ryu, you'll never find the answer you're seeking if you just proceed blindly.")
+ryu_reply = scene("RYU", "Ponder my... fist?")
+FIRST_STEP = ("Try moving closer to Ken. \nPressing the right button or left button will move your character in that "
+              "direction. \nThe control guide marker will only appear during the initial setup.")
+first_step = [item("PLAYER 1", 167, 90), item("CPU", 1834, 90),
+              sf.TextItem(FIRST_STEP, 960, 257, WHITE, 4, chain=(901, 910, 920, 930))]
+tutorial_run = [(0.0, []), (1.0, gouken), (1.5, gouken), (3.0, []), (3.2, ryu_reply), (4.0, ryu_reply),
+                (6.0, []), (7.0, first_step), (7.5, first_step), (8.0, first_step)]
+quiet_scene = narrate(tutorial_run)
+subtitled = mn.Narrator(subtitles=True)
+spoken_scene = [(now, s) for now, reading in tutorial_run if (s := subtitled.step(reading, now))]
+first_said = ("Try moving closer to Ken. Pressing the right button or left button will move your character in that "
+              "direction. The control guide marker will only appear during the initial setup.")
+check("with subtitles off a story scene says nothing, and the Tutorial's instruction is said once",
+      [s for _, s in quiet_scene] == [first_said], repr(quiet_scene))
+check("with subtitles on each line is said with its speaker, short ones too",
+      [s for _, s in spoken_scene] == ["GOUKEN. Ryu, you'll never find the answer you're seeking if you just proceed "
+                                       "blindly.", "RYU. Ponder my... fist?", first_said], repr(spoken_scene))
+check("a subtitle is not an Arcade ending's caption", sf.ending_summary(gouken) is None
+      and sf.ending_summary([sf.TextItem("SFI Ryu", 160, 780, WHITE, 4, chain=(1, 5, 6, 7)),
+                             sf.TextItem("The young challenger Ryu stands before the tournament's final opponent "
+                                         "at last.", 220, 868, WHITE, 4, chain=(2, 5, 6, 7))]))
+light_step = [item("Hit Ken with a light attack. \nYou can perform a light attack by pressing either the  (Light punch), "
+                   "or  (Light kick). \nLight attacks are fast and recover quickly.", 960, 257)]
+check("an instruction's button pictures are said as the action they stand for",
+      sf.tutorial_instruction(light_step) == "Hit Ken with a light attack. You can perform a light attack by pressing "
+      "either light punch, or light kick. Light attacks are fast and recover quickly.",
+      repr(sf.tutorial_instruction(light_step)))
+check("the brackets after a picture close without a space",
+      sf.describe_inputs([("text", "either the "), ("text", " (Light "), ("picture", "punch"), ("text", "), or ")])
+      == "either the (Light punch), or",
+      repr(sf.describe_inputs([("text", "either the "), ("text", " (Light "), ("picture", "punch"), ("text", "), or ")])))
 check("a picture's words are followed by the text's own comma without a space",
       sf.describe_inputs([("picture", "cmd_6"), ("picture", "cmd_6"), ("text", ", and jump with "), ("picture", "cmd_7"),
                           ("text", ", "), ("picture", "cmd_8"), ("text", ", and "), ("picture", "cmd_9"), ("text", ".")])

@@ -1076,6 +1076,8 @@ def ending_summary(items: list[TextItem]) -> str | None:
     game's own artwork strings: "Special Artwork: BENGUS".
     """
     shown = [it for it in items if it.shown]
+    if subtitle(shown):
+        return None
     if len(shown) == 1:
         credit = shown[0].text.strip()
         return credit if ENDING_ARTWORK in credit and credit in game_strings() else None
@@ -1237,7 +1239,8 @@ ICON_WORDS = {"icon_FM": "Fight Money"}
 # EXP picture before "100 EXP" and a gem's before its name, or is a controller
 # button's picture beside the hint it belongs to. Left as the game's spaces and
 # not noted as wanting words.
-SILENT_PICTURES = {"icon_EXP", "icon_GC", "icon_Entitlement_open", "button_a", "button_x", "button_y"}
+SILENT_PICTURES = {"icon_EXP", "icon_GC", "icon_Entitlement_open", "button_a", "button_x", "button_y",
+                   "button_b", "button_lb", "button_rb", "button_lt", "button_rt"}
 SILENT_PICTURE_PREFIXES = ("icon_EXbattle",)
 
 
@@ -1323,7 +1326,7 @@ def describe_inputs(pieces: list[tuple[str, str]]) -> str:
         both_inputs = kind == "input" and previous == "input"
         both_directions = both_inputs and name.startswith("cmd_") and (previous_name or "").startswith("cmd_")
         both_buttons = both_inputs and not name.startswith("cmd_") and not (previous_name or "cmd_").startswith("cmd_")
-        if previous is None or (kind == "text" and said[0] in ",.;:!?"):
+        if previous is None or (kind == "text" and said[0] in ",.;:!?)"):
             gap = ""
         elif name in MANNER_WORDS:
             gap = " "
@@ -1636,6 +1639,71 @@ def demonstration_page(items: list[TextItem]) -> str | None:
     if not texts:
         return None
     return phrase([" ".join(it.text.split()) for it in texts] + [button.text])
+
+
+# Story's Tutorial is a fight against Ken with one instruction at a time where
+# a demonstration's caption goes, (960, 257), and no button to wait on: "Try
+# moving closer to Ken. \nPressing the right button or left button will move
+# your character in that direction. ..." It waits for the player to do it.
+# Its instructions are the game's `ID_SYS_Stor_Tuto_` strings, and the first
+# line of each, the yellow heading, holds no pictures, so a shown text whose
+# first line opens one of them is the instruction. Buttons are pictures of the
+# default pad with the action after them in brackets, "{button_X} (Light
+# {punch})"; the action is what the player knows, so it is said alone.
+
+TUTORIAL_KEY = "_Stor_Tuto_"
+_FONT_TAG = re.compile(r"\{font_[^}]*\}")
+TUTORIAL_ACTION = re.compile(r"(?:\bthe\s+)?\(((?:Light|Medium|Hard)\s+(?:punch|kick))\)", re.IGNORECASE)
+_tutorial_openings: frozenset[str] | None = None
+
+
+def tutorial_openings() -> frozenset[str]:
+    """The first line of each of the Tutorial's instructions, from the game's strings."""
+    global _tutorial_openings
+    if _tutorial_openings is None:
+        try:
+            table = json.loads(STRINGS_FILE.read_text(encoding="utf-8"))["strings"]
+            _tutorial_openings = frozenset(
+                _FONT_TAG.sub("", text).splitlines()[0].strip()
+                for key, text in table.items() if TUTORIAL_KEY in key and text.strip())
+        except (OSError, ValueError, KeyError, AttributeError, IndexError):
+            _tutorial_openings = frozenset()
+    return _tutorial_openings
+
+
+def tutorial_instruction(items: list[TextItem]) -> str | None:
+    """"Try moving closer to Ken. Pressing the right button or left button ..." while the Tutorial shows one."""
+    openings = tutorial_openings()
+    for it in items:
+        lines = it.text.strip().splitlines()
+        if it.shown and not it.selected and lines and lines[0].strip() in openings:
+            said = " ".join(it.text.split())
+            return TUTORIAL_ACTION.sub(lambda m: m.group(1).lower(), said)
+    return None
+
+
+# Story scenes, the Tutorial's opening among them, caption each line with the
+# speaker at (160, 810) and the line at (960, 914), in one holder. The voices
+# may be in English, so these are said only when the player turns subtitles on
+# (Alt T); the rule for an Arcade ending's caption had been reading the longer
+# lines by accident.
+
+SUBTITLE_SPEAKER_AT = (160.0, 810.0)
+SUBTITLE_LINE_AT = (960.0, 914.0)
+
+
+def subtitle(items: list[TextItem]) -> tuple[str, str] | None:
+    """The speaker and line of a story scene's subtitle, if one shows."""
+    shown = [it for it in items if it.shown and it.chain]
+    speaker = next((it for it in shown if abs(it.x - SUBTITLE_SPEAKER_AT[0]) <= TOAST_TOLERANCE
+                    and abs(it.y - SUBTITLE_SPEAKER_AT[1]) <= TOAST_TOLERANCE), None)
+    if speaker is None or len(speaker.chain) < 2:
+        return None
+    line = next((it for it in shown if abs(it.x - SUBTITLE_LINE_AT[0]) <= TOAST_TOLERANCE
+                 and abs(it.y - SUBTITLE_LINE_AT[1]) <= TOAST_TOLERANCE and speaker.chain[1] in it.chain), None)
+    if line is None:
+        return None
+    return speaker.text.strip(), " ".join(line.text.split())
 
 
 def tips_screen(items: list[TextItem]) -> tuple[bool, str | None]:
@@ -2126,7 +2194,7 @@ def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
     if tips:
         return True, summary
     summary = (versus_summary(items) or ending_summary(items) or trial_summary(items) or status_line(items)
-               or demonstration_page(items))
+               or demonstration_page(items) or tutorial_instruction(items))
     return summary is not None, summary
 
 

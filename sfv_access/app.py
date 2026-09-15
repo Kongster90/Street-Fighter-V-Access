@@ -56,6 +56,7 @@ HOTKEYS = {
     "toggle_watch":  ("alt+m",      "turn menu narration on or off"),
     "switch_source": ("f9",         "switch between reading memory and reading the screen"),
     "button_names":  ("alt+b",      "name buttons as Xbox, PlayStation or keyboard"),
+    "subtitles":     ("alt+t",      "turn story subtitles on or off"),
     "snapshot":      ("alt+s",      "save a snapshot for calibration"),
     "status":        ("alt+g",      "status"),
     "stop_speech":   ("alt+x",      "stop speaking"),
@@ -319,7 +320,7 @@ class App:
         # Narration from memory, preferred whenever the game can be read.
         self.use_memory = True
         self.session = memory_narration.Session()
-        self.narrator = memory_narration.Narrator()
+        self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on())
         # Button Preview: each button said as it is pressed, while it is open.
         self.presses = pads.PressWatcher(self._on_preview_press)
         self._hang_file = None
@@ -684,6 +685,11 @@ class App:
         """Name buttons the way the player's controller or keyboard does, remembered between runs."""
         chosen = buttons.next_style()
         self.speech.say(f"Button names: {buttons.STYLE_WORDS[chosen]}.")
+
+    def on_subtitles(self) -> None:
+        """Say story scenes' subtitles or not, for voices in a language the player does not follow."""
+        self.narrator.subtitles = buttons.toggle_subtitles()
+        self.speech.say(f"Subtitles {'on' if self.narrator.subtitles else 'off'}.")
 
     def on_quit(self) -> None:
         self._close("Closing Street Fighter 5 access.")
