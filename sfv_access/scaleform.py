@@ -1797,13 +1797,50 @@ def button_words(number: int) -> str:
 
 
 def mark_controller_buttons(items: list[TextItem], config: bytes | None) -> None:
-    """Note each Controller Setting row's button on its label, from the layout being edited."""
+    """Note each Controller Setting row's button on its label, from the layout being edited.
+
+    Button Preview's only text is its close hint, so the whole layout is noted
+    on that, for `preview_summary` to say.
+    """
     if not key_config_valid(config):
         return
     for it in items:
         index = CONTROLLER_ROWS.get(it.text.strip())
         if it.shown and index is not None:
             it.note = button_words(config[index])
+        elif it.shown and it.text.strip() == PREVIEW_CLOSE:
+            it.note = layout_sentence(config)
+
+
+# Button Preview draws the controller with each button's action as pictures;
+# its only text is "<B picture> Hold to close", over Controller Setting. It is
+# said as the layout, button by button, in the order the buttons sit on a pad
+# or stick: the top row X, Y, right bumper, left bumper, then the bottom row A,
+# B, right trigger, left trigger, then the rest. The button combos are said by
+# what they press, since their names on the Controller Setting rows do not say.
+PREVIEW_CLOSE = "Hold to close"
+PREVIEW_ORDER = (4, 5, 9, 8, 6, 7, 11, 10, 12, 13, 14, 15, 0, 1, 2, 3)
+ACTION_WORDS = ("light punch", "medium punch", "light kick", "medium kick", "all three punches", "heavy punch",
+                "all three kicks", "heavy kick", "throw", "V-Skill", "V-Trigger", "light punch plus medium punch",
+                "light kick plus medium kick", "V-Shift", "medium punch plus light kick")
+CLOSE_BUTTON = 7   # B, which the hint's picture shows
+
+
+def layout_sentence(config: bytes) -> str:
+    """"X, light punch. Y, medium punch. ..." for every button with an action, then how to close."""
+    actions: dict[int, list[str]] = defaultdict(list)
+    for index in range(KEY_CONFIG_FUNCTIONS):
+        if config[index] != BUTTON_UNASSIGNED:
+            actions[config[index]].append(ACTION_WORDS[index])
+    parts = [f"{button_words(number)}, {' and '.join(actions[number])}" for number in PREVIEW_ORDER if number in actions]
+    close = "Escape" if buttons.style() == "keyboard" else button_words(CLOSE_BUTTON)
+    return ". ".join(["Button Preview"] + parts + [f"Hold {close} to close"]) + "."
+
+
+def preview_summary(items: list[TextItem]) -> str | None:
+    """Button Preview's layout sentence, once the layout has been read."""
+    hint = next((it for it in items if it.shown and it.text.strip() == PREVIEW_CLOSE), None)
+    return hint.note if hint is not None and hint.note else None
 
 
 # ---------------------------------------------------------------------- toasts
@@ -1871,6 +1908,9 @@ def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
         summary = result_summary(items)
         if summary is None and any(it.shown and it.text.strip() == ARCADE_FINAL_STAGE for it in items):
             summary = ARCADE_FINAL_STAGE
+        return True, summary
+    if any(it.shown and it.text.strip() == PREVIEW_CLOSE for it in items):
+        summary = preview_summary(items)
         return True, summary
     summary = versus_summary(items) or ending_summary(items) or trial_summary(items) or status_line(items)
     return summary is not None, summary

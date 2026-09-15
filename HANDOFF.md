@@ -982,6 +982,17 @@ after 0.6 s if nothing is named); leaving for more than `GROUP_MEMORY` starts
 a new visit. Any other button configuration screen will need
 `on_controller_setting` to recognise it.
 
+Button Preview, opened from Controller Setting, draws the controller with
+each button's action as pictures; its only text is "<button_b> Hold to
+close" at (642, 867), over the Controller Setting rows (Light Punch's row
+covered). `mark_controller_buttons` notes the whole layout on that hint
+(`layout_sentence`), and `screen_summary` says it once: "Button Preview. X,
+light punch. Y, medium punch. right bumper, heavy punch. left bumper, all
+three punches. A, light kick. ...  Hold B to close." Buttons go in
+`PREVIEW_ORDER`, the top row X, Y, RB, LB then A, B, RT, LT, and actions by
+`ACTION_WORDS` (the button combos as what they press); keyboard style closes
+with Escape. Checked live; not yet heard.
+
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
 unavailable." at (95, 900) for a few seconds, selecting nothing, so nothing

@@ -1538,6 +1538,29 @@ buttons._settings = {"button_names": "keyboard"}
 check("the Controller Setting rows say keys when keyboard is chosen",
       {it.text: it.note for it in controller("Throw", EDITED_LAYOUT)}["Throw"] == "K")
 buttons._settings = {"button_names": "xbox"}
+def preview(layout):
+    """Button Preview over Controller Setting: the rows behind, none gold, and the close hint."""
+    out = [item("Controller Type", 739, 156, GREY), item("CUSTOM", 1051, 160, GREY)]
+    out += [item(label, 804, 199 + 44 * n, GREY) for n, label in enumerate(CONTROLLER_LABELS)]
+    out.append(item("  Hold to close", 642, 867))
+    sf.mark_controller_buttons(out, layout)
+    return out
+
+
+PREVIEW_SAID = ("Button Preview. X, light punch. Y, medium punch. right bumper, heavy punch. left bumper, throw. "
+                "A, light kick. B, medium kick. right trigger, heavy kick. left trigger, all three kicks. Hold B to close.")
+check("Button Preview is said as the layout, button by button in the pad's order",
+      sf.screen_summary(preview(EDITED_LAYOUT)) == (True, PREVIEW_SAID), repr(sf.screen_summary(preview(EDITED_LAYOUT))))
+buttons._settings = {"button_names": "keyboard"}
+check("in keyboard keys, closing with Escape",
+      sf.screen_summary(preview(SAVED_LAYOUT))[1].startswith("Button Preview. G, light punch. H, medium punch. J, heavy punch. K, all three punches.")
+      and sf.screen_summary(preview(SAVED_LAYOUT))[1].endswith("Hold Escape to close."),
+      repr(sf.screen_summary(preview(SAVED_LAYOUT))))
+buttons._settings = {"button_names": "xbox"}
+opened = narrate([(0.0, controller("Throw", EDITED_LAYOUT)), (0.5, preview(EDITED_LAYOUT)),
+                  (1.0, preview(EDITED_LAYOUT)), (2.0, preview(EDITED_LAYOUT))])
+check("opening Button Preview from Controller Setting says the layout once",
+      [s for _, s in opened] == [f"Throw. left bumper. {mn.CONTROLS_HINT}", PREVIEW_SAID], repr(opened))
 HINT = mn.CONTROLS_HINT
 arriving = narrate([(0.0, controller("Throw", None)), (1.0, controller("Throw", EDITED_LAYOUT))])
 check("the layout arriving after the screen is not taken for a change",
