@@ -777,7 +777,11 @@ never a text field in memory (the only other text was the copyright line,
 judged hidden while drawn), so it cannot be read the usual way. It does not
 matter: the user says the title carries on to the main menu by itself, with
 nothing to press until the missions notice. The first read of a new game said
-" Sub Menu", a button hint shown alone on a black frame. Status lines went
+" Sub Menu", a button hint shown alone on a black frame, at every launch; the
+user asked about it on 2026-09-15, and `landed_on` no longer names a changed
+text that `is_button_hint` (a leading picture space, a few words, low on the
+screen; the logs hold "  Fighter Profile", "  Hold to close", "  Icon Info",
+"  Character List", "  Change Style" too). Status lines went
 unsaid because nothing was selected and they are not the description line,
 so the selection key never changed; `status_line` makes a screen whose one
 text ends "..." (at most 60 characters) a summary through `screen_summary`,
@@ -1200,6 +1204,11 @@ layers still marked behind the pause menu. Ask within the screen's own movie
 to and then deleted `character_names.json`, destroying a table that had taken a
 session in the game to build. Tests now point at scratch files and assert that
 they are doing so.
+
+**Or read it.** `buttons.keyboard_keys` took `INPUT_INI` as a default argument,
+fixed when the module loaded, so the test that points `INPUT_INI` at a scratch
+file read the user's own Input2.ini, and three checks failed once the user
+redid their keyboard mapping. It looks the path up when called now.
 
 **The gold pulses, and a dim frame is not a mid-transition capture.** One
 snapshot was recorded here for a long time as a menu still fading in, with no

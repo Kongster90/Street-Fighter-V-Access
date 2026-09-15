@@ -229,6 +229,18 @@ def footer(items: list[TextItem]) -> TextItem | None:
     return next((it for it in items if it.y >= FOOTER_TOP and it.x < FOOTER_RIGHT), None)
 
 
+BUTTON_HINT_TOP = 850
+BUTTON_HINT_LENGTH = 30
+
+
+def is_button_hint(it: TextItem) -> bool:
+    """A controller hint low on the screen: a button's picture, left as the
+    game's space, then a few words (" Sub Menu", "  Fighter Profile")."""
+    text = it.text
+    return (it.y >= BUTTON_HINT_TOP and text[:1].isspace() and "\n" not in text
+            and 0 < len(text.strip()) <= BUTTON_HINT_LENGTH)
+
+
 def selection_key(items: list[TextItem]):
     """What changes when the cursor moves, and does not change on its own.
 
@@ -364,9 +376,12 @@ def landed_on(
     if lit or recent_groups or any(it.chosen for it in before):
         return []
     foot = footer(after)
-    changed = [it.text for it in after if it is not foot and _where(it) not in old]
-    if 0 < len(changed) <= MOVE_TEXT_LIMIT:
-        return _unique(changed)
+    changed = [it for it in after if it is not foot and _where(it) not in old]
+    # A button hint changing is not a move. The game's first frame is " Sub
+    # Menu" alone on black, and it was said at every launch.
+    named = [it.text for it in changed if not is_button_hint(it)]
+    if named and len(changed) <= MOVE_TEXT_LIMIT:
+        return _unique(named)
     was = footer(before)
     if foot and (was is None or was.text != foot.text):
         return [foot.text]

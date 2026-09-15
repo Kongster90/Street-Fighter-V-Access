@@ -1653,7 +1653,8 @@ check("a startup status line is a screen's summary",
       sf.screen_summary(logging_in) == (True, "Logging into the server..."), repr(sf.screen_summary(logging_in)))
 check("a line ending in dots among other text is not",
       sf.status_line(logging_in + [item("Dengster", 1379, 53)]) is None and sf.status_line(on_story) is None)
-startup = narrate([(0.0, []), (0.1, [item("Applying Title Update Ver.07.011...", 960, 886)]), (0.3, []),
+startup = narrate([(0.0, []), (0.05, [item(" Sub Menu", 1310, 915)]), (0.06, [item(" Sub Menu", 1310, 915)]),
+                   (0.08, []), (0.1, [item("Applying Title Update Ver.07.011...", 960, 886)]), (0.3, []),
                    (1.0, logging_in), (1.2, logging_in), (1.5, logging_in), (3.0, logging_in), (4.0, [])])
 shop = [item("Characters", 157, 199, GREY), item("Special", 157, 595, GOLD),
         item("Purchase content such as a Season Pass from Steam.", 110, 992)]
@@ -1694,7 +1695,7 @@ check("the read key says it the same way",
 check("a trial's Restart Battle in the same place is left to the trial's rule",
       sf.toast([item("Restart Battle", 95, 900)]) is None
       and sf.toast([item("ZEKU: \nReceived 5000 EXP.", 95, 900)]) == "ZEKU: Received 5000 EXP.")
-check("status lines are said once when they stay, not when they flash past",
+check("status lines are said once when they stay, not when they flash past, and the lone Sub Menu hint not at all",
       [s for _, s in startup] == ["Logging into the server..."], repr(startup))
 before_fight = narrate([(0.0, [item("STAGE 2", 660, 660)]), (0.5, versus), (0.8, versus), (1.1, versus),
                         (5.0, [item("SCORE", 561, 48)])])

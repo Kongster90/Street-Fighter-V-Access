@@ -40,7 +40,7 @@ NONE = "none"
 UNASSIGNED = 17
 
 _settings: dict | None = None
-_keyboard: tuple[float, dict[int, str]] | None = None
+_keyboard: tuple[Path, float, dict[int, str]] | None = None
 
 
 def _load() -> dict:
@@ -75,14 +75,17 @@ def key_words(key: str) -> str:
     return re.sub(r"(?<=[a-z])(?=[A-Z0-9])", " ", key)
 
 
-def keyboard_keys(path: Path = INPUT_INI) -> dict[int, str]:
+def keyboard_keys(path: Path | None = None) -> dict[int, str]:
     """KeyboardKeys_ entries from the game's saved keyboard bindings, read again when the file changes."""
     global _keyboard
+    # Looked up when called, not when defined, so a test pointing INPUT_INI at a
+    # scratch file really reads that and not the player's own bindings.
+    path = path or INPUT_INI
     try:
         stamp = path.stat().st_mtime
     except OSError:
         return {}
-    if _keyboard is None or _keyboard[0] != stamp:
+    if _keyboard is None or _keyboard[:2] != (path, stamp):
         keys: dict[int, str] = {}
         section = None
         try:
@@ -96,8 +99,8 @@ def keyboard_keys(path: Path = INPUT_INI) -> dict[int, str]:
                         keys[int(m.group(1))] = m.group(2).strip()
         except OSError:
             return {}
-        _keyboard = (stamp, keys)
-    return _keyboard[1]
+        _keyboard = (path, stamp, keys)
+    return _keyboard[2]
 
 
 def name(number: int, chosen: str | None = None) -> str:
