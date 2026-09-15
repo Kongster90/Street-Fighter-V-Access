@@ -1718,7 +1718,9 @@ def tips_screen(items: list[TextItem]) -> tuple[bool, str | None]:
     if not tips:
         return True, None
     tip = max(tips, key=lambda it: len(it.text))
-    return True, phrase([heading.text, " ".join(tip.text.split())])
+    # The Tutorial's tips name buttons as its instructions do.
+    said = TUTORIAL_ACTION.sub(lambda m: m.group(1).lower(), " ".join(tip.text.split()))
+    return True, phrase([heading.text, said])
 
 
 # ------------------------------------------------------------------ text entry

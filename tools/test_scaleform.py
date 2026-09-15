@@ -1805,6 +1805,16 @@ check("an instruction's button pictures are said as the action they stand for",
       sf.tutorial_instruction(light_step) == "Hit Ken with a light attack. You can perform a light attack by pressing "
       "either light punch, or light kick. Light attacks are fast and recover quickly.",
       repr(sf.tutorial_instruction(light_step)))
+throw_tip = [sf.TextItem("TIP", 960, 344, WHITE, 4, chain=(951, 960, 970, 980)),
+             sf.TextItem("Throws will bypass an opponent's guard, no matter what position they are in.\nIf you "
+                         "perform a throw  (Light punch) and  (Light kick) just as the opponent attempts a throw, "
+                         "you will escape.", 960, 480, WHITE, 4, chain=(952, 960, 970, 980)),
+             sf.TextItem("Press any button\n", 960, 590, WHITE, 5, chain=(953, 954, 960, 970, 980))]
+check("the Tutorial's tip boxes name buttons as its instructions do",
+      sf.screen_summary(throw_tip) == (True, "TIP. Throws will bypass an opponent's guard, no matter what position "
+                                             "they are in. If you perform a throw light punch and light kick just as "
+                                             "the opponent attempts a throw, you will escape."),
+      repr(sf.screen_summary(throw_tip)))
 check("the brackets after a picture close without a space",
       sf.describe_inputs([("text", "either the "), ("text", " (Light "), ("picture", "punch"), ("text", "), or ")])
       == "either the (Light punch), or",

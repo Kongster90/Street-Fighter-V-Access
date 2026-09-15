@@ -138,6 +138,10 @@ Played by the user on 2026-09-15:
   with its commands in words, said once when it waits on Start Demonstration
   or Proceed ("Moving. By pressing the left or right directional buttons...
   Start Demonstration"), Alt R repeating it.
+- Story's Tutorial: each instruction once as it comes, buttons said as their
+  actions ("pressing either light punch, or light kick"), and the TIP boxes
+  between steps. The scene subtitles are left unsaid, the user's story voices
+  being English; Alt T turns them on.
 - The lone "Sub Menu" hint at launch is no longer said (written the same
   day, not yet heard from a launch).
 
@@ -1157,9 +1161,14 @@ first line, which opens one of the game's `_Stor_Tuto_` strings, and says each
 once through `screen_summary`, so Alt R repeats it. The button pictures in
 them are the default pad's with the action in brackets, "{button_X} (Light
 {punch})", said as the action alone, "pressing either light punch, or light
-kick". A "TIP" box with "Press any button" and "Next" sits hidden in the
-tutorial's movie; `tips_screen` will take "TIP" as a heading if it shows.
-The first instruction was checked live; nothing past it yet.
+kick". Between some steps a "TIP" box ("TIP" at (960, 344), the tip at
+(960, 480), "Press any button" at (960, 590)) waits for a button, and
+`tips_screen` reads it as heading and tip, naming buttons the same way. Each
+step done flashes "SUCCESS" at (960, 760), unsaid, the next instruction
+following at once. The user went through the whole Tutorial with it on
+2026-09-15, every instruction and tip heard, and said it all worked. Not
+done: Ken's lines during the fight at (960, 920), which Alt T does not cover;
+whether Alt T itself has been pressed in play is not known.
 
 Known gaps. The clock sits one object further down and is not resolved.
 Screens other than Versus and Training may head their character select
@@ -1414,10 +1423,8 @@ What follows is roughly in order of value.
 1. **Screens nobody has tried.** Not yet seen from memory: online matches
    past their menus (Ranked, Casual, Battle Lounge rooms, whose password uses
    the same keyboard entry line as the Fighter ID but a field `text_entry`
-   does not find); story mode and its chapter select; Survival; Story's
-   Tutorial, a fight against Ken whose instructions (`ID_SYS_Stor_Tuto_*` in
-   strings.json, "Try moving closer to Ken." and on) were silent when the user
-   began it once, and was next on the list on 2026-09-15; the player profile;
+   does not find); story mode and its chapter select, whose scenes should
+   read like the Tutorial's with Alt T; Survival; the player profile;
    the Gallery's contents; Options pages other than Other Settings. Each screen this session took minutes to
    an hour once the user was on it. `tools/record_scaleform.py <name>` is the
    tool when a selection's marking is unknown and the user needs to move
@@ -1477,7 +1484,8 @@ Windows claims some Control Alt combinations. They chose F10 for quit (and for
 stopping the watch mode and recorder) and F9 for switching between memory and
 the screen, and are happy with F keys generally. Alt B, added 2026-09-15,
 cycles button names between Xbox, PlayStation and keyboard keys, saved in
-`settings.json`.
+`settings.json`. Alt T, added the same day, turns story subtitles on or off,
+saved there too.
 Before adding a key, check it registers (every current one was free), and
 remember a global hotkey is taken from every program while the mod runs.
 
@@ -1528,6 +1536,8 @@ standing instruction rather than something to be asked about each time.
 - A charge is "hold back", the game's word, not "charge".
 - Country names in full ("United States"), Fighter ID typing echoed letter by
   letter with capitals named, Alt R spelling it with a count.
+- Story subtitles off unless turned on with Alt T: their voices are English
+  and reading lines talks over the actors.
 
 **How this session found things.** Almost everything came from reading the
 game's memory while the user held the screen, with small scripts run from the
