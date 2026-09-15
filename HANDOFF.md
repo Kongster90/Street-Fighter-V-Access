@@ -1626,6 +1626,16 @@ key and the same 50,417 strings. The pak folder comes from the running game's
 path, no longer the user's G drive. The repository is private (an
 unauthenticated API request gives 404), so testers get the zip, not a clone.
 
+Checked before handing over the first zip (`SFV-Access-2026-09-15-69097bf`,
+43 MB): the bundled Python recovered the game's text from the running game
+into the staged folder (3.1 s), and `install.main` run with that Python into a
+scratch folder, against a made-up localconfig.vdf with Steam, the game and the
+mod stubbed as not running, copied the mod and set launch options naming the
+installed pythonw. The zip holds no strings.json, key, settings, logs, or the
+user's names. Not yet run: the installer on a real machine with Steam open
+(closing and reopening Steam), and the mod started by Steam from an installed
+copy. The first tester's report is the real check.
+
 ## Running things
 
 Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod
