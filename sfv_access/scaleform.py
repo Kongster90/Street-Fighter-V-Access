@@ -1534,6 +1534,69 @@ def status_line(items: list[TextItem]) -> str | None:
     return text if text.endswith("...") and len(text) <= STATUS_MAX else None
 
 
+# ------------------------------------------------------------------ text entry
+#
+# Typing a new Fighter ID: "Please enter your Fighter ID." in white at (598,
+# 409), and under it at (598, 482) the entry, a text field in the 0.27 grey
+# holding what has been typed so far ("Kon"), both three levels under one
+# panel; the description line says "Please enter text using the keyboard.
+# <Back button>/ESCAPE Key: Cancel entry and close window". Before anything is
+# typed the field is empty, and so not shown. Nothing is selected and typing
+# selects nothing, so the prompt was never said and typing was silent.
+
+TEXT_ENTRY_FOOTER = "Please enter text using the keyboard."
+TEXT_ENTRY_PROMPTS = ("Please enter", "Please input")
+ENTRY_PANEL_LEVEL = 3   # the prompt and the field share the object this far up
+ENTRY_BELOW = 150       # the field sits at most this far under its prompt
+CHARACTER_WORDS = {" ": "space", "-": "hyphen", "_": "underscore"}
+
+
+def text_entry(items: list[TextItem]) -> tuple[str, str] | None:
+    """The prompt and what has been typed so far, while typing into a field such as the Fighter ID."""
+    shown = [it for it in items if it.shown]
+    foot = footer(shown)
+    if foot is None or not foot.text.strip().startswith(TEXT_ENTRY_FOOTER):
+        return None
+    placed = [it for it in shown if it is not foot and len(it.chain) > ENTRY_PANEL_LEVEL]
+    for prompt in placed:
+        if not prompt.text.strip().startswith(TEXT_ENTRY_PROMPTS):
+            continue
+        panel = prompt.chain[ENTRY_PANEL_LEVEL]
+        below = sorted((it for it in placed if it is not prompt and it.chain[ENTRY_PANEL_LEVEL] == panel
+                        and prompt.y < it.y <= prompt.y + ENTRY_BELOW), key=lambda it: it.y)
+        return prompt.text.strip(), below[0].text if below else ""
+    return None
+
+
+def spoken_footer(text: str) -> str:
+    """A description line as said: the keyboard entry's "/ESCAPE Key" after its button picture as "Escape key"."""
+    return " ".join(re.sub(r"\s*/ESCAPE Key", " Escape key", text).split())
+
+
+def character_words(char: str) -> str:
+    """One typed character as said: "capital K", "o", "hyphen"."""
+    if char in CHARACTER_WORDS:
+        return CHARACTER_WORDS[char]
+    return f"capital {char}" if char.isupper() else char
+
+
+def typed_words(before: str, after: str) -> str:
+    """What typing changed in a field: the characters added, or those deleted, or the whole new text."""
+    if after.startswith(before):
+        return ", ".join(character_words(c) for c in after[len(before):])
+    if before.startswith(after):
+        return ", ".join(character_words(c) for c in before[len(after):]) + " deleted"
+    return entry_value_words(after)
+
+
+def entry_value_words(value: str) -> str:
+    """A field's whole text for the read key: "Kon, 3 characters: capital K, o, n", or "Empty"."""
+    if not value:
+        return "Empty"
+    count = f"{len(value)} character{'' if len(value) == 1 else 's'}"
+    return f"{value}, {count}: {', '.join(character_words(c) for c in value)}"
+
+
 # ---------------------------------------------------------------------- toasts
 #
 # The game's short messages all appear at one place, the foot of the screen's

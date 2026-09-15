@@ -442,7 +442,12 @@ class App:
             story = (scaleform.path_story(items) or scaleform.extra_battle_details(items)
                      or scaleform.notice_details(items))
             question = scaleform.prompt_message(items)
-            if story:
+            entry = scaleform.text_entry(items)
+            if entry is not None:
+                # What has been typed, spelled out, since a name heard as a
+                # word does not say how it is written.
+                said = memory_narration.phrase([entry[0], scaleform.entry_value_words(entry[1])])
+            elif story:
                 # Path select's description line is the same for every path;
                 # the story is what the user asked to hear.
                 said = memory_narration.phrase([said] + story)

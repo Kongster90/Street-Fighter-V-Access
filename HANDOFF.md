@@ -812,7 +812,25 @@ Canada", "United States"), and the user chose their Home with it. Next came
 "Please choose a Fighter ID." with its notes and Next, read as a prompt.
 There the user pointed out, not for the first time, that Alt R said only
 "Next": `prompt_message` gives a prompt's panel texts besides its buttons,
-as the opening does, and Alt R now says them before the answer. Still to come in that flow: the Fighter ID entry
+as the opening does, and Alt R now says them before the answer.
+
+Next is the Fighter ID entry, and typing was silent. "Please enter your
+Fighter ID." in white at (598, 409); under it at (598, 482) a 0.27 grey field
+holding what is typed (the user typed "Kon" and it was there), both three
+levels under one panel; the description line "Please enter text using the
+keyboard. <button_back>/ESCAPE Key: Cancel entry and close window". The
+field is empty, so not shown, until something is typed. `text_entry` finds
+the prompt (starting "Please enter" or "Please input") and the text below it
+in the same panel while that description shows; the narrator says the
+prompt and the instructions on arriving, then `typed_words` for each change
+("capital K", "o", "o deleted"), clearing its repeat guard so a letter typed
+twice is said twice; Alt R says the prompt and `entry_value_words`, "Kon, 3
+characters: capital K, o, n". Capitals are said, since a name heard as a word
+does not say how it is written. The Battle Lounge password uses the same
+description line over the lounge settings; its field is not known and
+`text_entry` does not match it. Checked live; not yet heard. After this the
+game checks the ID (strings mention "cannot be used" and IDs in use) and
+confirms. Still to come in that flow: the Fighter ID entry
 and the confirmation.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do

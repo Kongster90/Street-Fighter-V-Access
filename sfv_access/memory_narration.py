@@ -157,6 +157,8 @@ class Narrator:
         # The game's short message last said, and when it last showed.
         self.toast_said = ""
         self.toast_seen_at = 0.0
+        # What a text entry field held at the last reading, None while not typing.
+        self.entry_value: str | None = None
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
@@ -232,6 +234,26 @@ class Narrator:
             if reached or still_on:
                 self.intro_said = intro
                 parts = [intro] + (parts if reached else [button])
+
+        # Typing into a field selects nothing either. Arriving says the prompt
+        # before the instructions; each change says the characters typed or
+        # deleted, the same character twice being news both times.
+        entry = scaleform.text_entry(items)
+        if entry is None:
+            self.entry_value = None
+        else:
+            prompt, value = entry
+            foot = scaleform.footer(items)
+            # What a move onto the screen would name is said here instead,
+            # once and in order, whichever read it arrives on.
+            known = {prompt, value, foot.text if foot else ""}
+            parts = [p for p in (parts or []) if p not in known]
+            if self.entry_value is None:
+                parts = [prompt] + ([scaleform.spoken_footer(foot.text)] if foot else []) + parts
+            elif value != self.entry_value:
+                parts.append(scaleform.typed_words(self.entry_value, value))
+                self.said = ""
+            self.entry_value = value
 
         # The game's short messages select nothing, so they are said as they
         # appear: once while they show, and again if the same one comes back,

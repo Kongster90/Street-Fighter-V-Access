@@ -1361,6 +1361,34 @@ check("a tab of two flags among empty places is still read, on the Home screen",
 nreader.on_home_screen = False
 check("and nowhere else", sf.find_grids(nreader.children, {nroot2}, tiles_of=nreader._tiles_of) == {})
 sf._country_names = None
+ENTRY_FOOT = "Please enter text using the keyboard.  /ESCAPE Key: Cancel entry and close window  "
+
+
+def fighter_id_entry(typed):
+    """The Fighter ID entry as read live: the prompt and, once something is typed,
+    the field under it, both three levels under one panel, and the keyboard line."""
+    out = [sf.TextItem("Please enter your Fighter ID.", 598, 409, WHITE, 5, chain=(1, 2, 3, 50, 60)),
+           sf.TextItem(ENTRY_FOOT, 110, 992, WHITE, 3, chain=(7, 8, 70))]
+    if typed:
+        out.append(sf.TextItem(typed, 598, 482, GREY, 5, chain=(4, 5, 6, 50, 60)))
+    return out
+
+
+check("the Fighter ID entry gives its prompt and what is typed",
+      sf.text_entry(fighter_id_entry("Kon")) == ("Please enter your Fighter ID.", "Kon")
+      and sf.text_entry(fighter_id_entry("")) == ("Please enter your Fighter ID.", ""))
+check("no text entry without the keyboard line", sf.text_entry(fighter_id_entry("Kon")[:1] + [
+    sf.TextItem("Kon", 598, 482, GREY, 5, chain=(4, 5, 6, 50, 60))]) is None and sf.text_entry(on_story) is None)
+check("the read key spells what is typed and counts it",
+      sf.entry_value_words("Kon_9") == "Kon_9, 5 characters: capital K, o, n, underscore, 9"
+      and sf.entry_value_words("") == "Empty")
+typing = narrate([(0.0, [item("Next", 1161, 671)]), (0.5, fighter_id_entry("")), (0.8, fighter_id_entry("")),
+                  (1.0, fighter_id_entry("K")), (1.2, fighter_id_entry("Ko")), (1.4, fighter_id_entry("Koo")),
+                  (1.6, fighter_id_entry("Ko")), (1.8, fighter_id_entry("")), (2.0, fighter_id_entry(""))])
+check("arriving says the prompt and how to type, then each character typed or deleted",
+      [s for _, s in typing] == ["Please enter your Fighter ID. Please enter text using the keyboard. "
+                                 "Escape key: Cancel entry and close window",
+                                 "capital K", "o", "o", "o deleted", "capital K, o deleted"], repr(typing))
 check("a startup status line is a screen's summary",
       sf.screen_summary(logging_in) == (True, "Logging into the server..."), repr(sf.screen_summary(logging_in)))
 check("a line ending in dots among other text is not",
