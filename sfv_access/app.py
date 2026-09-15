@@ -474,7 +474,11 @@ class App:
                 # Button Preview: the whole layout, button by button.
                 said = layout
             keys = scaleform.keyboard_details(items, self.session.saved_layout_bytes)
-            if keys:
+            mapping = scaleform.keyboard_prompt(items)
+            if mapping:
+                # Redo keyboard mapping: the step you are on.
+                said = scaleform.keyboard_prompt_words(mapping, True)
+            elif keys:
                 # Keyboard Settings: each key and what it does.
                 said = memory_narration.phrase(keys)
             attack = scaleform.attack_data(items)

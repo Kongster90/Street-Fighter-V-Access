@@ -1026,8 +1026,15 @@ mapping asks, from the game's text, "Press the key to be assigned to
 {button_A}." and "... {CMD_8}. (You can press Up/Down/Left/Right to skip.)":
 button pictures in a text about assigning are marked with their number in
 `_with_pictures` and `fill_pad_marks` makes them "the A button, light kick".
-The Alt R list was checked live; the mapping prompts are written from the
-game's strings, not yet seen.
+The Alt R list was checked live. Seen live next: Redo keyboard mapping
+clears every key to "-", lights the row being assigned, and puts the
+instruction in the description line (110, 992), "Press the key to be
+assigned to <cmd_8>. (You can press Up/Down/Left/Right to skip.)", so all
+that was said was "-". `keyboard_prompt` reads that line; the narrator says
+each new instruction, the skip note at the first step only, with any key
+just assigned before it ("W. Press the key to be assigned to down."), and
+drops the lit "-"; Alt R says the current step. The button steps and the end
+of the mapping are not yet seen.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently

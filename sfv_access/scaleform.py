@@ -1900,6 +1900,31 @@ def pad_button_phrase(number: int, layout: bytes | None) -> str:
     return f"{name}, {' and '.join(actions)}" if actions else name
 
 
+KEYBOARD_PROMPT = "Press the key to be assigned to"
+KEYBOARD_SKIP = re.compile(r"\s*\(You can press [^)]*to skip\.\)")
+KEYBOARD_UNSET = "-"
+
+
+def keyboard_prompt(items: list[TextItem]) -> str | None:
+    """Redo keyboard mapping's current instruction, from the description line.
+
+    Each step lights the row being assigned, showing only "-" until a key is
+    pressed, and puts the instruction where a menu's description goes, so
+    nothing that a move says was the instruction.
+    """
+    foot = footer([it for it in items if it.shown])
+    text = " ".join(foot.text.split()) if foot is not None else ""
+    return re.sub(r"\s+([.,])", r"\1", text) if text.startswith(KEYBOARD_PROMPT) else None
+
+
+def keyboard_prompt_words(prompt: str, with_skip: bool) -> str:
+    return prompt if with_skip else KEYBOARD_SKIP.sub("", prompt).strip()
+
+
+def key_words(key: str) -> str:
+    return KEY_WORDS.get(key, key)
+
+
 def fill_pad_marks(items: list[TextItem], layout: bytes | None) -> None:
     """Put marked button pictures into words, with what each does in the layout."""
     for it in items:

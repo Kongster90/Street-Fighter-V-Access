@@ -186,6 +186,9 @@ class Narrator:
         self.preview_seen_at = 0.0
         self.keyboard_hinted = False
         self.keyboard_seen_at = 0.0
+        # Redo keyboard mapping: the instruction last said, and the key column then.
+        self.mapping_prompt: str | None = None
+        self.mapping_rows: list[str] | None = None
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
@@ -330,6 +333,31 @@ class Narrator:
                 self.said = ""
         elif self.controls_arrived_at is not None and now - self.controls_seen_at > GROUP_MEMORY:
             self.controls_arrived_at = None
+
+        # Redo keyboard mapping: each step's instruction as it comes, with the
+        # key just assigned before it, in place of the lit row's "-". The
+        # note on skipping directions is said at the first step only.
+        prompt = scaleform.keyboard_prompt(items)
+        if prompt is not None:
+            rows = scaleform.keyboard_rows(items)
+            assigned = [scaleform.key_words(new) for old, new in zip(self.mapping_rows or [], rows)
+                        if old == scaleform.KEYBOARD_UNSET and new != scaleform.KEYBOARD_UNSET]
+            parts = [p for p in (parts or []) if p.strip() != scaleform.KEYBOARD_UNSET]
+            if prompt != self.mapping_prompt:
+                parts = assigned + [scaleform.keyboard_prompt_words(prompt, self.mapping_prompt is None)]
+                self.said = ""
+            elif assigned:
+                parts = assigned
+                self.said = ""
+            self.mapping_prompt, self.mapping_rows = prompt, rows
+            self.keyboard_hinted = True   # the hint about Alt R would only get in the way here
+        elif self.mapping_prompt is not None:
+            rows = scaleform.keyboard_rows(items)
+            assigned = [scaleform.key_words(new) for old, new in zip(self.mapping_rows or [], rows)
+                        if old == scaleform.KEYBOARD_UNSET and new != scaleform.KEYBOARD_UNSET]
+            if assigned:
+                parts = assigned + (parts or [])
+            self.mapping_prompt, self.mapping_rows = None, None
 
         # Keyboard Settings points to Alt R for its key list, once per visit.
         if scaleform.keyboard_rows(items):

@@ -1592,6 +1592,29 @@ check("arriving at Keyboard Settings points to Alt R once",
       [s for _, s in kb_visit][-1].endswith("Redo keyboard mapping. Press Alt R to hear which key does what.")
       and len(kb_visit) == 2, repr(kb_visit))
 
+def mapping_step(done, prompt):
+    """Redo keyboard mapping as read live: the first `done` keys set, the next row lit
+    with "-", and the instruction in the description line."""
+    keys = KEY_COLUMN[:done] + ["-"] * (len(KEY_COLUMN) - done)
+    out = [item("Keyboard Settings", 646, 45)]
+    out += [item(k, 796, 109 + 42 * n, GOLD if n == done else (0.27, 0.27, 0.27, 0.5)) for n, k in enumerate(keys)]
+    out += [item("Redo keyboard mapping", 646, 814, (0.6, 0.6, 0.6, 1)), item("Close", 646, 856, (0.6, 0.6, 0.6, 1)),
+            item(prompt, 110, 992)]
+    return out
+
+
+SKIP = " (You can press Up/Down/Left/Right to skip.)"
+steps = narrate([(0.0, mapping_step(0, "Press the key to be assigned to up ." + SKIP)),
+                 (0.5, mapping_step(0, "Press the key to be assigned to up ." + SKIP)),
+                 (1.0, mapping_step(1, "Press the key to be assigned to down ." + SKIP)),
+                 (1.5, mapping_step(4, "Press the key to be assigned to the A button, light kick.")),
+                 (2.0, mapping_step(5, "Press the key to be assigned to the B button, medium kick."))])
+check("keyboard mapping says each step, the skip note once, and the key just assigned",
+      [s for _, s in steps] == ["Press the key to be assigned to up." + SKIP,
+                                "W. Press the key to be assigned to down.",
+                                "S. D. A. Press the key to be assigned to the A button, light kick.",
+                                "B. Press the key to be assigned to the B button, medium kick."], repr(steps))
+
 amem = FakeMemory()
 aroot = display_object(amem, 0, 0, 0, WHITE)
 picture_field(amem, display_object(amem, aroot, 400, 500, WHITE), 0, 0,
