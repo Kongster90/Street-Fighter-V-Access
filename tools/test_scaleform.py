@@ -1117,6 +1117,9 @@ kagerou = sf.describe_inputs([("picture", "punch_h"), ("picture", "next"), ("pic
 charges = [sf.describe_inputs(p) for p in (
     [("picture", "cmd_4c"), ("picture", "cmd_6"), ("picture", "plus"), ("picture", "punch")],
     [("picture", "cmd_2c"), ("picture", "cmd_8"), ("picture", "plus"), ("picture", "kick")])]
+check("a button pressed rapidly is said so, as in E. Honda's Hundred Hand Slap",
+      sf.describe_inputs([("picture", "punch"), ("picture", "rapid")]) == "punch rapidly",
+      repr(sf.describe_inputs([("picture", "punch"), ("picture", "rapid")])))
 check("the full circle arrow is said, as in Zangief's Screw Pile Driver",
       sf.describe_inputs([("text", "(NEAR OPPONENT)"), ("picture", "cmd_0"), ("picture", "plus"), ("picture", "punch")])
       == "(NEAR OPPONENT) full circle plus punch")

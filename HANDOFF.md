@@ -710,8 +710,10 @@ OPPONENT) full circle plus punch". The pak index lists every tagged image
 4, 41236, 421, 46, 4c, 5, 6, 623, 63214, 7, 8, 9, and all have words now
 (the longer ones as directions in order). Other tagged images that could
 turn up in commands and have no words yet: hold, p_hold, k_hold, release,
-p_release, k_release, rapid, ex, ex2, ex3, v, v2, v3, v_trigger, next_ar,
-middot. Their joining in `describe_inputs` would need thought (a hold then a
+p_release, k_release, ex, ex2, ex3, v, v2, v3, v_trigger, next_ar, middot.
+`rapid` was seen in E. Honda's Hundred Hand Slap, `<punch><rapid>`, which read
+"punch"; it is now in `MANNER_WORDS`, joined to the button by a space: "punch
+rapidly". Their joining in `describe_inputs` would need thought (a hold then a
 release of one button is not "plus"), so they wait until seen.
 
 **Extra Battle's event panel.** Entering Extra Battle in Challenges puts the

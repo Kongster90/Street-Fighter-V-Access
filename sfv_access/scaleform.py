@@ -1178,6 +1178,9 @@ MOTION_WORDS = {"236": "quarter circle forward", "214": "quarter circle back",
                 "0": "full circle"}
 STRENGTH_WORDS = {"l": "light", "m": "medium", "h": "heavy"}
 JOINER_WORDS = {"plus": "plus", "next": ""}
+# Pictures saying how the button before them is pressed, joined to it by a
+# space: E. Honda's Hundred Hand Slap is <punch><rapid>, "punch rapidly".
+MANNER_WORDS = {"rapid": "rapidly"}
 # The game's own words before a button, as the user wants them said: standing
 # is left out, crouch is down plus, jump stays jump.
 STANCE_WORDS = (
@@ -1209,6 +1212,8 @@ def input_words(name: str) -> str | None:
     """Words for a command picture's name, or None if it is not one known."""
     if name in JOINER_WORDS:
         return JOINER_WORDS[name]
+    if name in MANNER_WORDS:
+        return MANNER_WORDS[name]
     if name.startswith("cmd_"):
         digits = name[4:]
         # A charge: Guile's Sonic Boom is cmd_4c then cmd_6, "hold back,
@@ -1280,6 +1285,8 @@ def describe_inputs(pieces: list[tuple[str, str]]) -> str:
         both_buttons = both_inputs and not name.startswith("cmd_") and not (previous_name or "cmd_").startswith("cmd_")
         if previous is None:
             gap = ""
+        elif name in MANNER_WORDS:
+            gap = " "
         elif comma or both_directions:
             gap = ", "
         elif both_buttons and name != previous_name:
