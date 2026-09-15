@@ -1567,6 +1567,43 @@ check("a press says what the button does in the layout being edited",
       == ["light punch", "throw", "all three kicks", "Start, no action", "up"],
       repr([sf.press_words(n, EDITED_LAYOUT) for n in (4, 8, 10, 14, 0)]))
 
+KEY_COLUMN = ["W", "S", "D", "A", "B", "N", "G", "H", "J", "K", "M", ",", "/", ".", "Enter", "Escape"]
+
+
+def keyboard_settings(keys=KEY_COLUMN):
+    out = [item("Keyboard Settings", 646, 45), item("Other Settings", 157, 331, GOLD)]
+    out += [item(k, 796, 109 + 42 * n, (0.27, 0.27, 0.27, 0.5)) for n, k in enumerate(keys)]
+    out += [item("Redo keyboard mapping", 646, 814, GOLD), item("Close", 646, 856, GREY)]
+    return out
+
+
+check("Keyboard Settings lists each key with what it does in the saved layout",
+      mn.phrase(sf.keyboard_details(keyboard_settings(), SAVED_LAYOUT))
+      == "Keyboard Settings. W, up. S, down. D, right. A, left. B, light kick. N, medium kick. G, light punch. "
+         "H, medium punch. J, heavy punch. K, all three punches. M, heavy kick. comma, all three kicks. "
+         "slash, right stick press. period, left stick press. Enter, Start. Escape, Back",
+      repr(mn.phrase(sf.keyboard_details(keyboard_settings(), SAVED_LAYOUT))))
+check("without the layout, the keys are said with their buttons",
+      sf.keyboard_details(keyboard_settings(), None)[5] == "B, the A button")
+check("no key list without the whole column", sf.keyboard_rows(keyboard_settings(KEY_COLUMN[:10])) == []
+      and sf.keyboard_rows(on_story) == [])
+kb_visit = narrate([(0.0, [item("Other Settings", 157, 331, GOLD)]), (0.5, keyboard_settings()), (1.0, keyboard_settings())])
+check("arriving at Keyboard Settings points to Alt R once",
+      [s for _, s in kb_visit][-1].endswith("Redo keyboard mapping. Press Alt R to hear which key does what.")
+      and len(kb_visit) == 2, repr(kb_visit))
+
+amem = FakeMemory()
+aroot = display_object(amem, 0, 0, 0, WHITE)
+picture_field(amem, display_object(amem, aroot, 400, 500, WHITE), 0, 0,
+              [("text", "Press the key to be assigned to "), ("picture", "button_a"), ("text", ".")])
+picture_field(amem, display_object(amem, aroot, 400, 600, WHITE), 0, 0,
+              [("picture", "button_a"), ("text", " Fighter Profile")])
+aitems = sf.ScaleformText(amem, MODULE).items()
+sf.fill_pad_marks(aitems, SAVED_LAYOUT)
+check("keyboard mapping's button picture is said with what the button does; hints elsewhere stay silent",
+      [it.text.strip() for it in aitems] == ["Press the key to be assigned to the A button, light kick.", "Fighter Profile"],
+      repr([it.text for it in aitems]))
+
 from sfv_access import pads  # noqa: E402
 
 state = pads._State()

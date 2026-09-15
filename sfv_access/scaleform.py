@@ -1860,6 +1860,80 @@ def press_words(number: int, config: bytes | None) -> str:
 DIRECTION_NUMBERS = (0, 1, 2, 3)
 
 
+# Options' Keyboard Settings lists sixteen keys in a column (x 796, from y 109,
+# about 42 apart, half transparent) beside pictures of the controller buttons
+# they stand for, over "Redo keyboard mapping" and "Close", the only things
+# selectable. Only those two were said. The keys go in the order of the button
+# pictures the screen loads: up, down, right, left, A, B, X, Y, right bumper,
+# left bumper, right trigger, left trigger, right and left stick press, Start,
+# Back; with the user's bindings that is W, S, D, A, B, N, G, H, J, K, M, comma,
+# slash, period, Enter, Escape, which agrees with Input2.ini. Alt R says each
+# key with what its button does in the saved controller layout.
+KEYBOARD_TITLE = "Keyboard Settings"
+KEYBOARD_REDO = "Redo keyboard mapping"
+KEYBOARD_ROW_BUTTONS = (0, 1, 3, 2, 6, 7, 4, 5, 9, 8, 11, 10, 13, 12, 14, 15)
+KEYBOARD_COLUMN_X = 796.0
+KEY_WORDS = {",": "comma", ".": "period", "/": "slash", ";": "semicolon", "'": "apostrophe", "-": "hyphen",
+             "=": "equals", "[": "left bracket", "]": "right bracket", "\\": "backslash", "`": "grave"}
+KEYBOARD_HINT = "Press Alt R to hear which key does what."
+
+# Redo keyboard mapping asks "Press the key to be assigned to {button_A}." and
+# "... to {CMD_8}. (You can press Up/Down/Left/Right to skip.)", from the
+# game's text. The direction pictures already have words; the button pictures
+# are silent elsewhere (controller hints), so in a text about assigning they
+# are marked with the button's number and the session fills in the button and
+# what it does in the saved layout: "the A button, light kick".
+ASSIGN_WORD = "assign"
+PAD_PICTURES = {"button_a": 6, "button_b": 7, "button_x": 4, "button_y": 5, "button_lb": 8, "button_rb": 9,
+                "button_lt": 10, "button_rt": 11, "button_ls": 12, "button_rs": 13, "button_start": 14,
+                "button_back": 15, "button_up": 0, "button_down": 1, "button_left": 2, "button_right": 3}
+PAD_MARK_OPEN, PAD_MARK_CLOSE = "\x02", "\x03"
+_PAD_MARK = re.compile(f"{PAD_MARK_OPEN}(\\d+){PAD_MARK_CLOSE}")
+
+
+def pad_button_phrase(number: int, layout: bytes | None) -> str:
+    """"the A button, light kick"; "up"; "the Start button"."""
+    if number in DIRECTION_NUMBERS:
+        return buttons.XBOX[number]
+    name = f"the {buttons.XBOX.get(number, f'button {number}')} button"
+    actions = button_actions(layout).get(number) if key_config_valid(layout) else None
+    return f"{name}, {' and '.join(actions)}" if actions else name
+
+
+def fill_pad_marks(items: list[TextItem], layout: bytes | None) -> None:
+    """Put marked button pictures into words, with what each does in the layout."""
+    for it in items:
+        if PAD_MARK_OPEN in it.text:
+            said = " ".join(_PAD_MARK.sub(lambda m: f" {pad_button_phrase(int(m.group(1)), layout)} ", it.text).split())
+            it.text = re.sub(r"\s+([.,!?)])", r"\1", said)
+
+
+def keyboard_rows(items: list[TextItem]) -> list[str]:
+    """The keys Keyboard Settings lists, top to bottom, while it shows."""
+    shown = [it for it in items if it.shown]
+    if not any(it.text.strip() == KEYBOARD_REDO for it in shown):
+        return []
+    column = sorted((it for it in shown if abs(it.x - KEYBOARD_COLUMN_X) < 3 and len(it.text.strip()) <= 12),
+                    key=lambda it: it.y)
+    return [it.text.strip() for it in column] if len(column) == len(KEYBOARD_ROW_BUTTONS) else []
+
+
+def keyboard_details(items: list[TextItem], layout: bytes | None) -> list[str]:
+    """Each listed key and what it does: "W, up", "B, light kick", "slash, right stick press"."""
+    keys = keyboard_rows(items)
+    actions = button_actions(layout) if key_config_valid(layout) else {}
+    out = [KEYBOARD_TITLE] if keys else []
+    for key, number in zip(keys, KEYBOARD_ROW_BUTTONS):
+        if number in actions:
+            does = " and ".join(actions[number])
+        elif number in (4, 5, 6, 7):
+            does = f"the {buttons.XBOX[number]} button"
+        else:
+            does = buttons.XBOX.get(number, "")
+        out.append(f"{KEY_WORDS.get(key, key)}, {does}")
+    return out
+
+
 def preview_open(items: list[TextItem]) -> bool:
     return any(it.shown and it.text.strip() == PREVIEW_CLOSE for it in items)
 
@@ -2128,6 +2202,13 @@ class ScaleformText:
             if name in ICON_WORDS:
                 icons = True
                 pieces.append(("text", f" {ICON_WORDS[name]} {chunk[1:]}"))
+                continue
+            if name in PAD_PICTURES and ASSIGN_WORD in text.lower():
+                # Keyboard mapping's "Press the key to be assigned to <A button
+                # picture>.": marked with the button's number, for the session
+                # to put into words with what it does (`fill_pad_marks`).
+                icons = True
+                pieces.append(("text", f"{PAD_MARK_OPEN}{PAD_PICTURES[name]}{PAD_MARK_CLOSE}{chunk[1:]}"))
                 continue
             if len(name) == 3 and name.isupper() and (name == COUNTRY_OTHER or name in country_names()):
                 # A flag before a Fighter ID, as on the change's confirmation:

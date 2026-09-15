@@ -473,6 +473,10 @@ class App:
             if layout:
                 # Button Preview: the whole layout, button by button.
                 said = layout
+            keys = scaleform.keyboard_details(items, self.session.saved_layout_bytes)
+            if keys:
+                # Keyboard Settings: each key and what it does.
+                said = memory_narration.phrase(keys)
             attack = scaleform.attack_data(items)
             if not said and attack is not None:
                 # In Training with nothing selected: the last attack in full.

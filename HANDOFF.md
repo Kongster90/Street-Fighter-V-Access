@@ -1010,6 +1010,25 @@ turns them into pad key numbers, and says `press_words` for each new press
 Whatever is held when watching starts is not a press. The user's hitbox is
 XInput controller 0. DirectInput-only pads would not be seen. Not yet heard.
 
+**Keyboard Settings (Options, Other Settings).** Sixteen keys in a column at x
+796 (from y 109, about 42 apart, alpha 0.5) beside pictures of the buttons
+they stand for, over "Redo keyboard mapping" and "Close", the only selectable
+entries, and only those were said. The pictures the screen loads are the pad
+icons up, down, right, left, A, B, X, Y, RB, LB, RT, LT, RS, LS, Start, Back,
+and the user's keys W, S, D, A, B, N, G, H, J, K, M, comma, slash, period,
+Enter, Escape agree with Input2.ini in that order (`KEYBOARD_ROW_BUTTONS`).
+Arriving adds "Press Alt R to hear which key does what." once per visit, and
+Alt R says each key with what its button does in the saved layout, "B, light
+kick". The saved layout comes from the profile (`memory_narration.
+SavedLayout`: the `KWUserProfileDetails` named MainUserProfileDetails whose
+path has no `Default__`, its `KeyConfigData` property). Redo keyboard
+mapping asks, from the game's text, "Press the key to be assigned to
+{button_A}." and "... {CMD_8}. (You can press Up/Down/Left/Right to skip.)":
+button pictures in a text about assigning are marked with their number in
+`_with_pictures` and `fill_pad_marks` makes them "the A button, light kick".
+The Alt R list was checked live; the mapping prompts are written from the
+game's strings, not yet seen.
+
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
 unavailable." at (95, 900) for a few seconds, selecting nothing, so nothing

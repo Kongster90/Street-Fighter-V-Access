@@ -184,6 +184,8 @@ class Narrator:
         self.controls_seen_at = 0.0
         self.preview_hinted = False
         self.preview_seen_at = 0.0
+        self.keyboard_hinted = False
+        self.keyboard_seen_at = 0.0
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
@@ -329,6 +331,16 @@ class Narrator:
         elif self.controls_arrived_at is not None and now - self.controls_seen_at > GROUP_MEMORY:
             self.controls_arrived_at = None
 
+        # Keyboard Settings points to Alt R for its key list, once per visit.
+        if scaleform.keyboard_rows(items):
+            if not self.keyboard_hinted and parts:
+                self.keyboard_hinted = True
+                parts = parts + [scaleform.KEYBOARD_HINT]
+                self.said = ""
+            self.keyboard_seen_at = now
+        elif self.keyboard_hinted and now - self.keyboard_seen_at > GROUP_MEMORY:
+            self.keyboard_hinted = False
+
         # Button Preview says how to use it on opening; presses are said by the
         # app as they happen, from the controller and keyboard themselves.
         if scaleform.preview_open(items):
@@ -425,6 +437,61 @@ class KeyConfig:
             self._say_once(f"key config: search failed: {exc!r}")
 
 
+class SavedLayout:
+    """Player 1's saved button layout, from the profile, for screens away from Controller Setting.
+
+    `KWUserProfileDetails.KeyConfigData`, the struct `KWKeyConfigs`, on the
+    profile the game saves (`...GameProgressSave.UserProfileDataSave.
+    MainUserProfileDetails`); copies of the same object under class defaults
+    hold the defaults, so the path picks the real one.
+    """
+
+    PROFILE_CLASS = "KWUserProfileDetails"
+
+    def __init__(self, note=None) -> None:
+        self.obj: int | None = None
+        self.offset: int | None = None
+        self._thread: threading.Thread | None = None
+        self._note = note or (lambda text: None)
+
+    def read(self) -> bytes | None:
+        from . import live
+
+        session = live.shared()
+        if self.obj is not None and self.offset is not None and session.attached:
+            config = session.pm.read(self.obj + self.offset, scaleform.KEY_CONFIG_FUNCTIONS + 1)
+            if scaleform.key_config_valid(config):
+                return config
+            self.obj = None
+        if self._thread is None or not self._thread.is_alive():
+            self._thread = threading.Thread(target=self._find, daemon=True)
+            self._thread.start()
+        return None
+
+    def _find(self) -> None:
+        from . import live, unreal
+
+        session = live.shared()
+        try:
+            if not session.attach():
+                return
+            for obj, name in session.find_by_class(self.PROFILE_CLASS, limit=64):
+                if name != "MainUserProfileDetails":
+                    continue
+                path = unreal.full_object_path(session.pm, session.names, obj, session.objects.layout)
+                if "Default__" in path:
+                    continue
+                prop = session.properties(obj).get("KeyConfigData")
+                if prop is None:
+                    continue
+                self.offset, self.obj = prop.offset, obj
+                self._note(f"saved layout: found {path} at {obj:#x}+{prop.offset:#x}")
+                return
+            self._note("saved layout: no saved profile found")
+        except Exception as exc:
+            self._note(f"saved layout: search failed: {exc!r}")
+
+
 class Session:
     """The memory reader, kept attached to the game across it closing and opening.
 
@@ -456,6 +523,8 @@ class Session:
         self._arcade_notes = 0
         self.key_config = KeyConfig(note=self.note)
         self.key_config_bytes: bytes | None = None   # the layout at the last read of Controller Setting
+        self.saved_layout = SavedLayout(note=self.note)
+        self.saved_layout_bytes: bytes | None = None   # the saved layout at the last read of Keyboard Settings
 
     @property
     def available(self) -> bool:
@@ -531,6 +600,12 @@ class Session:
                 scaleform.mark_controller_buttons(items, self.key_config_bytes)
             except Exception as exc:   # the buttons are extra; the rows still read without them
                 self.note(f"key config: read failed: {exc!r}")
+        elif scaleform.keyboard_rows(items) or any(scaleform.PAD_MARK_OPEN in it.text for it in items):
+            try:
+                self.saved_layout_bytes = self.saved_layout.read()
+            except Exception as exc:
+                self.note(f"saved layout: read failed: {exc!r}")
+        scaleform.fill_pad_marks(items, self.saved_layout_bytes)
         self.items = items
         if self._log_screens:
             self._log_screen(items, now)
