@@ -1614,6 +1614,19 @@ check("keyboard mapping says each step, the skip note once, and the key just ass
                                 "W. Press the key to be assigned to down.",
                                 "S. D. A. Press the key to be assigned to the A button, light kick.",
                                 "B. Press the key to be assigned to the B button, medium kick."], repr(steps))
+left_step = mapping_step(2, "Press the key to be assigned to back." + SKIP)
+trigger_step = mapping_step(9, "Press the key to be assigned to the right trigger button, heavy kick.")
+sf.name_keyboard_step(left_step, SAVED_LAYOUT)
+sf.name_keyboard_step(trigger_step, SAVED_LAYOUT)
+check("keyboard mapping names each step by the row the game fills, not its swapped picture",
+      [sf.keyboard_prompt(left_step), sf.keyboard_prompt(trigger_step)]
+      == ["Press the key to be assigned to right." + SKIP,
+          "Press the key to be assigned to the left bumper button, all three punches."],
+      repr([sf.keyboard_prompt(left_step), sf.keyboard_prompt(trigger_step)]))
+settings_only = keyboard_settings()
+sf.name_keyboard_step(settings_only, SAVED_LAYOUT)
+check("Keyboard Settings' own description is left alone",
+      [it.text for it in settings_only] == [it.text for it in keyboard_settings()])
 
 amem = FakeMemory()
 aroot = display_object(amem, 0, 0, 0, WHITE)

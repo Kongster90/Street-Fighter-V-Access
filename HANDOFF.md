@@ -1058,6 +1058,28 @@ drops the lit "-"; Alt R says the current step. The user went through the
 whole mapping with it on 2026-09-15, button steps and end included, and
 reported everything working.
 
+It was not working, and the game is why. Later that day the user found D
+moving left in the Tutorial, having pressed it at the step the game draws as
+the right arrow. The game fills the rows in their order (up, down, right,
+left, A, B, X, Y, right bumper, left bumper, right trigger, left trigger, ...)
+while its instructions go up, down, left arrow, right arrow, A, B, X, Y,
+right bumper, right trigger, left bumper, left trigger (`ID_SYS_Set_PCset_0209`
+on), so left and right arrive swapped, and so do the right trigger and left
+bumper steps. The lit row (gold "-") is the one being filled: gold at the third
+row while "back" was asked. Proven with Training's Key Display, which draws
+the game's reading of each press as pictures and is not in memory: a quiet
+watcher polled `GetAsyncKeyState` and saved the Key Display's newest entry a
+quarter second after each key, and gave A right arrow, D left arrow, G H J
+light, medium and heavy punch, B N light and medium kick, K heavy kick, M all
+three punches, comma all three kicks, for keys pressed at the left, right,
+..., right trigger and left bumper steps. `name_keyboard_step` now rewrites
+the instruction from the lit row (`keyboard_step`, `KEYBOARD_ROW_BUTTONS`)
+with what that button does, so the game's swapped pictures are never said.
+The Alt R key list was right all along, being read from the rows. That
+watcher is the way to check any binding question again: Key Display is the
+game's own word on what a press does. Its log also caught the user typing in
+the chat window, so only count presses with a frame saved.
+
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
 unavailable." at (95, 900) for a few seconds, selecting nothing, so nothing

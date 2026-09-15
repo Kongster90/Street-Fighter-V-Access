@@ -640,6 +640,7 @@ class Session:
             except Exception as exc:
                 self.note(f"saved layout: read failed: {exc!r}")
         scaleform.fill_pad_marks(items, self.saved_layout_bytes)
+        scaleform.name_keyboard_step(items, self.saved_layout_bytes)
         self.items = items
         if self._log_screens:
             self._log_screen(items, now)

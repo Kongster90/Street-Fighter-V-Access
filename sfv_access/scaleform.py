@@ -2070,6 +2070,37 @@ def keyboard_prompt(items: list[TextItem]) -> str | None:
     return re.sub(r"\s+([.,])", r"\1", text) if text.startswith(KEYBOARD_PROMPT) else None
 
 
+# The game's instructions do not match the rows it fills. It fills the rows in
+# order, up, down, right, left, ..., right bumper, left bumper, right trigger,
+# while its pictures go up, down, left, right, ..., right bumper, right
+# trigger, left bumper. So a key pressed for the left arrow went to right, and
+# one pressed for the right trigger went to the left bumper. On 2026-09-15 the
+# user found D moving left after pressing it for "forward", and Training's Key
+# Display gave A right, D left, M all three punches and K heavy kick for keys
+# pressed at the left, right, right trigger and left bumper steps. The lit row
+# is the truth, so each step is named by it.
+
+
+def keyboard_step(items: list[TextItem]) -> int | None:
+    """The pad button Redo keyboard mapping is filling now: the lit row's."""
+    column = sorted((it for it in items if it.shown and abs(it.x - KEYBOARD_COLUMN_X) < 3
+                     and len(it.text.strip()) <= 12), key=lambda it: it.y)
+    if len(column) != len(KEYBOARD_ROW_BUTTONS):
+        return None
+    lit = [n for n, it in enumerate(column) if it.selected]
+    return KEYBOARD_ROW_BUTTONS[lit[0]] if len(lit) == 1 else None
+
+
+def name_keyboard_step(items: list[TextItem], layout: bytes | None) -> None:
+    """Make Redo keyboard mapping's instruction name the row being filled, not the game's picture."""
+    foot = footer([it for it in items if it.shown])
+    number = keyboard_step(items)
+    if foot is None or number is None or not foot.text.strip().startswith(KEYBOARD_PROMPT):
+        return
+    skip = KEYBOARD_SKIP.search(foot.text)
+    foot.text = f"{KEYBOARD_PROMPT} {pad_button_phrase(number, layout)}." + (skip.group(0) if skip else "")
+
+
 def keyboard_prompt_words(prompt: str, with_skip: bool) -> str:
     return prompt if with_skip else KEYBOARD_SKIP.sub("", prompt).strip()
 
