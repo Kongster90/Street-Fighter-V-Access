@@ -120,6 +120,14 @@ the interface from memory" and "Where it stands"):
 - Training's attack data: one sentence when an attack or combo is over, "2
   hits, 57 damage, plus 9", and all of it on Alt R.
 
+Played by the user on 2026-09-15:
+
+- Controller Settings (Training and Versus): each action's button, following
+  edits, "left bumper, moved from Button Combo 3"; Alt B naming buttons as
+  Xbox, PlayStation or keyboard keys, with a hint on opening; Button Preview
+  saying what each pressed button does.
+- Starting with the game from Steam, closing with it.
+
 Written and checked against the game or a recording, but not yet heard in
 play: Arcade's final-stage opponent card ("FINAL STAGE. SAGAT. REWARD.
 16620"); the Special Artwork credit after an ending; `SUMMARY_SETTLE`, which
@@ -1479,4 +1487,6 @@ table) before each class search, instance search and name table read. In
 Versus the key configuration objects exist only while their screen is open
 (`WSVersusBattleSettingGFxPlayer.KeyConfigGFxPlayers` +0x4C8 is null after);
 with two players' screens open, `KeyConfig` would take the first with a
-movie, which may be the wrong player's.
+movie, which may be the wrong player's. Confirmed by the user on 2026-09-15:
+started with the game from Steam, Controller Settings reads each button
+again.
