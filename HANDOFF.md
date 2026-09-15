@@ -839,7 +839,10 @@ prompt again with '"Kong" doesn't meet the minimum character requirement...'
 and Next; it was said in full, then three seconds in Next flickered between
 its chosen drawing (layer at 1161, 671) and a plain one (960, 690), and
 "Next" cut the message off. `landed_on` no longer names a chosen button that
-is alone in a group the narrator already knows is open. Still to come in that flow: the Fighter ID entry
+is alone in a group the narrator already knows is open. The user then
+registered a six letter ID through the whole flow by ear, ending on
+"United States, Konggster. Registration complete. Welcome to the world of
+STREET FIGHTER V! Next" (2026-09-14). Still to come in that flow: the Fighter ID entry
 and the confirmation.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do
