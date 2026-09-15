@@ -986,12 +986,21 @@ Button Preview, opened from Controller Setting, draws the controller with
 each button's action as pictures; its only text is "<button_b> Hold to
 close" at (642, 867), over the Controller Setting rows (Light Punch's row
 covered). `mark_controller_buttons` notes the whole layout on that hint
-(`layout_sentence`), and `screen_summary` says it once: "Button Preview. X,
-light punch. Y, medium punch. right bumper, heavy punch. left bumper, all
-three punches. A, light kick. ...  Hold B to close." Buttons go in
-`PREVIEW_ORDER`, the top row X, Y, RB, LB then A, B, RT, LT, and actions by
-`ACTION_WORDS` (the button combos as what they press); keyboard style closes
-with Escape. Checked live; not yet heard.
+(`layout_sentence`): "Button Preview. X, light punch. Y, medium punch. right
+bumper, heavy punch. left bumper, all three punches. A, light kick. ...  Hold
+B to close." Buttons go in `PREVIEW_ORDER`, the top row X, Y, RB, LB then A,
+B, RT, LT, and actions by `ACTION_WORDS` (the button combos as what they
+press); keyboard style closes with Escape. That was said on opening at first;
+the user did not want it, but each button's action as it is pressed, which
+is the point of the screen. Now opening says only "Button Preview. Press a
+button to hear what it does. Hold B to close.", Alt R gives the layout, and
+`pads.PressWatcher` runs while `preview_open`: every 10 ms it reads XInput
+for all four controllers (buttons, triggers past 100, the left stick past
+16000 as directions) and `GetAsyncKeyState` for the keys bound in Input2.ini,
+turns them into pad key numbers, and says `press_words` for each new press
+("light punch", "Start, no action", "up") from the layout at the last read.
+Whatever is held when watching starts is not a press. The user's hitbox is
+XInput controller 0. DirectInput-only pads would not be seen. Not yet heard.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently

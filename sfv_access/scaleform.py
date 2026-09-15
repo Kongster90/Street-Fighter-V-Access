@@ -1813,12 +1813,16 @@ def mark_controller_buttons(items: list[TextItem], config: bytes | None) -> None
 
 
 # Button Preview draws the controller with each button's action as pictures;
-# its only text is "<B picture> Hold to close", over Controller Setting. It is
-# said as the layout, button by button, in the order the buttons sit on a pad
-# or stick: the top row X, Y, right bumper, left bumper, then the bottom row A,
-# B, right trigger, left trigger, then the rest. The button combos are said by
-# what they press, since their names on the Controller Setting rows do not say.
+# its only text is "<B picture> Hold to close", over Controller Setting. The
+# user did not want the whole layout said on opening, but each button's action
+# as it is pressed, which `pads.PressWatcher` reads from Windows and
+# `press_words` puts into words. Alt R says the whole layout, button by button,
+# in the order the buttons sit on a pad or stick: the top row X, Y, right
+# bumper, left bumper, then the bottom row A, B, right trigger, left trigger,
+# then the rest. The button combos are said by what they press, since their
+# names on the Controller Setting rows do not say.
 PREVIEW_CLOSE = "Hold to close"
+PREVIEW_HINT = "Button Preview. Press a button to hear what it does. Hold {close} to close."
 PREVIEW_ORDER = (4, 5, 9, 8, 6, 7, 11, 10, 12, 13, 14, 15, 0, 1, 2, 3)
 ACTION_WORDS = ("light punch", "medium punch", "light kick", "medium kick", "all three punches", "heavy punch",
                 "all three kicks", "heavy kick", "throw", "V-Skill", "V-Trigger", "light punch plus medium punch",
@@ -1826,19 +1830,46 @@ ACTION_WORDS = ("light punch", "medium punch", "light kick", "medium kick", "all
 CLOSE_BUTTON = 7   # B, which the hint's picture shows
 
 
-def layout_sentence(config: bytes) -> str:
-    """"X, light punch. Y, medium punch. ..." for every button with an action, then how to close."""
+def _close_words() -> str:
+    return "Escape" if buttons.style() == "keyboard" else button_words(CLOSE_BUTTON)
+
+
+def button_actions(config: bytes) -> dict[int, list[str]]:
     actions: dict[int, list[str]] = defaultdict(list)
     for index in range(KEY_CONFIG_FUNCTIONS):
         if config[index] != BUTTON_UNASSIGNED:
             actions[config[index]].append(ACTION_WORDS[index])
+    return actions
+
+
+def layout_sentence(config: bytes) -> str:
+    """"X, light punch. Y, medium punch. ..." for every button with an action, then how to close."""
+    actions = button_actions(config)
     parts = [f"{button_words(number)}, {' and '.join(actions[number])}" for number in PREVIEW_ORDER if number in actions]
-    close = "Escape" if buttons.style() == "keyboard" else button_words(CLOSE_BUTTON)
-    return ". ".join(["Button Preview"] + parts + [f"Hold {close} to close"]) + "."
+    return ". ".join(["Button Preview"] + parts + [f"Hold {_close_words()} to close"]) + "."
+
+
+def press_words(number: int, config: bytes | None) -> str:
+    """What pressing a button does in the layout: "light punch", or "Start, no action"."""
+    if number in DIRECTION_NUMBERS:
+        return button_words(number)
+    actions = button_actions(config).get(number) if key_config_valid(config) else None
+    return " and ".join(actions) if actions else f"{button_words(number)}, no action"
+
+
+DIRECTION_NUMBERS = (0, 1, 2, 3)
+
+
+def preview_open(items: list[TextItem]) -> bool:
+    return any(it.shown and it.text.strip() == PREVIEW_CLOSE for it in items)
+
+
+def preview_hint() -> str:
+    return PREVIEW_HINT.format(close=_close_words())
 
 
 def preview_summary(items: list[TextItem]) -> str | None:
-    """Button Preview's layout sentence, once the layout has been read."""
+    """Button Preview's layout sentence, for the read key, once the layout has been read."""
     hint = next((it for it in items if it.shown and it.text.strip() == PREVIEW_CLOSE), None)
     return hint.note if hint is not None and hint.note else None
 
@@ -1908,9 +1939,6 @@ def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
         summary = result_summary(items)
         if summary is None and any(it.shown and it.text.strip() == ARCADE_FINAL_STAGE for it in items):
             summary = ARCADE_FINAL_STAGE
-        return True, summary
-    if any(it.shown and it.text.strip() == PREVIEW_CLOSE for it in items):
-        summary = preview_summary(items)
         return True, summary
     summary = versus_summary(items) or ending_summary(items) or trial_summary(items) or status_line(items)
     return summary is not None, summary

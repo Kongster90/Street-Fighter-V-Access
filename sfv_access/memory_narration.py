@@ -182,6 +182,8 @@ class Narrator:
         self.controls_arrived_at: float | None = None
         self.controls_hinted = False
         self.controls_seen_at = 0.0
+        self.preview_hinted = False
+        self.preview_seen_at = 0.0
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
@@ -327,6 +329,20 @@ class Narrator:
         elif self.controls_arrived_at is not None and now - self.controls_seen_at > GROUP_MEMORY:
             self.controls_arrived_at = None
 
+        # Button Preview says how to use it on opening; presses are said by the
+        # app as they happen, from the controller and keyboard themselves.
+        if scaleform.preview_open(items):
+            # Its close hint, a text that changed with the screen, is in the
+            # line below already.
+            parts = [p for p in (parts or []) if p.strip() != scaleform.PREVIEW_CLOSE] or None
+            if not self.preview_hinted:
+                self.preview_hinted = True
+                parts = (parts or []) + [scaleform.preview_hint()]
+                self.said = ""
+            self.preview_seen_at = now
+        elif self.preview_hinted and now - self.preview_seen_at > GROUP_MEMORY:
+            self.preview_hinted = False
+
         # The game's short messages select nothing, so they are said as they
         # appear: once while they show, and again if the same one comes back,
         # as pressing X on the shop's Special again does.
@@ -427,6 +443,7 @@ class Session:
         self._arcade_seen_at = 0.0
         self._arcade_notes = 0
         self.key_config = KeyConfig()
+        self.key_config_bytes: bytes | None = None   # the layout at the last read of Controller Setting
 
     @property
     def available(self) -> bool:
@@ -498,7 +515,8 @@ class Session:
             return None
         if scaleform.on_controller_setting(items):
             try:
-                scaleform.mark_controller_buttons(items, self.key_config.read())
+                self.key_config_bytes = self.key_config.read()
+                scaleform.mark_controller_buttons(items, self.key_config_bytes)
             except Exception as exc:   # the buttons are extra; the rows still read without them
                 self.note(f"key config: read failed: {exc!r}")
         self.items = items

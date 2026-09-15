@@ -1549,18 +1549,35 @@ def preview(layout):
 
 PREVIEW_SAID = ("Button Preview. X, light punch. Y, medium punch. right bumper, heavy punch. left bumper, throw. "
                 "A, light kick. B, medium kick. right trigger, heavy kick. left trigger, all three kicks. Hold B to close.")
-check("Button Preview is said as the layout, button by button in the pad's order",
-      sf.screen_summary(preview(EDITED_LAYOUT)) == (True, PREVIEW_SAID), repr(sf.screen_summary(preview(EDITED_LAYOUT))))
+check("Alt R on Button Preview says the layout, button by button in the pad's order",
+      sf.preview_summary(preview(EDITED_LAYOUT)) == PREVIEW_SAID and sf.screen_summary(preview(EDITED_LAYOUT)) == (False, None),
+      repr(sf.preview_summary(preview(EDITED_LAYOUT))))
 buttons._settings = {"button_names": "keyboard"}
 check("in keyboard keys, closing with Escape",
-      sf.screen_summary(preview(SAVED_LAYOUT))[1].startswith("Button Preview. G, light punch. H, medium punch. J, heavy punch. K, all three punches.")
-      and sf.screen_summary(preview(SAVED_LAYOUT))[1].endswith("Hold Escape to close."),
-      repr(sf.screen_summary(preview(SAVED_LAYOUT))))
+      sf.preview_summary(preview(SAVED_LAYOUT)).startswith("Button Preview. G, light punch. H, medium punch. J, heavy punch. K, all three punches.")
+      and sf.preview_summary(preview(SAVED_LAYOUT)).endswith("Hold Escape to close."), repr(sf.preview_summary(preview(SAVED_LAYOUT))))
 buttons._settings = {"button_names": "xbox"}
 opened = narrate([(0.0, controller("Throw", EDITED_LAYOUT)), (0.5, preview(EDITED_LAYOUT)),
                   (1.0, preview(EDITED_LAYOUT)), (2.0, preview(EDITED_LAYOUT))])
-check("opening Button Preview from Controller Setting says the layout once",
-      [s for _, s in opened] == [f"Throw. left bumper. {mn.CONTROLS_HINT}", PREVIEW_SAID], repr(opened))
+check("opening Button Preview says how to use it once, not the whole layout",
+      [s for _, s in opened] == [f"Throw. left bumper. {mn.CONTROLS_HINT}",
+                                 "Button Preview. Press a button to hear what it does. Hold B to close."], repr(opened))
+check("a press says what the button does in the layout being edited",
+      [sf.press_words(n, EDITED_LAYOUT) for n in (4, 8, 10, 14, 0)]
+      == ["light punch", "throw", "all three kicks", "Start, no action", "up"],
+      repr([sf.press_words(n, EDITED_LAYOUT) for n in (4, 8, 10, 14, 0)]))
+
+from sfv_access import pads  # noqa: E402
+
+state = pads._State()
+state.Gamepad.wButtons = 0x4000 | 0x0100
+state.Gamepad.bRightTrigger = 200
+state.Gamepad.sThumbLX = -30000
+check("a controller's buttons, triggers and stick are read as the game's button numbers",
+      pads.pad_held(state) == {4, 8, 11, 2}, repr(pads.pad_held(state)))
+check("the keyboard bindings' key names find their keys",
+      [pads.virtual_key(k) for k in ("G", "Comma", "Enter", "F5", "NumPadOne", "Nonsense")]
+      == [0x47, 0xBC, 0x0D, 0x74, 0x61, None])
 HINT = mn.CONTROLS_HINT
 arriving = narrate([(0.0, controller("Throw", None)), (1.0, controller("Throw", EDITED_LAYOUT))])
 check("the layout arriving after the screen is not taken for a change",

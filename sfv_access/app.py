@@ -23,7 +23,7 @@ import time
 from pathlib import Path
 
 from . import capture as _capture
-from . import buttons, game, hud, instance, memory_narration, menu, ocr, scaleform, screens, strings
+from . import buttons, game, hud, instance, memory_narration, menu, ocr, pads, scaleform, screens, strings
 from .capture import Capture
 from .hotkeys import Hotkeys
 from .speech import Speaker
@@ -320,6 +320,8 @@ class App:
         self.use_memory = True
         self.session = memory_narration.Session()
         self.narrator = memory_narration.Narrator()
+        # Button Preview: each button said as it is pressed, while it is open.
+        self.presses = pads.PressWatcher(self._on_preview_press)
         self._hang_file = None
 
     # -------------------------------------------------------------- lifecycle
@@ -370,6 +372,7 @@ class App:
             self._hang_file = None
 
         threading.Thread(target=self._watch_loop, daemon=True).start()
+        self.presses.start()
         if self.with_game:
             threading.Thread(target=self._follow_game, daemon=True).start()
 
@@ -379,6 +382,7 @@ class App:
         except KeyboardInterrupt:
             pass
         finally:
+            self.presses.stop()
             self.keys.stop()
             self.capture.close()
             self.session.close()
@@ -465,6 +469,10 @@ class App:
             _summary_screen, summary = scaleform.screen_summary(items)
             if summary:
                 said = memory_narration.phrase([summary, said])
+            layout = scaleform.preview_summary(items)
+            if layout:
+                # Button Preview: the whole layout, button by button.
+                said = layout
             attack = scaleform.attack_data(items)
             if not said and attack is not None:
                 # In Training with nothing selected: the last attack in full.
@@ -829,8 +837,17 @@ class App:
                 time.sleep(memory_narration.POLL if self.use_memory and self.session.available
                            else WATCH_INTERVAL)
 
+    def _on_preview_press(self, number: int) -> None:
+        said = scaleform.press_words(number, self.session.key_config_bytes)
+        self._log(said)
+        self.speech.say(said)
+
     def _narrate_memory(self, items) -> None:
         """Speak whatever the memory narrator decides this reading lands on."""
+        if scaleform.preview_open(items) and self.watching:
+            self.presses.active.set()
+        else:
+            self.presses.active.clear()
         said = self.narrator.step(items, time.monotonic())
         # F9 can land between the read and this point; once the
         # screen has been chosen, memory must not get the last word.
@@ -843,6 +860,7 @@ class App:
 
     def _pixel_tick(self) -> None:
         """One tick of narration from the screen."""
+        self.presses.active.clear()   # Button Preview is known only from memory
         # Capture is whole-screen, so without this the narrator reads
         # whatever is in front when the game is behind or minimised.
         win = game.find_window()
