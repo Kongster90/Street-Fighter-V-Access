@@ -1715,6 +1715,67 @@ check("the result screen says its summary once when complete, then the Results M
                                "Play Again", "Return to Character/Stage Select"], repr(said))
 check("phrases join without doubled punctuation",
       mn.phrase(["Are you sure?", "No", "Costume.", "Kenji"]) == "Are you sure? No. Costume. Kenji")
+
+# Demonstrations, as logged on 2026-09-15: the tips screen while #01 loads,
+# then the first page, which waits on Start Demonstration, the pause menu over
+# it, and a later page's caption waiting on Proceed.
+TIP_TEXT = ('With the "Character Guides" in Demonstrations, \nnot only can you get to know how to fight as your '
+            'favorite character,\nbut you can also get to know  how other characters fight, \nfurther improving '
+            'your odds of winning matches.')
+MOVING = ("By pressing the left or right directional buttons, you can move your character towards your opponent "
+          "or dodge incoming attacks.")
+demo_select = [item("Demonstrations", 157, 243, GOLD), item("#01", 426, 251, GOLD), item("Basic Controls", 570, 267, GOLD),
+               item("#02", 426, 331, GREY), item("Normal Attacks & Unique Attacks", 570, 347, GREY),
+               item("Explains the battle system in detail using replays and descriptions.", 110, 992)]
+tips_heading = sf.TextItem("DEMONSTRATION TIPS", 135, 257, WHITE, 4, chain=(601, 610, 620, 630))
+tips_whole = [tips_heading, sf.TextItem("TIP 1", 420, 415, WHITE, 6, chain=(602, 640, 650, 610, 620, 630)),
+              sf.TextItem(TIP_TEXT, 929, 550, WHITE, 5, chain=(603, 650, 610, 620, 630))]
+ryu = sf.TextItem("RYU", 1233, 122, WHITE, 3, chain=(504, 540, 550))
+
+
+def demo_page(texts, button=None, x=960):
+    out = [ryu] + [sf.TextItem(text, x, y, WHITE, 4, chain=(500 + n, 510, 520, 530)) for n, (text, y) in enumerate(texts)]
+    if button:
+        out.append(sf.TextItem(button, 960, 960, WHITE, 5, chain=(505, 511, 512, 520, 530)))
+    return out
+
+
+moving = demo_page([("Moving", 344), (MOVING, 480)])
+moving_waits = demo_page([("Moving", 344), (MOVING, 480)], "Start Demonstration")
+pause_over = moving_waits + [sf.TextItem("PAUSE MENU", 310, 250, WHITE, 4, chain=(700, 701, 702, 703)),
+                             sf.TextItem("Return to Demonstration Select", 410, 311, GOLD, 4, chain=(704, 705, 702, 703)),
+                             sf.TextItem("Go to Main Menu", 410, 353, GREY, 4, chain=(706, 707, 702, 703)),
+                             item("Exit the current demonstration and return to the Demonstration Select Screen.", 110, 992)]
+caption = demo_page([("back and forward move your character forward and backward.\nYou can move quickly with back, "
+                      "back and forward, forward, and jump with up back, up, and up forward.", 257)])
+caption_waits = caption + [sf.TextItem("Proceed", 960, 960, WHITE, 5, chain=(505, 511, 512, 520, 530))]
+demo_said = narrate([
+    (0.0, demo_select), (0.5, demo_select),
+    (1.0, [tips_heading]), (1.2, tips_whole), (1.3, []),        # a quick load: the tip shows a tenth of a second
+    (2.0, [ryu, item("Beginner", 960, 491)]), (3.0, moving), (3.8, moving_waits), (4.0, moving_waits),
+    (4.3, moving_waits), (5.0, moving_waits),
+    (10.0, pause_over), (10.5, pause_over), (12.0, moving_waits), (12.5, moving_waits),
+    (20.0, [ryu]), (20.5, caption), (21.3, caption_waits), (21.8, caption_waits), (22.5, caption_waits),
+])
+check("a demonstration says its tip as it loads, then each page once, when it waits for a button",
+      [s for _, s in demo_said] == [
+          "Demonstrations. #01. Basic Controls",
+          "DEMONSTRATION TIPS. " + " ".join(TIP_TEXT.split()),
+          f"Moving. {MOVING} Start Demonstration",
+          "Return to Demonstration Select",
+          "back and forward move your character forward and backward. You can move quickly with back, back and "
+          "forward, forward, and jump with up back, up, and up forward. Proceed"], repr(demo_said))
+check("the tips heading alone says nothing, waiting for its tip",
+      sf.screen_summary([tips_heading]) == (True, None) and sf.demonstration_page(moving) is None)
+check("the read key says the page",
+      sf.screen_summary(pause_over) == (True, f"Moving. {MOVING} Start Demonstration"))
+check("a picture's words are followed by the text's own comma without a space",
+      sf.describe_inputs([("picture", "cmd_6"), ("picture", "cmd_6"), ("text", ", and jump with "), ("picture", "cmd_7"),
+                          ("text", ", "), ("picture", "cmd_8"), ("text", ", and "), ("picture", "cmd_9"), ("text", ".")])
+      == "forward, forward, and jump with up back, up, and up forward.",
+      repr(sf.describe_inputs([("picture", "cmd_6"), ("picture", "cmd_6"), ("text", ", and jump with "),
+                               ("picture", "cmd_7"), ("text", ", "), ("picture", "cmd_8"), ("text", ", and "),
+                               ("picture", "cmd_9"), ("text", ".")])))
 # A session whose block list has missed the text's block: quick reads find
 # nothing, so after a while a full search must find it, speak from it and say
 # why in the log. The log is a scratch file; tests never write to real data.

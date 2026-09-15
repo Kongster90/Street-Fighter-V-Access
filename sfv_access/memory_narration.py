@@ -90,16 +90,7 @@ def _reasons(items) -> str:
                      for why, texts in groups.items()) or "none"
 
 
-def phrase(texts: list[str]) -> str:
-    """Join pieces into one sentence without doubling their punctuation."""
-    out = ""
-    for text in (t.strip().replace("\n", " ") for t in texts):
-        if not text:
-            continue
-        if out:
-            out += " " if out[-1] in ".?!:" else ". "
-        out += text
-    return out
+phrase = scaleform.phrase
 
 
 def describe(it: scaleform.TextItem) -> str:
@@ -233,8 +224,10 @@ class Narrator:
                 parts, self.pending = None, None
             if (summary or "") != self.summary_pending:
                 self.summary_pending, self.summary_since = summary or "", now
+            # A tips screen's tip arrives whole, and can be gone in a tenth of a second.
+            settle = 0.0 if scaleform.tips_screen(items)[1] else SUMMARY_SETTLE
             if summary and summary != self.summary_said:
-                if now - self.summary_since >= SUMMARY_SETTLE:
+                if now - self.summary_since >= settle:
                     # Anything selected while it settled comes after it, once:
                     # the final stage's opponent card arrives with FINAL STAGE.
                     held = [p for p in self.summary_held + (parts or []) if p not in summary]

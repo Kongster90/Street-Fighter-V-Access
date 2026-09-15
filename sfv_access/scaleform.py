@@ -263,6 +263,18 @@ def _where(it: TextItem):
     return (round(it.x), round(it.y), it.text, it.slot)
 
 
+def phrase(texts: list[str]) -> str:
+    """Join pieces into one sentence without doubling their punctuation."""
+    out = ""
+    for text in (t.strip().replace("\n", " ") for t in texts):
+        if not text:
+            continue
+        if out:
+            out += " " if out[-1] in ".?!:" else ". "
+        out += text
+    return out
+
+
 def _unique(texts: list[str]) -> list[str]:
     """Each text once, in order. Some screens draw a title in three layers."""
     seen = set()
@@ -1311,7 +1323,7 @@ def describe_inputs(pieces: list[tuple[str, str]]) -> str:
         both_inputs = kind == "input" and previous == "input"
         both_directions = both_inputs and name.startswith("cmd_") and (previous_name or "").startswith("cmd_")
         both_buttons = both_inputs and not name.startswith("cmd_") and not (previous_name or "cmd_").startswith("cmd_")
-        if previous is None:
+        if previous is None or (kind == "text" and said[0] in ",.;:!?"):
             gap = ""
         elif name in MANNER_WORDS:
             gap = " "
@@ -1583,6 +1595,62 @@ def status_line(items: list[TextItem]) -> str | None:
         return None
     text = shown[0].text.strip()
     return text if text.endswith("...") and len(text) <= STATUS_MAX else None
+
+
+# -------------------------------------------------------------- demonstrations
+#
+# Challenges' Demonstrations explain the game in parts, each a page over the
+# dimmed fight followed by a short replay. The first page is a title and its
+# explanation ("Moving" at (960, 344), "By pressing the left or right
+# directional buttons..." at (960, 480)); later ones a caption alone at (960,
+# 257), with pictures of the inputs in it. Each page then waits for a button,
+# showing "Start Demonstration" or "Proceed" at (960, 960) about a second after
+# its text, in a holder beside the page's own under one object. Nothing is
+# selected, so nothing was said, and on 2026-09-15 the user sat on the first
+# page not knowing it waited.
+#
+# While one loads, a tips screen shows "DEMONSTRATION TIPS" at (135, 257), "TIP
+# 2" and the tip, heading first and the rest a fifth of a second later, the tip
+# and its label under the heading's parent. Only the heading was said, since
+# nothing moved when the rest came. On a quick load it shows for a tenth of a
+# second. Other modes' tips screens use the headings below.
+
+DEMO_BUTTONS = ("Start Demonstration", "Proceed")
+DEMO_BUTTON_Y = 960.0
+TIPS_HEADINGS = ("DEMONSTRATION TIPS", "ARCADE MODE TIPS", "SURVIVAL MODE TIPS", "EXTRA BATTLE TIPS",
+                 "TIPS FOR TRIALS", "TIP")
+TIPS_LABEL = re.compile(r"TIPS? \d+")
+
+
+def demonstration_page(items: list[TextItem]) -> str | None:
+    """"Moving. By pressing the left or right directional buttons, ... Start Demonstration" once a page waits."""
+    shown = [it for it in items if it.shown]
+    button = next((it for it in shown if not it.selected and it.text.strip() in DEMO_BUTTONS
+                   and abs(it.y - DEMO_BUTTON_Y) <= TOAST_TOLERANCE and len(it.chain) >= 3), None)
+    if button is None:
+        return None
+    page = button.chain[-2]
+    texts = sorted((it for it in shown if it is not button and not it.selected and it.y < button.y
+                    and len(it.chain) >= 2 and it.chain[-2] == page and it.chain[-1] == button.chain[-1]),
+                   key=lambda it: (it.y, it.x))
+    if not texts:
+        return None
+    return phrase([" ".join(it.text.split()) for it in texts] + [button.text])
+
+
+def tips_screen(items: list[TextItem]) -> tuple[bool, str | None]:
+    """Whether a mode's tips screen shows, and "DEMONSTRATION TIPS. With the ..." once its tip does."""
+    shown = [it for it in items if it.shown]
+    heading = next((it for it in shown if it.text.strip() in TIPS_HEADINGS and len(it.chain) >= 2), None)
+    if heading is None:
+        return False, None
+    holder = heading.chain[1]
+    tips = [it for it in shown if it is not heading and holder in it.chain
+            and not TIPS_LABEL.fullmatch(it.text.strip()) and it.text.strip()]
+    if not tips:
+        return True, None
+    tip = max(tips, key=lambda it: len(it.text))
+    return True, phrase([heading.text, " ".join(tip.text.split())])
 
 
 # ------------------------------------------------------------------ text entry
@@ -2044,8 +2112,8 @@ def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
     """For screens read as one sentence rather than by what is selected.
 
     Whether this is one, and the sentence once all of it is showing: the
-    result screen after a match, the VS screen before one, and the caption
-    of an Arcade ending. Arcade's
+    result screen after a match, the VS screen before one, the caption
+    of an Arcade ending, a tips screen and a demonstration's page. Arcade's
     result screen before the final stage offers one opponent and no choice,
     and says "FINAL STAGE"; its card, gold, follows (`_show_final_opponent`).
     """
@@ -2054,7 +2122,11 @@ def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
         if summary is None and any(it.shown and it.text.strip() == ARCADE_FINAL_STAGE for it in items):
             summary = ARCADE_FINAL_STAGE
         return True, summary
-    summary = versus_summary(items) or ending_summary(items) or trial_summary(items) or status_line(items)
+    tips, summary = tips_screen(items)
+    if tips:
+        return True, summary
+    summary = (versus_summary(items) or ending_summary(items) or trial_summary(items) or status_line(items)
+               or demonstration_page(items))
     return summary is not None, summary
 
 

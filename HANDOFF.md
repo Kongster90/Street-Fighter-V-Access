@@ -1113,6 +1113,24 @@ strings of that kind ("Special Artwork: <artist>", "SF Legacy: ...
 Artwork"), so a single shown text containing "Artwork" that is one of the
 game's strings is read too. Checked live, not yet heard.
 
+**Demonstrations.** Asked for on 2026-09-15. Choosing one (Challenges,
+Demonstrations, VOL. 1, "#01. Basic Controls") loads with a tips screen:
+"DEMONSTRATION TIPS" at (135, 257), then a fifth of a second later "TIP 2"
+and the tip under the heading's parent, shown for five seconds on the first
+load and a tenth of a second on the next. Only the heading was said, nothing
+having moved when the tip came. `tips_screen` says heading and tip as one
+summary with no settling time, and holds the heading alone back; the headings
+of the other modes' tips screens are in `TIPS_HEADINGS`, unseen. Then a page
+over the dimmed fight: a title and explanation ("Moving" at (960, 344), its
+text at (960, 480)), or later a caption alone at (960, 257) with inputs as
+pictures, and about a second later "Start Demonstration" or "Proceed" at (960,
+960), waiting for a button, nothing selected. The user sat on the first page
+for a minute not knowing it waited. `demonstration_page` says the page's texts
+and the button once the button shows. Pictures followed by a comma read
+"forward , and" until `describe_inputs` stopped putting a space before
+punctuation. Checked live on the Proceed page; what the replays between pages
+show is not yet known.
+
 Known gaps. The clock sits one object further down and is not resolved.
 Screens other than Versus and Training may head their character select
 differently, and a prompt drawn inside character select's own movie, if there
