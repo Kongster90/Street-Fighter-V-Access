@@ -1368,6 +1368,25 @@ check("a tab of two flags among empty places is still read, on the Home screen",
 nreader.on_home_screen = False
 check("and nowhere else", sf.find_grids(nreader.children, {nroot2}, tiles_of=nreader._tiles_of) == {})
 sf._country_names = None
+ID_ERROR = '"Kong" doesn\'t meet the minimum character requirement.'
+
+
+def id_error(chosen):
+    """The Fighter ID error as logged: the message, and Next drawn either as a
+    chosen button in its layer or plain, flickering between the two."""
+    message = sf.TextItem(ID_ERROR, 520, 440, (0.62, 0.62, 0.62, 0.5), 3, chain=(1, 90, 99))
+    if chosen:
+        return [message, sf.TextItem("Next", 1161, 671, (1, 1, 1, 0.15), 5, chain=(2, 3, 80, 90, 99),
+                                     chosen=True, group=80)]
+    return [message, sf.TextItem("Next", 960, 690, WHITE, 4, chain=(4, 5, 90, 99))]
+
+
+flicker = narrate([(0.0, id_error(True)), (3.0, id_error(False)), (3.3, id_error(True)), (4.0, id_error(False)),
+                   (4.3, id_error(True))])
+check("a prompt's only button flickering does not cut off its message",
+      [s for _, s in flicker] == [f"{ID_ERROR} Next"], repr(flicker))
+check("moving between two buttons still names each",
+      [s for _, s in narrate([(0.0, on_no), (0.5, on_yes), (1.0, on_no)])][-2:] == ["Yes", "No"])
 ENTRY_FOOT = "Please enter text using the keyboard.  /ESCAPE Key: Cancel entry and close window  "
 
 

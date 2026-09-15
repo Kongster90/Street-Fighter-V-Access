@@ -332,6 +332,13 @@ def landed_on(
         for it in fresh:
             if it.text in seen:
                 continue
+            # A prompt's only button taking the selection again while the
+            # prompt stays open is not a move, there being nowhere to move to.
+            # The Fighter ID error's Next flickered between its chosen and
+            # plain drawing three seconds in, and "Next" cut off the message.
+            if (it.chosen and it.group in recent_groups and it.group in it.chain
+                    and not any(other is not it and it.group in other.chain for other in after)):
+                continue
             seen.add(it.text)
             named.append(it.text)
             if it.note:

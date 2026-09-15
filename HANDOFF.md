@@ -834,7 +834,12 @@ with Yes, No and Do not change, read as any prompt; its message begins with
 the chosen Home's flag as a picture named by its code ("USA") before the ID,
 which `_with_pictures` now says as the country: "United States, Kongster. Are
 you sure you want to proceed using this information? ...". The game checks
-the ID after Yes; strings mention "cannot be used" and IDs in use. Still to come in that flow: the Fighter ID entry
+the ID after Yes. A four letter ID gave the "Please choose a Fighter ID."
+prompt again with '"Kong" doesn't meet the minimum character requirement...'
+and Next; it was said in full, then three seconds in Next flickered between
+its chosen drawing (layer at 1161, 671) and a plain one (960, 690), and
+"Next" cut the message off. `landed_on` no longer names a chosen button that
+is alone in a group the narrator already knows is open. Still to come in that flow: the Fighter ID entry
 and the confirmation.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do
