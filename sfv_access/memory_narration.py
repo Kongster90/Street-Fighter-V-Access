@@ -44,6 +44,9 @@ ATTACK_SETTLE = 0.25
 # and long combos, the values holding still this long is taken as the end. In
 # the log the frame text came back about a second after a long combo's last hit.
 ATTACK_SETTLE_UNCOUNTED = 2.0
+CONTROLS_HINT = "Press Alt B to cycle through button styles."
+# If arriving on Controller Setting names nothing, the hint is said alone after this.
+CONTROLS_HINT_WAIT = 0.6
 RETRY = 3.0            # how often to look for the game while not attached
 ALIVE_CHECK = 1.0      # how often to confirm the attached game is still there
 # The block list is refreshed once a second in the background. If that falls
@@ -174,6 +177,11 @@ class Narrator:
         self.attack_other_running = False
         self.attack_still_since: float | None = None
         self.attack_changed_at = 0.0
+        # Controller Setting's hint: when this visit began, whether the hint
+        # has been said, and when the screen last showed.
+        self.controls_arrived_at: float | None = None
+        self.controls_hinted = False
+        self.controls_seen_at = 0.0
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
@@ -305,6 +313,19 @@ class Narrator:
                 self.attack_pending = False
                 parts = (parts or []) + [scaleform.attack_summary(data)]
                 self.said = ""   # the same result again is a new attack
+
+        # Opening Controller Setting says, once per visit, how to change the
+        # button names, after the row arrived on; the user asked for it.
+        if scaleform.on_controller_setting(items):
+            if self.controls_arrived_at is None:
+                self.controls_arrived_at, self.controls_hinted = now, False
+            self.controls_seen_at = now
+            if not self.controls_hinted and (parts or now - self.controls_arrived_at >= CONTROLS_HINT_WAIT):
+                self.controls_hinted = True
+                parts = (parts or []) + [CONTROLS_HINT]
+                self.said = ""
+        elif self.controls_arrived_at is not None and now - self.controls_seen_at > GROUP_MEMORY:
+            self.controls_arrived_at = None
 
         # The game's short messages select nothing, so they are said as they
         # appear: once while they show, and again if the same one comes back,

@@ -1513,7 +1513,8 @@ check("no buttons from a layout that makes no sense",
 editing = narrate([(0.0, controller("Hard Kick", SAVED_LAYOUT)), (0.5, controller("Throw", SAVED_LAYOUT)),
                    (1.0, controller("Throw", EDITED_LAYOUT)), (1.5, controller("V-Skill", EDITED_LAYOUT))])
 check("moving says each action's button, and assigning one says it and where it came from",
-      [s for _, s in editing] == ["Hard Kick. right trigger", "Throw. none", "left bumper, moved from Button Combo 3",
+      [s for _, s in editing] == ["Hard Kick. right trigger. Press Alt B to cycle through button styles.", "Throw. none",
+                                  "left bumper, moved from Button Combo 3",
                                   "V-Skill. none"], repr(editing))
 scratch_ini = Path(tempfile.gettempdir()) / "sfv-access-test-Input2.ini"
 scratch_ini.write_text("[AssignButton]\n0_CurrentInterface=0\n\n[AssignKeyboard]\n" + "".join(
@@ -1537,9 +1538,17 @@ buttons._settings = {"button_names": "keyboard"}
 check("the Controller Setting rows say keys when keyboard is chosen",
       {it.text: it.note for it in controller("Throw", EDITED_LAYOUT)}["Throw"] == "K")
 buttons._settings = {"button_names": "xbox"}
+HINT = mn.CONTROLS_HINT
 arriving = narrate([(0.0, controller("Throw", None)), (1.0, controller("Throw", EDITED_LAYOUT))])
 check("the layout arriving after the screen is not taken for a change",
-      [s for _, s in arriving] == ["Throw"], repr(arriving))
+      [s for _, s in arriving] == [f"Throw. {HINT}"], repr(arriving))
+visits = narrate([(0.0, [item("Controller Setting", 410, 589, GOLD)]),
+                  (0.5, controller("Light Punch", SAVED_LAYOUT)), (1.0, controller("Medium Punch", SAVED_LAYOUT)),
+                  (1.5, [item("Controller Setting", 410, 589, GOLD)]), (3.0, [item("Controller Setting", 410, 589, GOLD)]),
+                  (3.5, controller("Light Punch", SAVED_LAYOUT))])
+check("opening Controller Setting says how to change button names, once each visit",
+      [s for _, s in visits] == ["Controller Setting", f"Light Punch. X. {HINT}", "Medium Punch. Y", "Controller Setting",
+                                 f"Light Punch. X. {HINT}"], repr(visits))
 check("a startup status line is a screen's summary",
       sf.screen_summary(logging_in) == (True, "Logging into the server..."), repr(sf.screen_summary(logging_in)))
 check("a line ending in dots among other text is not",

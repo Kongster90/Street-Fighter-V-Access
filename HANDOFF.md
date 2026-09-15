@@ -975,7 +975,12 @@ Their order, up, down, right, left, A, B, X, Y, LB, RB, LT, RT, L3, R3,
 Start, Back, was worked out from the defaults the user knows (punches G, H,
 J, kicks B, N, M) against the controller defaults; the directions' order is
 a guess from WASD. The same file keeps each player's XInput and DirectInput
-button remaps under `[AssignButton]`, not used yet.
+button remaps under `[AssignButton]`, not used yet. At the user's request,
+arriving on Controller Setting says `CONTROLS_HINT`, "Press Alt B to cycle
+through button styles.", once per visit after the row arrived on (or alone
+after 0.6 s if nothing is named); leaving for more than `GROUP_MEMORY` starts
+a new visit. Any other button configuration screen will need
+`on_controller_setting` to recognise it.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
