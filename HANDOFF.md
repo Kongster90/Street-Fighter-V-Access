@@ -1651,7 +1651,10 @@ and the root StreetFighterV.exe, which started the Win64 one. Nothing under
 of the tester: whether the start script went before or after the game, which
 security software they run (Kaspersky's application control, Comodo's
 containment and the like restrict what an unknown program starts, network
-included), the full code, and `console-log.txt` and `spoken-log.txt`. While
+included), the full code, and `console-log.txt` and `spoken-log.txt`. The
+tester was happy to start the game first and the start script after, so those
+went unanswered and the cause is still unknown; if another tester hits it,
+ask them. While
 testing, the user's launch options point at the installed copy in
 `%LOCALAPPDATA%\Programs\SFV Access`; put them back with
 `.venv\Scripts\python.exe tools\steam_launch_options.py --apply` (Steam
