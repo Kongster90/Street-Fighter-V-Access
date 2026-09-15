@@ -807,8 +807,9 @@ each) and six empty places of one part, too few alike for `grid_tiles`. While
 the description line is `HOME_PROMPT` (`on_home_screen`), `_tiles_of` lets a
 container count as a grid by its flag tiles alone, and `_flag_under_cursor`
 takes the one flag with every part shown (the outline among them) when
-`selected_tile` cannot decide. Checked live ("North America. United
-States"); not yet heard. Still to come in that flow: the Fighter ID entry
+`selected_tile` cannot decide. Heard in play on 2026-09-14 ("North America.
+Canada", "United States"), and the user chose their Home with it. Next came
+"Please choose a Fighter ID." with its notes and Next, read as a prompt. Still to come in that flow: the Fighter ID entry
 and the confirmation.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do
