@@ -1173,7 +1173,9 @@ def trial_restarted(before: list[TextItem], after: list[TextItem]) -> bool:
 DIRECTION_WORDS = {"1": "down back", "2": "down", "3": "down forward", "4": "back", "5": "neutral",
                    "6": "forward", "7": "up back", "8": "up", "9": "up forward"}
 MOTION_WORDS = {"236": "quarter circle forward", "214": "quarter circle back",
-                "41236": "half circle forward", "63214": "half circle back"}
+                "41236": "half circle forward", "63214": "half circle back",
+                # Zangief's Screw Pile Driver and Borscht Dynamite: the circling arrow.
+                "0": "full circle"}
 STRENGTH_WORDS = {"l": "light", "m": "medium", "h": "heavy"}
 JOINER_WORDS = {"plus": "plus", "next": ""}
 # The game's own words before a button, as the user wants them said: standing

@@ -702,8 +702,17 @@ Charge inputs are `cmd_4c` and `cmd_2c` (a direction's digits then "c"):
 Guile's Sonic Boom `<cmd_4c><cmd_6><plus><punch>` read "forward plus punch"
 and Somersault Kick "up plus kick" until `input_words` said them as "hold
 back" and "hold down", the Icon Info page's own word, giving "hold back,
-forward plus punch". The user reported it on 2026-09-14; "charge" would be
-the community's word if they prefer it.
+forward plus punch". The user reported it on 2026-09-14 and is happy with
+"hold". The same day Zangief's Screw Pile Driver and Borscht Dynamite read
+without their `cmd_0`, the circling arrow, now "full circle": "(NEAR
+OPPONENT) full circle plus punch". The pak index lists every tagged image
+(97); the command pictures are cmd_0, 1, 12369, 1c, 2, 214, 236, 2c, 3, 319,
+4, 41236, 421, 46, 4c, 5, 6, 623, 63214, 7, 8, 9, and all have words now
+(the longer ones as directions in order). Other tagged images that could
+turn up in commands and have no words yet: hold, p_hold, k_hold, release,
+p_release, k_release, rapid, ex, ex2, ex3, v, v2, v3, v_trigger, next_ar,
+middot. Their joining in `describe_inputs` would need thought (a hold then a
+release of one button is not "plus"), so they wait until seen.
 
 **Extra Battle's event panel.** Entering Extra Battle in Challenges puts the
 cursor on BEGIN BATTLE beside one event's panel, and only BEGIN BATTLE was
