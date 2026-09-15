@@ -1427,10 +1427,11 @@ check("arriving says the prompt and how to type, then each character typed or de
                                  "Escape key: Cancel entry and close window",
                                  "capital K", "o", "o", "o deleted", "capital K, o deleted"], repr(typing))
 def training(values, own, other):
-    """Training's attack data as logged: labels, player 1's values and frame, the other side's frame."""
+    """Training's attack data as logged: labels, player 1's values on the left, player 1's
+    frame readout on the right (`own`) and the other side's on the left (`other`)."""
     out = [item(sf.ATTACK_LABELS, 98, 195), item("Frame", 497, 196), item("Frame", 1457, 195),
            item("0(+0)\n0(+0)\n0\n0%\n-", 1152, 195), item(values, 338, 195)]
-    return out + ([item(own, 621, 195)] if own else []) + ([item(other, 1696, 195)] if other else [])
+    return out + ([item(own, 1696, 195)] if own else []) + ([item(other, 621, 195)] if other else [])
 
 
 TWO_HITS = "57(+27)\n133(+63)\n2\n90%\nHIGH"

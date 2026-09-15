@@ -1626,14 +1626,15 @@ def entry_value_words(value: str) -> str:
 # y 195, "DAMAGE\nSTUN\nCOMBO\nDAMAGE SCALING\nATTACK LEVEL", its values beside
 # it in one text, "57(+27)\n133(+63)\n2\n90%\nHIGH" (the total with the last
 # hit's share, the combo count, the scaling, the level), then "Frame" and a
-# text "7 (-4)". Player 1's are on the left (x 98, 338, 497, 621) and the
-# other's on the right (1152, 1457, 1696). A log of play at thirty reads a
-# second showed: the values change the moment a hit or a block lands, a
-# blocked attack giving a combo of 0; the frame number counts down at sixty a
-# second through each side's current action; the bracket is that side's frame
-# advantage, the two mirrored; the other side's frame text goes away when it
-# has nothing running. So an attack is over, and its advantage final, once
-# both counters stand at 0.
+# text "7 (-4)". The left panel is x 98, 338, 497 and 621, the right 1152,
+# 1457 and 1696. Player 1's attack values are the left panel's, but player 1's
+# frames are the right readout (see `attack_data`). A log of play at thirty
+# reads a second showed: the values change the moment a hit or a block lands,
+# a blocked attack giving a combo of 0; the frame number counts down at sixty
+# a second through each side's current action; the bracket is that side's
+# frame advantage, the two mirrored; a side's frame text goes away when it has
+# nothing running. So an attack is over, and its advantage final, once both
+# counters stand at 0.
 
 ATTACK_LABELS = "DAMAGE\nSTUN\nCOMBO\nDAMAGE SCALING\nATTACK LEVEL"
 FRAME_LABEL = "Frame"
@@ -1689,10 +1690,14 @@ def attack_data(items: list[TextItem]) -> AttackData | None:
         text = next((it.text.strip() for it in _row_right_of(shown, label, limit)), "")
         return _FRAME.match(text)
 
-    mine = next((it for it in row if it.text.strip() == FRAME_LABEL), None)
-    theirs = next((it for it in shown if it.text.strip() == FRAME_LABEL and it.x >= STAGE_WIDTH / 2
-                   and abs(it.y - left.y) <= ATTACK_ROW), None)
-    own, other = frame_after(mine, STAGE_WIDTH / 2), frame_after(theirs, STAGE_WIDTH)
+    # Player 1's frames are the right-hand readout, though the left panel's
+    # damage is theirs: only the right counter ran while player 1 moved alone,
+    # and a light attack's hit left "(-4)" on the left and "(+4)" on the right.
+    # Read the other way round, everything was said with its sign reversed.
+    left_frame = next((it for it in row if it.text.strip() == FRAME_LABEL), None)
+    right_frame = next((it for it in shown if it.text.strip() == FRAME_LABEL and it.x >= STAGE_WIDTH / 2
+                        and abs(it.y - left.y) <= ATTACK_ROW), None)
+    own, other = frame_after(right_frame, STAGE_WIDTH), frame_after(left_frame, STAGE_WIDTH / 2)
     return AttackData(int(damage.group(1)), int(damage.group(2)), int(stun.group(1)), int(stun.group(2)),
                       int(lines[2]), lines[3], lines[4] if len(lines) > 4 else "",
                       int(own.group(1)) if own else None, int(own.group(2)) if own else None,

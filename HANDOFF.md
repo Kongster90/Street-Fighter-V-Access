@@ -891,7 +891,17 @@ side's at 0 or gone) counts, the values must also have held still
 still `ATTACK_SETTLE_UNCOUNTED` (2 s) will do. In the log the frame text came
 back about a second after a long combo's last hit, so that combo is now "8
 hits, 275 damage, minus 10" once; a replay of the whole session from the
-screen log gave one sentence per attack and none mid-combo. Not yet heard.
+screen log gave one sentence per attack and none mid-combo.
+
+The user then said the frame advantage was read wrong, and it was: every
+sign reversed. Player 1's attack values are the left panel's, but player 1's
+frame readout is the right one (x 1696): in the first log only the right
+counter ran while player 1 moved before any hit, and a light attack's hit
+(30 damage) left "(-4)" on the left and "(+4)" on the right. `attack_data`
+now takes `counter` and `advantage` from the right readout. The replay then
+gives light hits plus 4, blocked lights plus 2 or 3, knockdown enders plus
+22 and plus 27. Whether the readouts swap when player 1 is on the right side
+(Side Setting) is unknown.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
