@@ -1078,7 +1078,11 @@ with what that button does, so the game's swapped pictures are never said.
 The Alt R key list was right all along, being read from the rows. That
 watcher is the way to check any binding question again: Key Display is the
 game's own word on what a press does. Its log also caught the user typing in
-the chat window, so only count presses with a frame saved.
+the chat window, so only count presses with a frame saved. The user redid the
+mapping with the fix the same day ("right", "left", "left bumper button, all
+three punches", "right trigger button, heavy kick" in that order), said it
+works, and Input2.ini came out W S D A B N G H K J Comma M Period Slash Enter
+Escape, the order `buttons.KEYBOARD_SLOT` assumes.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
