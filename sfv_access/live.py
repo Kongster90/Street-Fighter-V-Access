@@ -26,6 +26,11 @@ GAME_PATH_HINT = r"Binaries\Win64"
 NAME_MAP_FILE = Path(__file__).resolve().parent.parent / "character_names.json"
 
 ENGINE_OWNERS = {"Object", "Actor", "Pawn", "Info", "Controller", "HUD"}
+# How long a name or class not found is taken as missing before looking again.
+# Started with the game, the mod first looked while the game was still loading,
+# found the name table incomplete, and took Controller Setting's class for
+# missing for the rest of the session.
+MISS_RETRY = 15.0
 
 
 def side_key(y: float) -> str:
@@ -155,6 +160,8 @@ class Live:
         self._prop_cache: dict[int, dict[str, unreal.Property]] = {}
         self._preview_owner: int | None = None
         self._name_lookup: dict[str, int] | None = None
+        self._name_lookup_at = 0.0
+        self._class_missed_at: dict[str, float] = {}
 
     def reload_names(self) -> None:
         loaded = load_name_file()
@@ -204,6 +211,7 @@ class Live:
             self.names, self.objects, self.struct_layout = names, objects, layout
             self.module_base = mod.base
             self._class_cache.clear()
+            self._class_missed_at.clear()
             self._instance_cache.clear()
             self._prop_cache.clear()
             self._preview_owner = None
@@ -225,8 +233,16 @@ class Live:
     CLASS_KINDS = ("Class", "BlueprintGeneratedClass", "DynamicClass")
 
     def name_index(self, text: str) -> int | None:
-        """The name table index for a string, with the whole table read once."""
+        """The name table index for a string, with the whole table read once.
+
+        A name not in the table read is read for again once the table is
+        `MISS_RETRY` old: names are added as the game loads.
+        """
+        if (self._name_lookup is not None and text not in self._name_lookup
+                and time.monotonic() - self._name_lookup_at > MISS_RETRY):
+            self._name_lookup = None
         if self._name_lookup is None:
+            self._name_lookup_at = time.monotonic()
             table: dict[str, int] = {}
             layout = self.names.layout
             import struct
@@ -258,7 +274,10 @@ class Live:
         every object, and the address is stable for the life of the process.
         """
         if class_name in self._class_cache:
-            return self._class_cache[class_name]
+            if self._class_cache[class_name] is not None:
+                return self._class_cache[class_name]
+            if time.monotonic() - self._class_missed_at.get(class_name, 0.0) < MISS_RETRY:
+                return None
         pm, names, objects = self.pm, self.names, self.objects
         layout = objects.layout
 
@@ -269,6 +288,7 @@ class Live:
         wanted = self.name_index(class_name)
         if wanted is None:
             self._class_cache[class_name] = None
+            self._class_missed_at[class_name] = time.monotonic()
             return None
 
         import struct
@@ -290,9 +310,10 @@ class Live:
             if unreal.object_class_name(pm, names, obj, layout) in self.CLASS_KINDS:
                 self._class_cache[class_name] = obj
                 return obj
-        # Remember the miss too: a fruitless search costs as much as a
-        # successful one, and asking again will not change the answer.
+        # Remember the miss too, for a while: a fruitless search costs as much
+        # as a successful one, but a class can load after the first look.
         self._class_cache[class_name] = None
+        self._class_missed_at[class_name] = time.monotonic()
         return None
 
     def find_by_class(self, class_name: str, limit: int = 8) -> list[tuple[int, str]]:
@@ -310,10 +331,8 @@ class Live:
         if cached is not None and self._still_valid(cached, class_name):
             return cached
         # A class that does not exist here should not be searched for again and
-        # again while the same screen is open.
-        if class_name in self._class_cache and self._class_cache[class_name] is None:
-            return []
-
+        # again while the same screen is open; `class_address` looks again
+        # once its miss is `MISS_RETRY` old.
         pm, objects, names = self.pm, self.objects, self.names
         layout = objects.layout
         target = self.class_address(class_name)

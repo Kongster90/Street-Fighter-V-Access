@@ -378,9 +378,16 @@ class KeyConfig:
     object is remembered for as long as its bytes still make sense.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, note=None) -> None:
         self.obj: int | None = None
         self._thread: threading.Thread | None = None
+        self._note = note or (lambda text: None)
+        self._last_note = ""
+
+    def _say_once(self, text: str) -> None:
+        if text != self._last_note:
+            self._last_note = text
+            self._note(text)
 
     def read(self) -> bytes | None:
         from . import live
@@ -402,15 +409,20 @@ class KeyConfig:
         session = live.shared()
         try:
             if not session.attach():
+                self._say_once("key config: could not attach to the game's objects")
                 return
-            for obj, _name in session.find_by_class(KEY_CONFIG_CLASS):
+            found = session.find_by_class(KEY_CONFIG_CLASS)
+            for obj, name in found:
                 config = session.pm.read(obj + KEY_CONFIG_EDITED, scaleform.KEY_CONFIG_FUNCTIONS + 1)
                 if session.pm.ptr(obj + KEY_CONFIG_MOVIE) and scaleform.key_config_valid(config):
                     self.obj = obj
+                    self._say_once(f"key config: found {name} at {obj:#x}")
                     return
+            self._say_once(f"key config: {len(found)} instances, none showing with a layout"
+                           + ("" if found else "; class or name not found yet, looked again after a while"))
             session.invalidate()
-        except Exception:
-            pass
+        except Exception as exc:
+            self._say_once(f"key config: search failed: {exc!r}")
 
 
 class Session:
@@ -442,7 +454,7 @@ class Session:
         self._arcade_marker: str | None = None
         self._arcade_seen_at = 0.0
         self._arcade_notes = 0
-        self.key_config = KeyConfig()
+        self.key_config = KeyConfig(note=self.note)
         self.key_config_bytes: bytes | None = None   # the layout at the last read of Controller Setting
 
     @property

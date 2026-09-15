@@ -1460,3 +1460,12 @@ and the game and mod closed, Steam was shut down with `steam.exe -shutdown`,
 `--apply` run (the copy is `localconfig.vdf.before-sfv-access`), and Steam
 started again; the launch options were still there once it was up. Not yet
 heard from a real launch. `--remove`, with Steam closed, takes it out.
+The user then launched from Steam: the mod started and read, but
+Controller Setting said no buttons, where started by hand it had. A fresh
+process found `WSKeyConfigGFxPlayer_1` in a second, so the mod's own `live`
+cache was at fault; the likely cause, not reproduced, is that started with
+the game, the pixel fallback's character select lookup built `live`'s name
+table while the game was still loading, and a name or class not found was
+cached as missing for the whole session. Misses are now looked for again
+after `live.MISS_RETRY` (15 s), and `KeyConfig` notes in the screen log
+whether it found the object, found none showing, or failed and why.
