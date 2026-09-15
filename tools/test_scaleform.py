@@ -1426,6 +1426,38 @@ check("arriving says the prompt and how to type, then each character typed or de
       [s for _, s in typing] == ["Please enter your Fighter ID. Please enter text using the keyboard. "
                                  "Escape key: Cancel entry and close window",
                                  "capital K", "o", "o", "o deleted", "capital K, o deleted"], repr(typing))
+def training(values, own, other):
+    """Training's attack data as logged: labels, player 1's values and frame, the other side's frame."""
+    out = [item(sf.ATTACK_LABELS, 98, 195), item("Frame", 497, 196), item("Frame", 1457, 195),
+           item("0(+0)\n0(+0)\n0\n0%\n-", 1152, 195), item(values, 338, 195), item(own, 621, 195)]
+    return out + ([item(other, 1696, 195)] if other else [])
+
+
+TWO_HITS = "57(+27)\n133(+63)\n2\n90%\nHIGH"
+data = sf.attack_data(training(TWO_HITS, "0 (+9)", None))
+check("Training's attack data is read for player 1",
+      data is not None and (data.damage, data.combo, data.scaling, data.level, data.counter, data.advantage,
+                            data.other_counter) == (57, 2, "90%", "HIGH", 0, 9, None), repr(data))
+check("an attack's result is said shortly, a block as blocked, a knockdown with no claim of one",
+      [sf.attack_summary(sf.attack_data(training(v, f, None))) for v, f in (
+          (TWO_HITS, "0 (+9)"), ("0(+0)\n0(+0)\n0\n100%\nHIGH", "0 (-2)"), ("33(+33)\n0(+0)\n0\n100%\nHIGH", "0 (+52)"),
+          ("30(+30)\n70(+70)\n1\n100%\nHIGH", "0 (0)"))]
+      == ["2 hits, 57 damage, plus 9", "Blocked, minus 2", "33 damage, plus 52", "1 hit, 30 damage, even"])
+check("the read key gives all of it",
+      mn.phrase(sf.attack_details(data)) == "Combo 2. Damage 57, last hit 27. Stun 133, last hit 63. "
+      "Damage scaling 90 percent. Attack level high. Frame advantage plus 9", repr(mn.phrase(sf.attack_details(data))))
+check("no attack data away from Training", sf.attack_data(on_story) is None)
+ONE_HIT = "30(+30)\n70(+70)\n1\n100%\nHIGH"
+combo = narrate([(0.0, training(ONE_HIT, "0 (-4)", None)),
+                 (1.0, training(ONE_HIT, "16 (-4)", "12 (+4)")), (1.1, training(ONE_HIT, "6 (-4)", "2 (+4)")),
+                 (1.2, training(TWO_HITS, "19 (-4)", "15 (+4)")), (1.3, training(TWO_HITS, "7 (-4)", "3 (+4)")),
+                 (1.4, training(TWO_HITS, "1 (+9)", "10 (-9)")), (1.5, training(TWO_HITS, "0 (+9)", "4 (-9)")),
+                 (1.6, training(TWO_HITS, "0 (+9)", "0 (-9)")), (1.7, training(TWO_HITS, "0 (+9)", None)),
+                 (2.0, training(TWO_HITS, "0 (+9)", None)), (3.0, training(TWO_HITS, "0 (+9)", None)),
+                 (4.0, training(TWO_HITS, "14 (+9)", None)), (4.2, training(TWO_HITS, "10 (-4)", "12 (+4)")),
+                 (4.5, training(TWO_HITS, "0 (-4)", "0 (+4)")), (5.0, training(TWO_HITS, "0 (-4)", None))])
+check("a combo is said once when over, not hit by hit, and the same attack again is said again",
+      [s for _, s in combo] == ["2 hits, 57 damage, plus 9", "2 hits, 57 damage, minus 4"], repr(combo))
 check("a startup status line is a screen's summary",
       sf.screen_summary(logging_in) == (True, "Logging into the server..."), repr(sf.screen_summary(logging_in)))
 check("a line ending in dots among other text is not",

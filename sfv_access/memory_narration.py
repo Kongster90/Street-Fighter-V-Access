@@ -37,6 +37,9 @@ SUMMARY_SETTLE = 0.4
 # A trial's steps are said again on a restart, but not twice for one: the
 # restart notice can come and go while it shows.
 TRIAL_RESTART_GAP = 3.0
+# How long both of Training's frame counters must stand at 0 before an attack's
+# result is said. Between a combo's hits the other side's counter never rests.
+ATTACK_SETTLE = 0.25
 RETRY = 3.0            # how often to look for the game while not attached
 ALIVE_CHECK = 1.0      # how often to confirm the attached game is still there
 # The block list is refreshed once a second in the background. If that falls
@@ -159,6 +162,13 @@ class Narrator:
         self.toast_seen_at = 0.0
         # What a text entry field held at the last reading, None while not typing.
         self.entry_value: str | None = None
+        # Training's attack data: its values at the last reading, whether an
+        # attack has landed since the last report, whether the other side's
+        # frame counter was running, and since when both counters stood at 0.
+        self.attack_values = None
+        self.attack_pending = False
+        self.attack_other_running = False
+        self.attack_still_since: float | None = None
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
@@ -254,6 +264,34 @@ class Narrator:
                 parts.append(scaleform.typed_words(self.entry_value, value))
                 self.said = ""
             self.entry_value = value
+
+        # Training's attack data, said once each attack or combo is over: when
+        # an attack has landed and both frame counters have stood at 0 a
+        # moment, so a combo's hits are not said one by one.
+        data = scaleform.attack_data(items)
+        if data is None:
+            self.attack_values, self.attack_pending, self.attack_still_since = None, False, None
+            self.attack_other_running = False
+        else:
+            own_running, other_running = bool(data.counter), bool(data.other_counter)
+            if self.attack_values is not None:
+                if data.values != self.attack_values:
+                    self.attack_pending = True
+                # The same attack landing again leaves the values as they
+                # were; the other side's counter starting while this side's
+                # attack runs is what shows it landed.
+                elif other_running and own_running and not self.attack_other_running:
+                    self.attack_pending = True
+            self.attack_values, self.attack_other_running = data.values, other_running
+            if own_running or other_running:
+                self.attack_still_since = None
+            elif self.attack_still_since is None:
+                self.attack_still_since = now
+            if (self.attack_pending and self.attack_still_since is not None
+                    and now - self.attack_still_since >= ATTACK_SETTLE):
+                self.attack_pending = False
+                parts = (parts or []) + [scaleform.attack_summary(data)]
+                self.said = ""   # the same result again is a new attack
 
         # The game's short messages select nothing, so they are said as they
         # appear: once while they show, and again if the same one comes back,

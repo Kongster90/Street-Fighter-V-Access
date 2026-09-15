@@ -1620,6 +1620,119 @@ def entry_value_words(value: str) -> str:
     return f"{value}, {count}: {', '.join(character_words(c) for c in value)}"
 
 
+# ----------------------------------------------------------------- attack data
+#
+# Training with Attack Data on shows, for each player, a column of labels at
+# y 195, "DAMAGE\nSTUN\nCOMBO\nDAMAGE SCALING\nATTACK LEVEL", its values beside
+# it in one text, "57(+27)\n133(+63)\n2\n90%\nHIGH" (the total with the last
+# hit's share, the combo count, the scaling, the level), then "Frame" and a
+# text "7 (-4)". Player 1's are on the left (x 98, 338, 497, 621) and the
+# other's on the right (1152, 1457, 1696). A log of play at thirty reads a
+# second showed: the values change the moment a hit or a block lands, a
+# blocked attack giving a combo of 0; the frame number counts down at sixty a
+# second through each side's current action; the bracket is that side's frame
+# advantage, the two mirrored; the other side's frame text goes away when it
+# has nothing running. So an attack is over, and its advantage final, once
+# both counters stand at 0.
+
+ATTACK_LABELS = "DAMAGE\nSTUN\nCOMBO\nDAMAGE SCALING\nATTACK LEVEL"
+FRAME_LABEL = "Frame"
+ATTACK_ROW = 4.0
+BLOCK_ADVANTAGE_LIMIT = 15
+_AMOUNT = re.compile(r"^(\d+)\s*\(\s*([+-]?\d+)\s*\)$")
+_FRAME = re.compile(r"^(\d+)\s*\(\s*([+-]?\d+)\s*\)$")
+
+
+@dataclass
+class AttackData:
+    """One player's attack data as Training shows it."""
+    damage: int
+    last_damage: int
+    stun: int
+    last_stun: int
+    combo: int
+    scaling: str
+    level: str
+    counter: int | None          # this side's frames left in its current action
+    advantage: int | None        # this side's frame advantage
+    other_counter: int | None    # the other side's frames left, None when it shows none
+
+    @property
+    def values(self) -> tuple:
+        return (self.damage, self.last_damage, self.stun, self.last_stun, self.combo, self.scaling, self.level)
+
+
+def _row_right_of(shown: list[TextItem], anchor: TextItem, limit: float) -> list[TextItem]:
+    return sorted((it for it in shown if it is not anchor and abs(it.y - anchor.y) <= ATTACK_ROW
+                   and anchor.x < it.x < limit), key=lambda it: it.x)
+
+
+def attack_data(items: list[TextItem]) -> AttackData | None:
+    """Player 1's attack data in Training, or None when it is not showing."""
+    shown = [it for it in items if it.shown]
+    labels = sorted((it for it in shown if it.text.strip() == ATTACK_LABELS), key=lambda it: it.x)
+    if not labels or labels[0].x >= STAGE_WIDTH / 2:
+        return None
+    left = labels[0]
+    row = _row_right_of(shown, left, STAGE_WIDTH / 2)
+    values = next((it for it in row if it.text.count("\n") >= 4), None)
+    if values is None:
+        return None
+    lines = [line.strip() for line in values.text.strip().split("\n")]
+    damage, stun = _AMOUNT.match(lines[0]), _AMOUNT.match(lines[1])
+    if damage is None or stun is None or not lines[2].isdigit():
+        return None
+
+    def frame_after(label: TextItem | None, limit: float):
+        if label is None:
+            return None
+        text = next((it.text.strip() for it in _row_right_of(shown, label, limit)), "")
+        return _FRAME.match(text)
+
+    mine = next((it for it in row if it.text.strip() == FRAME_LABEL), None)
+    theirs = next((it for it in shown if it.text.strip() == FRAME_LABEL and it.x >= STAGE_WIDTH / 2
+                   and abs(it.y - left.y) <= ATTACK_ROW), None)
+    own, other = frame_after(mine, STAGE_WIDTH / 2), frame_after(theirs, STAGE_WIDTH)
+    return AttackData(int(damage.group(1)), int(damage.group(2)), int(stun.group(1)), int(stun.group(2)),
+                      int(lines[2]), lines[3], lines[4] if len(lines) > 4 else "",
+                      int(own.group(1)) if own else None, int(own.group(2)) if own else None,
+                      int(other.group(1)) if other else None)
+
+
+def advantage_words(advantage: int | None) -> str:
+    if advantage is None:
+        return ""
+    return "even" if advantage == 0 else f"{'plus' if advantage > 0 else 'minus'} {abs(advantage)}"
+
+
+def attack_summary(data: AttackData) -> str:
+    """What an attack came to, said when it is over: "2 hits, 57 damage, plus 9", "Blocked, minus 2".
+
+    A combo of 0 is a block, but not always: the log also had 33 damage, a
+    combo of 0 and plus 52, which only a knockdown gives, so "Blocked" is said
+    only while the advantage is within what a block leaves.
+    """
+    if data.combo:
+        parts = [f"{data.combo} hit{'' if data.combo == 1 else 's'}", f"{data.damage} damage"]
+    else:
+        blocked = data.advantage is not None and abs(data.advantage) <= BLOCK_ADVANTAGE_LIMIT
+        parts = (["Blocked"] if blocked else []) + ([f"{data.damage} damage"] if data.damage else [])
+    advantage = advantage_words(data.advantage)
+    return ", ".join(parts + ([advantage] if advantage else []))
+
+
+def attack_details(data: AttackData) -> list[str]:
+    """All of the attack data, for the read key."""
+    out = [f"Combo {data.combo}", f"Damage {data.damage}, last hit {data.last_damage}",
+           f"Stun {data.stun}, last hit {data.last_stun}", f"Damage scaling {data.scaling.replace('%', ' percent')}"]
+    if data.level and data.level != "-":
+        out.append(f"Attack level {data.level.lower()}")
+    advantage = advantage_words(data.advantage)
+    if advantage:
+        out.append(f"Frame advantage {advantage}")
+    return out
+
+
 # ---------------------------------------------------------------------- toasts
 #
 # The game's short messages all appear at one place, the foot of the screen's

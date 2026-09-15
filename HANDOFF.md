@@ -863,6 +863,25 @@ registered a six letter ID through the whole flow by ear, ending on
 STREET FIGHTER V! Next" (2026-09-14). Still to come in that flow: the Fighter ID entry
 and the confirmation.
 
+**Training's attack data.** Asked for on 2026-09-14: combo damage, count and
+frame advantage. With Attack Data on, player 1's labels "DAMAGE\nSTUN\nCOMBO\n
+DAMAGE SCALING\nATTACK LEVEL" sit at (98, 195), their values in one text at
+(338, 195), "57(+27)\n133(+63)\n2\n90%\nHIGH", then "Frame" (497) and "7 (-4)"
+(621); the other side's at 1152, 1457 and 1696. A watcher logging every
+change at thirty reads a second during the user's play showed the values
+change the moment a hit or block lands (a block gives combo 0, chip damage
+included), the frame number counts down at sixty a second through each
+side's action, the bracket is the frame advantage mirrored between sides,
+and the other side's frame text goes away when nothing runs. `attack_data`
+parses player 1's; the narrator arms when the values change, or when the
+other side's counter starts while player 1's runs (the same attack twice
+leaves the values alone), and says `attack_summary` once both counters have
+stood at 0 for `ATTACK_SETTLE` (0.25 s): "2 hits, 57 damage, plus 9",
+"Blocked, minus 2". A combo of 0 with damage and plus 52 turned up once (a
+throw or knockdown), so "Blocked" needs the advantage within 15. Alt R with
+nothing selected gives `attack_details`. Replaying the logged session gave
+one sentence per attack, 76 in all. Not yet heard.
+
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
 unavailable." at (95, 900) for a few seconds, selecting nothing, so nothing

@@ -464,6 +464,10 @@ class App:
             _summary_screen, summary = scaleform.screen_summary(items)
             if summary:
                 said = memory_narration.phrase([summary, said])
+            attack = scaleform.attack_data(items)
+            if not said and attack is not None:
+                # In Training with nothing selected: the last attack in full.
+                said = memory_narration.phrase(scaleform.attack_details(attack))
             if said:
                 self.lines, self.footer = items, foot.text if foot else ""
                 self.cursor = next((i for i, it in enumerate(items) if it.selected), 0)
