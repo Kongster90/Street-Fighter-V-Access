@@ -1114,6 +1114,11 @@ check("different buttons side by side are pressed together, with plus between th
                    "(NEAR OPPONENT) neutral OR forward plus light punch plus light kick"], repr(together))
 kagerou = sf.describe_inputs([("picture", "punch_h"), ("picture", "next"), ("picture", "punch_h"),
                               ("picture", "next"), ("picture", "punch_m"), ("picture", "kick_m")])
+charges = [sf.describe_inputs(p) for p in (
+    [("picture", "cmd_4c"), ("picture", "cmd_6"), ("picture", "plus"), ("picture", "punch")],
+    [("picture", "cmd_2c"), ("picture", "cmd_8"), ("picture", "plus"), ("picture", "kick")])]
+check("a charge is said as holding the direction, as in Guile's Sonic Boom and Somersault Kick",
+      charges == ["hold back, forward plus punch", "hold down, up plus kick"], repr(charges))
 check("the user's KAGEROU example", kagerou == "heavy punch, heavy punch, medium punch plus medium kick",
       repr(kagerou))
 check("the arrow meaning then is only a comma, crouch is down plus and jump stays jump",

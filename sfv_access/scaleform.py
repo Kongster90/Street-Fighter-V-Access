@@ -1209,10 +1209,17 @@ def input_words(name: str) -> str | None:
         return JOINER_WORDS[name]
     if name.startswith("cmd_"):
         digits = name[4:]
-        if digits in MOTION_WORDS:
+        # A charge: Guile's Sonic Boom is cmd_4c then cmd_6, "hold back,
+        # forward plus punch", in the game's own word from its Icon Info page,
+        # "Hold the left button".
+        held = digits.endswith("c")
+        if held:
+            digits = digits[:-1]
+        if digits in MOTION_WORDS and not held:
             return MOTION_WORDS[digits]
         if digits and all(d in DIRECTION_WORDS for d in digits):
-            return ", ".join(DIRECTION_WORDS[d] for d in digits)
+            words = ", ".join(DIRECTION_WORDS[d] for d in digits)
+            return f"hold {words}" if held else words
         return None
     button, _, strength = name.partition("_")
     if button in ("punch", "kick"):

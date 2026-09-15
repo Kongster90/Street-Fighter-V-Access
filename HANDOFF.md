@@ -698,6 +698,13 @@ legend of icons that are not text pictures, so only its descriptions show
 button", "A move corresponding to each V-Skill.") and one is taken for a
 selection; not handled, and the user has not asked.
 
+Charge inputs are `cmd_4c` and `cmd_2c` (a direction's digits then "c"):
+Guile's Sonic Boom `<cmd_4c><cmd_6><plus><punch>` read "forward plus punch"
+and Somersault Kick "up plus kick" until `input_words` said them as "hold
+back" and "hold down", the Icon Info page's own word, giving "hold back,
+forward plus punch". The user reported it on 2026-09-14; "charge" would be
+the community's word if they prefer it.
+
 **Extra Battle's event panel.** Entering Extra Battle in Challenges puts the
 cursor on BEGIN BATTLE beside one event's panel, and only BEGIN BATTLE was
 said. The panel (recognised by "PARTICIPATION FEE (FM)" and "NO. OF
