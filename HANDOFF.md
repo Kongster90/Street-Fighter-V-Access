@@ -1654,7 +1654,18 @@ containment and the like restrict what an unknown program starts, network
 included), the full code, and `console-log.txt` and `spoken-log.txt`. The
 tester was happy to start the game first and the start script after, so those
 went unanswered and the cause is still unknown; if another tester hits it,
-ask them. While
+ask them. At that tester's suggestion the installer now asks whether to start
+with the game (`ask_yes_no`, Enter takes yes) and always puts a
+`Street Fighter V Access.lnk` on the desktop pointing at the start script,
+made through `WScript.Shell` with the bundled pywin32 and aimed at the desktop
+the registry gives, since OneDrive moves it. Answering no with nothing of ours
+set leaves Steam alone and never closes it; answering it the other way on a
+later run changes the launch options to match, so either answer can be undone.
+The uninstaller removes the shortcut and only closes Steam if the launch
+options are ours. All three paths were run with the packaged Python on
+2026-09-15: no, yes, then uninstall, each checked against the shortcut and the
+launch options. (Piping an answer from PowerShell 5.1 puts a BOM on the first
+line, which the prompt rejects; test from bash.) While
 testing, the user's launch options point at the installed copy in
 `%LOCALAPPDATA%\Programs\SFV Access`; put them back with
 `.venv\Scripts\python.exe tools\steam_launch_options.py --apply` (Steam

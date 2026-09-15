@@ -38,8 +38,8 @@ PYTHON_SKIP_LIB = {"test", "idlelib", "tkinter", "turtledemo", "ensurepip", "sit
 PYTHON_SKIP_DLLS = ("_tkinter", "tcl", "tk")
 # Packages in the virtual environment used only by development tools.
 PACKAGES_SKIP = ("pip", "capstone")
-IMPORT_CHECK = ("import sfv_access.app, sfv_access.gametext, numpy, PIL, prism, win32api, bettercam, cryptography, "
-                "winrt.windows.media.ocr; print('imports ok')")
+IMPORT_CHECK = ("import sfv_access.app, sfv_access.gametext, numpy, PIL, prism, win32api, win32com.client, "
+                "bettercam, cryptography, winrt.windows.media.ocr; print('imports ok')")
 
 
 def git(*args: str) -> str:
