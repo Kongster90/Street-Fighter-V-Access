@@ -1636,6 +1636,27 @@ user's names. Not yet run: the installer on a real machine with Steam open
 (closing and reopening Steam), and the mod started by Steam from an installed
 copy. The first tester's report is the real check.
 
+**The first tester cannot log in with the launch options (open).** On
+2026-09-15 the first tester (Steam in `D:\Games\Steam`, no spaces) got an
+"Unable to log into game server" error, heard as "error code 21" (the game's
+codes in that family are five characters, like 2100d or 21009). The game logs
+in without the mod, and with the mod run from `Start SFV Access.bat` and no
+launch options. The same zip installed on the user's machine (Steam closed
+during the install, so it was not restarted by the installer) and started from
+Steam logged in: text set up, "Logging into the server...", Current Missions.
+The process tree there was steam.exe, the bundled pythonw running
+`start_with_game.pyw` with the game path unquoted, which started both the mod
+and the root StreetFighterV.exe, which started the Win64 one. Nothing under
+`--with-game` touches the game, so what differs is the tester's machine. Asked
+of the tester: whether the start script went before or after the game, which
+security software they run (Kaspersky's application control, Comodo's
+containment and the like restrict what an unknown program starts, network
+included), the full code, and `console-log.txt` and `spoken-log.txt`. While
+testing, the user's launch options point at the installed copy in
+`%LOCALAPPDATA%\Programs\SFV Access`; put them back with
+`.venv\Scripts\python.exe tools\steam_launch_options.py --apply` (Steam
+closed) and delete that folder.
+
 ## Running things
 
 Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod
