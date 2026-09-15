@@ -92,6 +92,12 @@ def main() -> int:
     for item in (ROOT / "package").iterdir():
         shutil.copy2(item, folder / item.name)
     (folder / "VERSION.txt").write_text(f"Street Fighter V Access test version {stamp}\n", encoding="utf-8")
+    # The command prompt can misread batch files with bare line feeds, and
+    # Notepad is happier with Windows line endings too.
+    for path in folder.iterdir():
+        if path.suffix.lower() in (".bat", ".txt"):
+            text = path.read_text(encoding="utf-8").replace("\r\n", "\n")
+            path.write_text(text, encoding="utf-8", newline="\r\n")
     print("copying Python")
     (folder / "python").mkdir()
     copy_python(folder / "python")
