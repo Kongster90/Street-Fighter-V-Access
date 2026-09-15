@@ -134,6 +134,12 @@ Played by the user on 2026-09-15:
   lists each key with what it does ("B, light kick"); Redo keyboard mapping,
   every step said with the key just assigned. The user's words: "everything
   worked as it should".
+- Challenges' Demonstrations: each page, title and explanation or caption
+  with its commands in words, said once when it waits on Start Demonstration
+  or Proceed ("Moving. By pressing the left or right directional buttons...
+  Start Demonstration"), Alt R repeating it.
+- The lone "Sub Menu" hint at launch is no longer said (written the same
+  day, not yet heard from a launch).
 
 Written and checked against the game or a recording, but not yet heard in
 play: Arcade's final-stage opponent card ("FINAL STAGE. SAGAT. REWARD.
@@ -1128,8 +1134,12 @@ pictures, and about a second later "Start Demonstration" or "Proceed" at (960,
 for a minute not knowing it waited. `demonstration_page` says the page's texts
 and the button once the button shows. Pictures followed by a comma read
 "forward , and" until `describe_inputs` stopped putting a space before
-punctuation. Checked live on the Proceed page; what the replays between pages
-show is not yet known.
+punctuation. The replays between pages show no text of their own, and the
+demonstration ends on a Results Menu (Return to Demonstration Select, Go to
+Main Menu) that reads as any menu. The user went through every page of the
+first demonstrations with it on 2026-09-15 ("Everything during the
+demonstrations read out properly"); the tips screen has not been heard yet,
+the mod having been restarted after the load.
 
 Known gaps. The clock sits one object further down and is not resolved.
 Screens other than Versus and Training may head their character select
@@ -1384,8 +1394,10 @@ What follows is roughly in order of value.
 1. **Screens nobody has tried.** Not yet seen from memory: online matches
    past their menus (Ranked, Casual, Battle Lounge rooms, whose password uses
    the same keyboard entry line as the Fighter ID but a field `text_entry`
-   does not find); story mode and its chapter select; Survival; the
-   Demonstrations and tutorial lists beyond their menus; the player profile;
+   does not find); story mode and its chapter select; Survival; Story's
+   Tutorial, a fight against Ken whose instructions (`ID_SYS_Stor_Tuto_*` in
+   strings.json, "Try moving closer to Ken." and on) were silent when the user
+   began it once, and was next on the list on 2026-09-15; the player profile;
    the Gallery's contents; Options pages other than Other Settings. Each screen this session took minutes to
    an hour once the user was on it. `tools/record_scaleform.py <name>` is the
    tool when a selection's marking is unknown and the user needs to move
