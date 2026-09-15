@@ -186,6 +186,7 @@ These work while the game has focus, including in fullscreen.
 - Alt A: read the whole screen
 - Alt M: turn menu narration on or off
 - F9: switch between reading the game's memory and reading the screen
+- Alt B: name buttons as Xbox buttons, PlayStation buttons or keyboard keys, remembered between runs
 - Alt S: save a snapshot for calibration
 - Alt G: status
 - Alt X: stop speaking

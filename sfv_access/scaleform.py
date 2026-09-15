@@ -64,6 +64,7 @@ from pathlib import Path
 
 import numpy as np
 
+from . import buttons
 from .memory import ProcessMemory, find_pid
 
 EXE = "StreetFighterV.exe"
@@ -1774,10 +1775,7 @@ CONTROLLER_ROWS = {
     "Throw": 8, "V-Skill": 9, "V-Trigger": 10, "V-Shift": 13,
     "Button Combo 1": 11, "Button Combo 2": 12, "Button Combo 3": 4, "Button Combo 4": 6,
 }
-BUTTON_WORDS = {0: "up", 1: "down", 2: "left", 3: "right", 4: "X", 5: "Y", 6: "A", 7: "B",
-                8: "left bumper", 9: "right bumper", 10: "left trigger", 11: "right trigger",
-                12: "left stick press", 13: "right stick press", 14: "Start", 15: "Back"}
-BUTTON_NONE = "none"
+BUTTON_NONE = buttons.NONE
 BUTTON_UNASSIGNED = 17
 KEY_CONFIG_FUNCTIONS = 15
 
@@ -1794,7 +1792,8 @@ def key_config_valid(config: bytes | None) -> bool:
 
 
 def button_words(number: int) -> str:
-    return BUTTON_WORDS.get(number, BUTTON_NONE if number == BUTTON_UNASSIGNED else f"button {number}")
+    """A pad key number in the naming style chosen with Alt B: Xbox, PlayStation or keyboard."""
+    return buttons.name(number)
 
 
 def mark_controller_buttons(items: list[TextItem], config: bytes | None) -> None:

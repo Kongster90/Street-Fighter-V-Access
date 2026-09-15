@@ -27,6 +27,9 @@ strings.json
 # names.json is a dump of the engine's name table, from tools/dump_names.py.
 names.json
 
+# The player's own choices, such as how buttons are named (Alt B).
+settings.json
+
 # Captures of the game. These carry its artwork and your profile name, rank and
 # league points, so they stay local. tools/test_screens.py needs them, so take
 # your own with Alt S.

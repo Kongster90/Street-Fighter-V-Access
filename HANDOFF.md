@@ -965,6 +965,18 @@ there was none is the layout arriving, not an edit, and is not said. The
 user's hitbox button they call left trigger is the game's left bumper.
 Checked live; not yet heard.
 
+The user asked for the buttons in their own controller's names, and chose
+Xbox, PlayStation and keyboard (not hitbox positions). Alt B cycles them,
+saved in `settings.json` beside run.py (git-ignored); `sfv_access/buttons.py`
+names a pad key number in the chosen style. Keyboard names come from the
+game's `%LOCALAPPDATA%\StreetFighterV\Saved\Config\WindowsNoEditor\Input2.ini`,
+`[AssignKeyboard]` `KeyboardKeys_0` to 15, read again when the file changes.
+Their order, up, down, right, left, A, B, X, Y, LB, RB, LT, RT, L3, R3,
+Start, Back, was worked out from the defaults the user knows (punches G, H,
+J, kicks B, N, M) against the controller defaults; the directions' order is
+a guess from WASD. The same file keeps each player's XInput and DirectInput
+button remaps under `[AssignButton]`, not used yet.
+
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
 unavailable." at (95, 900) for a few seconds, selecting nothing, so nothing

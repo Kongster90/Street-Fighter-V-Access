@@ -23,7 +23,7 @@ import time
 from pathlib import Path
 
 from . import capture as _capture
-from . import game, hud, instance, memory_narration, menu, ocr, scaleform, screens, strings
+from . import buttons, game, hud, instance, memory_narration, menu, ocr, scaleform, screens, strings
 from .capture import Capture
 from .hotkeys import Hotkeys
 from .speech import Speaker
@@ -55,6 +55,7 @@ HOTKEYS = {
     "read_all":      ("alt+a",      "read the whole screen"),
     "toggle_watch":  ("alt+m",      "turn menu narration on or off"),
     "switch_source": ("f9",         "switch between reading memory and reading the screen"),
+    "button_names":  ("alt+b",      "name buttons as Xbox, PlayStation or keyboard"),
     "snapshot":      ("alt+s",      "save a snapshot for calibration"),
     "status":        ("alt+g",      "status"),
     "stop_speech":   ("alt+x",      "stop speaking"),
@@ -662,6 +663,11 @@ class App:
             self.speech.say("Reading memory.")
         else:
             self.speech.say("Reading memory once the game can be read, the screen until then.")
+
+    def on_button_names(self) -> None:
+        """Name buttons the way the player's controller or keyboard does, remembered between runs."""
+        chosen = buttons.next_style()
+        self.speech.say(f"Button names: {buttons.STYLE_WORDS[chosen]}.")
 
     def on_quit(self) -> None:
         self._close("Closing Street Fighter 5 access.")

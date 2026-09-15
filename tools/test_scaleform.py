@@ -8,8 +8,10 @@ bug in the reader rather than a change in the game.
 
 from __future__ import annotations
 
+import json
 import struct
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -1478,6 +1480,14 @@ check("a combo whose frame counters are hidden between hits is said once, at its
 never = narrate(hidden + [(2.5 + 0.5 * k, training(hits(8), None, None)) for k in range(6)])
 check("and if the counters never come back, once the numbers have held still",
       [s for _, s in never] == ["8 hits, 222 damage"], repr(never))
+from sfv_access import buttons  # noqa: E402
+
+# Button names come from the player's saved choice; the tests choose their own
+# and never touch the real settings file.
+buttons.SETTINGS = Path(tempfile.gettempdir()) / "sfv-access-test-settings.json"
+buttons.SETTINGS.unlink(missing_ok=True)
+assert buttons.SETTINGS != ROOT / "settings.json"
+buttons._settings = {"button_names": "xbox"}
 CONTROLLER_LABELS = list(sf.CONTROLLER_ROWS)
 SAVED_LAYOUT = bytes([4, 5, 6, 7, 8, 9, 10, 11, 17, 17, 17, 17, 17, 17, 17, 0])
 EDITED_LAYOUT = bytes([4, 5, 6, 7, 17, 9, 10, 11, 8, 17, 17, 17, 17, 17, 17, 3])
@@ -1505,6 +1515,28 @@ editing = narrate([(0.0, controller("Hard Kick", SAVED_LAYOUT)), (0.5, controlle
 check("moving says each action's button, and assigning one says it and where it came from",
       [s for _, s in editing] == ["Hard Kick. right trigger", "Throw. none", "left bumper, moved from Button Combo 3",
                                   "V-Skill. none"], repr(editing))
+scratch_ini = Path(tempfile.gettempdir()) / "sfv-access-test-Input2.ini"
+scratch_ini.write_text("[AssignButton]\n0_CurrentInterface=0\n\n[AssignKeyboard]\n" + "".join(
+    f"KeyboardKeys_{i}={k}\n" for i, k in enumerate(
+        "W S D A B N G H K J Comma M Period Slash Enter Escape".split())) + "\n[AssignController]\n0_Interface=0\n",
+    encoding="utf-8")
+assert scratch_ini.parent != ROOT
+buttons.INPUT_INI = scratch_ini
+default_pad = {"LP": 4, "MP": 5, "HP": 9, "LK": 6, "MK": 7, "HK": 11, "3P": 8, "3K": 10, "none": 17}
+check("keyboard names follow the game's saved bindings, the punches on G H J and kicks on B N M",
+      {k: buttons.name(v, "keyboard") for k, v in default_pad.items()}
+      == {"LP": "G", "MP": "H", "HP": "J", "LK": "B", "MK": "N", "HK": "M", "3P": "K", "3K": "Comma", "none": "none"},
+      repr({k: buttons.name(v, "keyboard") for k, v in default_pad.items()}))
+check("PlayStation names",
+      [buttons.name(n, "playstation") for n in (4, 5, 6, 7, 8, 11)] == ["square", "triangle", "cross", "circle", "L1", "R2"])
+check("key names are said as words", buttons.key_words("LeftShift") == "Left Shift" and buttons.key_words("F1") == "F1")
+check("Alt B cycles the styles and remembers the choice",
+      [buttons.next_style(), buttons.next_style(), buttons.next_style()] == ["playstation", "keyboard", "xbox"]
+      and json.loads(buttons.SETTINGS.read_text(encoding="utf-8"))["button_names"] == "xbox")
+buttons._settings = {"button_names": "keyboard"}
+check("the Controller Setting rows say keys when keyboard is chosen",
+      {it.text: it.note for it in controller("Throw", EDITED_LAYOUT)}["Throw"] == "K")
+buttons._settings = {"button_names": "xbox"}
 arriving = narrate([(0.0, controller("Throw", None)), (1.0, controller("Throw", EDITED_LAYOUT))])
 check("the layout arriving after the screen is not taken for a change",
       [s for _, s in arriving] == ["Throw"], repr(arriving))
