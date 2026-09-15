@@ -1268,10 +1268,10 @@ What follows is roughly in order of value.
    modes' result banners.
 
    Starting the mod with the game, asked for on 2026-09-14, is written: see
-   "Starting with the game" under "Running things". The user then put it on
-   hold, along with sharing the mod with friends, until every screen in the
-   game speaks properly; do not raise either until then. The launch options
-   are not set in Steam, so the mod is started by hand.
+   "Starting with the game" under "Running things". The user put it on hold
+   on 2026-09-14 and asked for it on 2026-09-15; the launch options are now
+   set in Steam. Sharing the mod with friends is still on hold; do not raise
+   it until the user does.
 
 1. **Screens nobody has tried.** Not yet seen from memory: online matches
    past their menus (Ranked, Casual, Battle Lounge rooms); story mode and its
@@ -1455,6 +1455,8 @@ always said "game not running") and `GameWatch` closes the mod
 kept from other programs. Checked on 2026-09-14 by running the launcher
 with a stand-in game command, then a copy of ping.exe renamed
 StreetFighterV.exe: no window, banner in the log, closed four seconds after
-the stand-in ended, mutex released. Not yet done at the time of writing:
-setting the launch options in Steam, which needed the user's go-ahead and
-Steam closed, and a real launch from Steam.
+the stand-in ended, mutex released. On 2026-09-15, with the user's go-ahead
+and the game and mod closed, Steam was shut down with `steam.exe -shutdown`,
+`--apply` run (the copy is `localconfig.vdf.before-sfv-access`), and Steam
+started again; the launch options were still there once it was up. Not yet
+heard from a real launch. `--remove`, with Steam closed, takes it out.
