@@ -263,9 +263,6 @@ on_yes = exit_prompt("Yes")
 chosen = [it.text.strip() for it in on_no if it.chosen]
 check("the button with the outline is the selected one", chosen == ["No"], repr(chosen))
 check("and it follows the selection", [it.text.strip() for it in on_yes if it.chosen] == ["Yes"])
-check("the read key has the prompt's question to say before its button, and nothing from behind",
-      sf.prompt_message(on_yes) == ["Are you sure you want to close the application?"]
-      and sf.prompt_message(exit_prompt(None)) == [], repr(sf.prompt_message(on_yes)))
 check("the question is shown though its flag word is clear",
       any("Are you sure" in it.text for it in on_no))
 check("opening the prompt reads the question, then the answer",
@@ -1278,6 +1275,38 @@ check("a Fight Money picture is said after its amount",
       repr(reward))
 
 logging_in = [item("Logging into the server...", 960, 886)]
+sf._country_names = {"AFG": "Afghanistan", "AGO": "Angola", "ALB": "Albania", "BHS": "Bahamas, The"}
+fmem = FakeMemory()
+froot = display_object(fmem, 0, 0, 0, WHITE)
+fgrid = display_object(fmem, froot, 360, 260, WHITE)
+ftiles, fparts = [], {}
+for n, code in enumerate(("OTH", "AFG", "AGO", "ALB")):
+    tile = display_object(fmem, fgrid, 152 * n, 0, WHITE)
+    script, node, chars = fmem.alloc(0x100), fmem.alloc(0x20), fmem.alloc(8)
+    fmem.put(tile + sf.TILE_SCRIPT_OBJECT, "<Q", script)
+    fmem.put(script + sf.SCRIPT_COUNTRY_STRING, "<Q", node)
+    fmem.put(node, "<Q", chars)
+    fmem.buf[chars - HEAP:chars - HEAP + 4] = code.encode("ascii") + b"\0"
+    outline_flags = 1 | sf.NODE_VISIBLE if n == 2 else 1 & ~sf.NODE_VISIBLE
+    fparts[tile] = [display_object(fmem, tile, 0, 0, WHITE if n == 2 else (0.4, 0.4, 0.4, 1)),
+                    display_object(fmem, tile, 0, 0, WHITE, flags=outline_flags)]
+    ftiles.append(tile)
+check("a Home screen tile gives its country code, the game's logo included",
+      [sf.tile_country(fmem.ptr, fmem.read, t) for t in ftiles] == ["OTH", "AFG", "AGO", "ALB"])
+check("a tile without a country gives none", sf.tile_country(fmem.ptr, fmem.read, fgrid) is None)
+check("country names are said naturally",
+      [sf.country_name(c) for c in ("OTH", "AGO", "BHS", "XYZ")] == ["Other", "Angola", "The Bahamas", "XYZ"])
+freader = sf.ScaleformText(fmem, MODULE)
+ftree = {fgrid: ftiles, froot: [fgrid], **fparts}
+freader.children = lambda obj: ftree.get(obj, [])
+freader._grids = {fgrid: ftiles}
+flag_screen = [sf.TextItem("All", 755, 192, WHITE, 3, chain=(fmem.alloc(8), froot + 1, froot)),
+               sf.TextItem("Please select your Home.", 110, 992, WHITE, 3, chain=(fmem.alloc(8), froot + 2, froot))]
+freader.mark_choices(flag_screen)
+check("the Home screen's selected flag is said as its country, not as the tab above it",
+      [(it.text, it.slot) for it in flag_screen if it.selected] == [("Angola", ftiles[2])]
+      and all(it.shown for it in flag_screen), repr([(it.text, it.selected) for it in flag_screen]))
+sf._country_names = None
 check("a startup status line is a screen's summary",
       sf.screen_summary(logging_in) == (True, "Logging into the server..."), repr(sf.screen_summary(logging_in)))
 check("a line ending in dots among other text is not",

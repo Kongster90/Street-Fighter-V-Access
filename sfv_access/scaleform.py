@@ -50,6 +50,7 @@ that never shows on the main menu is hidden by the container above it.
 
 from __future__ import annotations
 
+import ctypes
 import json
 import math
 import re
@@ -57,6 +58,7 @@ import struct
 import threading
 import time
 from collections import defaultdict
+from ctypes import wintypes
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -254,28 +256,6 @@ def _unique(texts: list[str]) -> list[str]:
     return [t for t in texts if not (t in seen or seen.add(t))]
 
 
-def _panel_texts(items: list[TextItem], buttons: list[TextItem]) -> list[str]:
-    """The rest of the panel holding each chosen button's group: a prompt's question."""
-    groups = {it.group for it in buttons if it.chosen and it.group in it.chain}
-    panels = set()
-    for it in buttons:
-        if it.group in groups:
-            at = it.chain.index(it.group)
-            if at + 1 < len(it.chain):
-                panels.add(it.chain[at + 1])
-    return [it.text for it in items
-            if not it.selected and panels.intersection(it.chain) and not groups.intersection(it.chain)]
-
-
-def prompt_message(items: list[TextItem]) -> list[str]:
-    """For the read key, the message of the prompt whose button is selected.
-
-    Arriving at a prompt says its message and then its button; the read key
-    said only the button, "Next", where the user expected the message again.
-    """
-    return _unique(_panel_texts([it for it in items if it.shown], [it for it in items if it.shown and it.chosen]))
-
-
 def landed_on(
     before: list[TextItem], after: list[TextItem], recent_groups: frozenset = frozenset()
 ) -> list[str]:
@@ -313,7 +293,19 @@ def landed_on(
     if fresh:
         old_groups = {it.group for it in before if it.chosen} | set(recent_groups)
         new_groups = {it.group for it in fresh if it.chosen and it.group not in old_groups}
-        intro = _panel_texts(after, [it for it in fresh if it.group in new_groups])
+        panels = set()
+        for it in fresh:
+            if it.group in new_groups and it.group in it.chain:
+                at = it.chain.index(it.group)
+                if at + 1 < len(it.chain):
+                    panels.add(it.chain[at + 1])
+        intro = [
+            it.text
+            for it in after
+            if not it.selected
+            and panels.intersection(it.chain)
+            and not new_groups.intersection(it.chain)
+        ]
         named = []
         seen = set(intro)
         for it in fresh:
@@ -550,6 +542,74 @@ def highlighted_row(children, appearance, rows) -> int | None:
         if shown is not None and shown.count(True) == 1:
             return rows[shown.index(True)]
     return None
+
+
+# The Home screen, reached with a Fighter ID and Home change ticket, is a grid of
+# flags with no names: an "All" tab above forty tiles of three parts, the one
+# the cursor is on outlined, so the picture grid rule named the tab. Each tile's
+# script object holds its country as the three letter code its flag picture is
+# named by: tile +0x150 is that object, and its +0xE0 a string node whose first
+# word points at the characters. Found by following pointers from the tiles to
+# any three capital letters; all forty matched the screenshot, OTH being the
+# game's own logo first, then AFG, AGO, ALB. The flag loaders point at the
+# pictures' URLs too, but one tile ahead and with gaps, so they are no use.
+TILE_SCRIPT_OBJECT = 0x150
+SCRIPT_COUNTRY_STRING = 0xE0
+COUNTRY_OTHER = "OTH"
+COUNTRY_OTHER_WORDS = "Other"
+# Tiles that must resolve to a country, the selected one among them, before a
+# grid counts as the flags: three capital letters could turn up by chance.
+COUNTRY_CHECK_TILES = 3
+GEOCLASS_NATION = 16
+GEO_ISO3 = 5
+GEO_FRIENDLYNAME = 8
+_country_names: dict[str, str] | None = None
+
+
+def country_names() -> dict[str, str]:
+    """Country names by ISO 3166 three letter code, from Windows, in its display language.
+
+    The game's own text has no country names at all; the flags are all it shows.
+    """
+    global _country_names
+    if _country_names is None:
+        names: dict[str, str] = {}
+        try:
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            geos: list[int] = []
+            callback = ctypes.WINFUNCTYPE(wintypes.BOOL, ctypes.c_long)(lambda geo: geos.append(geo) or True)
+            kernel32.EnumSystemGeoID(GEOCLASS_NATION, 0, callback)
+            buf = ctypes.create_unicode_buffer(256)
+            for geo in geos:
+                if kernel32.GetGeoInfoW(geo, GEO_ISO3, buf, len(buf), 0):
+                    code = buf.value
+                    if kernel32.GetGeoInfoW(geo, GEO_FRIENDLYNAME, buf, len(buf), 0):
+                        names[code] = buf.value
+        except (OSError, AttributeError):
+            pass
+        _country_names = names
+    return _country_names
+
+
+def country_name(code: str) -> str:
+    """"Afghanistan" for AFG, "The Bahamas" for Windows's "Bahamas, The", "Other" for the game's logo."""
+    if code == COUNTRY_OTHER:
+        return COUNTRY_OTHER_WORDS
+    name = country_names().get(code, code)
+    head, comma, article = name.rpartition(", ")
+    return f"{article} {head}" if comma and article.lower() == "the" else name
+
+
+def tile_country(ptr, read, tile: int) -> str | None:
+    """The country code a Home screen tile stands for, or None if it is not such a tile."""
+    script = ptr(tile + TILE_SCRIPT_OBJECT)
+    node = ptr(script + SCRIPT_COUNTRY_STRING) if script else None
+    chars = ptr(node) if node else None
+    raw = read(chars, 4) if chars else None
+    if not raw or len(raw) < 4 or raw[3] != 0 or not raw[:3].isalpha() or not raw[:3].isupper():
+        return None
+    code = raw[:3].decode("ascii")
+    return code if code == COUNTRY_OTHER or code in country_names() else None
 
 
 def name_for_grid(grid_and_parents: list[int], items: list[TextItem]) -> TextItem | None:
@@ -1836,7 +1896,7 @@ class ScaleformText:
             self._mark_by_brightness(container, slots)
         self._mark_highlighted_rows(shown, groups)
         self._mark_single_move(shown, groups)
-        self._mark_picture_grids(shown)
+        self._mark_picture_grids(shown, items)
         mark_fighters(shown)
         mark_results(shown)
         mark_versus(shown)
@@ -1921,8 +1981,11 @@ class ScaleformText:
             if it.selected:
                 it.ticked = tick_state(kids, x_of, it.chain)
 
-    def _mark_picture_grids(self, shown: list[TextItem]) -> None:
+    def _mark_picture_grids(self, shown: list[TextItem], items: list[TextItem]) -> None:
         """Name the selected tile of a grid of pictures by the label nearest it.
+
+        The Home screen's flags are named by their country instead, added to
+        `items` and `shown` as a selected text of their own.
 
         The grids come from the last walk of the tree, but their tiles are
         listed afresh on every read. Moving down a row scrolls the stage grid
@@ -1956,11 +2019,42 @@ class ScaleformText:
                 if not parent or parent in up:
                     break
                 up.append(parent)
+            country = self._grid_country(tiles, tile)
+            if country is not None:
+                # The Home screen's flags carry no text, so the country is
+                # said as though its name were written on the tile.
+                named = self._tile_text(country_name(country), tile, up)
+                if named is not None:
+                    shown.append(named)
+                    items.append(named)
+                continue
             label = name_for_grid(up, shown)
             if label is not None:
                 label.chosen = True
                 label.group = grid
                 label.slot = tile
+
+    def _grid_country(self, tiles: list[int], tile: int) -> str | None:
+        """The selected tile's country, if this grid is the Home screen's flags."""
+        code = tile_country(self.pm.ptr, self.pm.read, tile)
+        if code is None:
+            return None
+        others = [t for t in tiles if t != tile][:COUNTRY_CHECK_TILES - 1]
+        if any(tile_country(self.pm.ptr, self.pm.read, t) is None for t in others):
+            return None
+        return code
+
+    def _tile_text(self, text: str, tile: int, up: list[int]) -> TextItem | None:
+        """A selected text standing for a tile that has none, placed where the tile is."""
+        chain = (tile, *up)
+        world = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
+        for obj in reversed(chain):
+            node = self._node(obj)
+            if node is None:
+                return None
+            world = _compose(world, node[0])
+        return TextItem(text, world[2] / TWIPS_PER_PIXEL, world[5] / TWIPS_PER_PIXEL, (1.0, 1.0, 1.0, 1.0),
+                        len(chain), 0, chain, chosen=True, group=up[0], slot=tile)
 
     def _mark_by_layers(self, container: int, slots) -> bool:
         """A prompt's buttons: the selected one has its outline and fill as extra children."""

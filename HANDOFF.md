@@ -779,6 +779,27 @@ to it and read nothing while `_still_there` kept passing. `scaleform.attach`
 and `live` now pass `require_path=True`; `game.is_running` keeps the fallback,
 since the launcher running does mean the game is starting.
 
+**The Fighter ID and Home change.** Bought as a ticket in the shop's Other
+Services, it starts at the next login: after "Logging into the server..." a
+prompt (message and Yes/No, the Exit prompt's template) read correctly once
+the reattach fix was in. Yes led to "Please select your Home." with a Next
+button, then the Home screen: an "All" tab with LB and RB beside it, and a
+grid of flags with no text, forty tiles of three parts in view, in ISO 3166
+three letter order with the game's logo (OTH) first. The picture grid rule
+found the grid and named it after the nearest text, so moving said "All"
+once and nothing more. `tile_country` reads a tile's code through its script
+object (tile +0x150, then +0xE0 to a string node whose first word points at
+the characters); all forty matched the screenshot. The flag loaders also
+point at "img:///Game/CommonAsset/CountryFlags/AFG.AFG" and the like, but one
+tile ahead and with gaps, which a watcher comparing screenshots with codes
+showed. The game has no country names in its text, so `country_names` asks
+Windows (`EnumSystemGeoID`, `GetGeoInfoW` for GEO_ISO3 and GEO_FRIENDLYNAME),
+"Bahamas, The" becomes "The Bahamas" and OTH "Other". `_mark_picture_grids`
+adds a selected text for the tile, named by country, when it and two other
+tiles resolve to codes. Checked live ("Bulgaria"); not yet heard. Still to
+come in that flow: the tabs (LB/RB, not said), the Fighter ID entry, and the
+confirmation.
+
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
 unavailable." at (95, 900) for a few seconds, selecting nothing, so nothing
