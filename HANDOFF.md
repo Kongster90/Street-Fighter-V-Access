@@ -33,9 +33,12 @@ against the game's own words.
 This is now how the mod narrates menus: exact text, and which entry is
 selected, read out of Scaleform. See "Reading the interface from memory" below.
 The pixel reader is the fallback, used while memory cannot be read or when the
-user switches to it with F9. Character select reads from Scaleform too now;
-`live.py`, which reads Unreal's objects, is only used by the pixel path and
-Alt P.
+user switches to it with F9. Character select reads from Scaleform too now.
+`live.py`, which reads Unreal's objects, serves the pixel path and Alt P, and
+since 2026-09-15 finds the objects that hold the button layouts
+(`memory_narration.KeyConfig` and `SavedLayout`). Two things come from
+Windows rather than the game: the keyboard bindings the game saves in
+Input2.ini, and on Button Preview the buttons being pressed (`pads.py`).
 
 **Start here if you are new.** Read "Who this is for", "What works", "Where it
 stands, and what to do next" and "Working with this person", then the parts of
@@ -127,13 +130,17 @@ Played by the user on 2026-09-15:
   Xbox, PlayStation or keyboard keys, with a hint on opening; Button Preview
   saying what each pressed button does.
 - Starting with the game from Steam, closing with it.
+- Keyboard Settings (Options, Other Settings): a hint to press Alt R, which
+  lists each key with what it does ("B, light kick"); Redo keyboard mapping,
+  every step said with the key just assigned. The user's words: "everything
+  worked as it should".
 
 Written and checked against the game or a recording, but not yet heard in
 play: Arcade's final-stage opponent card ("FINAL STAGE. SAGAT. REWARD.
 16620"); the Special Artwork credit after an ending; `SUMMARY_SETTLE`, which
 stops a summary being said twice when part of it arrives late; "Logging into
-the server..." said once at startup; reattaching to the game after it
-restarts with the mod running (fixed, the launcher had been taken).
+the server..." said once at startup; Controller Settings with both players'
+screens open in Versus.
 
 From the screen, the older path, now the fallback:
 
@@ -1033,8 +1040,9 @@ assigned to <cmd_8>. (You can press Up/Down/Left/Right to skip.)", so all
 that was said was "-". `keyboard_prompt` reads that line; the narrator says
 each new instruction, the skip note at the first step only, with any key
 just assigned before it ("W. Press the key to be assigned to down."), and
-drops the lit "-"; Alt R says the current step. The button steps and the end
-of the mapping are not yet seen.
+drops the lit "-"; Alt R says the current step. The user went through the
+whole mapping with it on 2026-09-15, button steps and end included, and
+reported everything working.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
@@ -1224,6 +1232,30 @@ read as silence until it got one.
 the voice grid tiles are about twelve pixels tall and return nothing at their
 own size. Enlarged four times they read every time. `screens._read_bigger`.
 
+**Counts read once go stale.** `live` took the game's object and name counts
+when it attached. Started by hand with the game loaded, fine; started with
+the game, it attached during loading, and every object made later was beyond
+the count and never searched, so Controller Settings lost its buttons only
+when launched from Steam. `Live.refresh_counts` now runs before every search.
+Anything cached at attach time is suspect when the mod starts before the game.
+
+**Data made when a screen opens may not follow it.** Controller Settings'
+`ButtonConfig` script objects and the player's saved profile both hold the
+layout, and neither changes while the user edits; only the screen's own game
+object does. Test any source by changing the thing on screen and watching the
+source, before building on it.
+
+**Picture loaders point one entry ahead.** On the Home screen and Controller
+Settings alike, the URL a picture loader holds (+0x208, or +0x2C8 of its
+script object) is the next tile's or row's picture, with gaps. It passed
+every check until a screenshot was compared. Name pictures some other way.
+
+**A rule you test alone may pass while the narrator says it twice.** Several
+screens this session had a summary or hint and also a raw text that changed
+with the screen ("Hold to close", the lit "-" row); `landed_on`'s fallback
+said the raw text too. Test through `narrate` with the readings in order, as
+the user arrives, and filter what the new line already covers.
+
 **Match against the smallest vocabulary that can hold the answer.** Those tile
 names, matched against the game's whole 21,922 string word list, came back as
 "c BJ-LI" and "Q ALSInn". Matched against the 46 known characters they come
@@ -1256,15 +1288,30 @@ What follows is roughly in order of value.
    shows, check it against the three recordings for false marks, add a test
    built from what memory showed, and say the result in the user's words.
 
-   Heard and confirmed this session: see "What works". Waiting to be heard:
-   Arcade's final-stage opponent card, the Special Artwork credit,
-   `SUMMARY_SETTLE`, the login status line, and reattaching after a game
-   restart. The user judged Training "working well" on 2026-09-14. Not yet
+   Heard and confirmed up to 2026-09-15: see "What works". The session of
+   2026-09-14 and 15 followed the user through starting the game, the shop,
+   the Fighter ID and Home change, Guile's, Zangief's, E. Honda's and Blanka's
+   command lists, Training's attack data, Controller Settings with Button
+   Preview, and Keyboard Settings; the user ended it with everything they had
+   tried working. Waiting to be heard: Arcade's final-stage opponent card, the
+   Special Artwork credit, `SUMMARY_SETTLE`, the login status line. Not yet
    tried at all:
    character select in Training and Arcade (if one does not read, look for
    its heading in the log; `CHARACTER_SELECT_HEADING` is the only thing
    recognising the screen), the result screen with two players, a draw, or
    Survival, the voice language grid, and anything online past its menus.
+
+   Two more kinds of silent screen turned up in that session, beyond the four
+   above. The information is a picture with no text (the Home screen's flags,
+   Controller Settings' buttons, Button Preview): look for the thing the
+   picture stands for elsewhere in memory, a script object's string or a game
+   object's bytes, and when you know what the screen shows right now, search
+   all readable memory for those exact bytes (that found the key
+   configuration in 20 seconds after a day of pointer chasing). And the
+   information is on screen but in the description line or another text that
+   selects nothing (keyboard mapping's instructions, the game's short
+   messages, status lines, typing into a field): watch that text for changes
+   in the narrator.
    Still worth asking the user: whether character select's costume and
    version panels should say whose they are, since both sides' read the
    same; whether Icon Info in the Command List should be read.
@@ -1308,10 +1355,11 @@ What follows is roughly in order of value.
    it until the user does.
 
 1. **Screens nobody has tried.** Not yet seen from memory: online matches
-   past their menus (Ranked, Casual, Battle Lounge rooms); story mode and its
-   chapter select; Survival; the Demonstrations and tutorial lists beyond
-   their menus; the controller and button config page; the shop; the player
-   profile; the Gallery's contents. Each screen this session took minutes to
+   past their menus (Ranked, Casual, Battle Lounge rooms, whose password uses
+   the same keyboard entry line as the Fighter ID but a field `text_entry`
+   does not find); story mode and its chapter select; Survival; the
+   Demonstrations and tutorial lists beyond their menus; the player profile;
+   the Gallery's contents; Options pages other than Other Settings. Each screen this session took minutes to
    an hour once the user was on it. `tools/record_scaleform.py <name>` is the
    tool when a selection's marking is unknown and the user needs to move
    through it; plain live reads were enough for everything else this session.
@@ -1368,7 +1416,9 @@ one of the watch mode, the recorder and the mod can hold the keys at a time.
 Shortcuts are plain Alt plus a key, at their request: fewer keys to press, and
 Windows claims some Control Alt combinations. They chose F10 for quit (and for
 stopping the watch mode and recorder) and F9 for switching between memory and
-the screen, and are happy with F keys generally.
+the screen, and are happy with F keys generally. Alt B, added 2026-09-15,
+cycles button names between Xbox, PlayStation and keyboard keys, saved in
+`settings.json`.
 Before adding a key, check it registers (every current one was free), and
 remember a global hotkey is taken from every program while the mod runs.
 
@@ -1407,6 +1457,18 @@ standing instruction rather than something to be asked about each time.
 - Notices after logging in say each entry once, a costume battle with whose
   costumes it offers rather than one entry per costume, and end with "Press
   Alt R for more information."
+- Keep a screen's arrival short and point to Alt R for a list (Keyboard
+  Settings). Button Preview says nothing but a one-line hint on opening, then
+  each button's action as it is pressed; the whole layout on opening was too
+  much.
+- Button names in Xbox, PlayStation or keyboard style, chosen with Alt B; not
+  hitbox positions, which they declined. Their hitbox is XInput controller 0,
+  and its button they call left trigger is the game's left bumper.
+- Frame advantage as "plus 9", "minus 2", "even", after the attack or combo
+  is over; a combo said once, never hit by hit.
+- A charge is "hold back", the game's word, not "charge".
+- Country names in full ("United States"), Fighter ID typing echoed letter by
+  letter with capitals named, Alt R spelling it with a count.
 
 **How this session found things.** Almost everything came from reading the
 game's memory while the user held the screen, with small scripts run from the
@@ -1432,9 +1494,28 @@ anything else. The logs replay too: `scaleform-log.txt` records every screen
 as it changed with its marks, which is enough to rerun `Narrator` over a
 session.
 
+The 2026-09-14/15 session added some methods worth reusing. A quiet watcher
+script in the scratchpad, logging a few texts or bytes every 30 to 100 ms
+with millisecond times and no speech or keys, ran beside the mod while the
+user played (attack data, key configuration, flag codes); a replay of its log
+through `Narrator` tested timing before the user heard it. Screenshots only
+work while the game is in front, and the user is usually in the chat window
+when you want one, so start a watcher that saves a frame each time something
+changes and ask them to go into the game for ten seconds. `live.shared().
+find_by_class(name)` finds a game object in a second or two; `tools/
+find_properties.py <class>` lists a live object's properties. The pak index
+(`tools/pak_index.py`) lists every picture the game has, which is how all 22
+command pictures were checked at once.
+
 ## Running things
 
-Setup from a clean clone is in `SETUP.md`. Day to day:
+Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod
+starts with the game from Steam (see "Starting with the game" below), with no
+console window: what it prints goes to `snapshots/console-log.txt`, and what
+it reads and says to `scaleform-log.txt` and `spoken-log.txt` as before. To
+have the user run a change, ask them to press F10 and start `Start SFV
+Access.bat` (the game can stay open), or quit the game and launch it again.
+Day to day:
 
 ```bash
 .venv\Scripts\python.exe run.py
