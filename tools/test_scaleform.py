@@ -1303,9 +1303,22 @@ freader._grids = {fgrid: ftiles}
 flag_screen = [sf.TextItem("All", 755, 192, WHITE, 3, chain=(fmem.alloc(8), froot + 1, froot)),
                sf.TextItem("Please select your Home.", 110, 992, WHITE, 3, chain=(fmem.alloc(8), froot + 2, froot))]
 freader.mark_choices(flag_screen)
-check("the Home screen's selected flag is said as its country, not as the tab above it",
-      [(it.text, it.slot) for it in flag_screen if it.selected] == [("Angola", ftiles[2])]
+check("the Home screen's selected flag is said as its country, with the tab above it",
+      [it.text for it in flag_screen if it.selected] == ["All", "Angola"]
       and all(it.shown for it in flag_screen), repr([(it.text, it.selected) for it in flag_screen]))
+
+
+def home(tab, country, tile):
+    return [sf.TextItem(tab, 755, 192, WHITE, 3, chain=(1, 2, 3), chosen=True),
+            sf.TextItem(country, 360 + 152 * tile, 260, WHITE, 3, chain=(10 + tile, 9, 3), chosen=True,
+                        slot=hash((10 + tile, tab)) & 0x7FFFFFFFFFFFFFFF),
+            sf.TextItem("Please select your Home.", 110, 992, WHITE, 3, chain=(4, 5, 3))]
+
+
+switching = narrate([(0.0, home("All", "Other", 0)), (0.5, home("All", "Afghanistan", 1)),
+                     (1.0, home("Asia", "Afghanistan", 1)), (1.5, home("Asia", "Bahrain", 2))])
+check("moving says the country, and switching tabs says the tab first",
+      [s for _, s in switching] == ["All. Other", "Afghanistan", "Asia. Afghanistan", "Bahrain"], repr(switching))
 sf._country_names = None
 check("a startup status line is a screen's summary",
       sf.screen_summary(logging_in) == (True, "Logging into the server..."), repr(sf.screen_summary(logging_in)))

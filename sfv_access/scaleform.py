@@ -2022,9 +2022,19 @@ class ScaleformText:
             country = self._grid_country(tiles, tile)
             if country is not None:
                 # The Home screen's flags carry no text, so the country is
-                # said as though its name were written on the tile.
+                # said as though its name were written on the tile. The tab
+                # above, "All" and the rest switched with LB and RB, counts as
+                # selected too, so switching says it before the country, as
+                # the user asked; with no tile of its own it is not news on a
+                # move within the grid.
+                tab = name_for_grid(up, shown)
+                if tab is not None:
+                    tab.chosen = True
                 named = self._tile_text(country_name(country), tile, up)
                 if named is not None:
+                    # Tied to the tab as well as the tile, so switching tabs
+                    # names the flag landed on even when it is the same one.
+                    named.slot = hash((tile, tab.text if tab is not None else "")) & 0x7FFFFFFFFFFFFFFF
                     shown.append(named)
                     items.append(named)
                 continue

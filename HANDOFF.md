@@ -796,9 +796,13 @@ showed. The game has no country names in its text, so `country_names` asks
 Windows (`EnumSystemGeoID`, `GetGeoInfoW` for GEO_ISO3 and GEO_FRIENDLYNAME),
 "Bahamas, The" becomes "The Bahamas" and OTH "Other". `_mark_picture_grids`
 adds a selected text for the tile, named by country, when it and two other
-tiles resolve to codes. Checked live ("Bulgaria"); not yet heard. Still to
-come in that flow: the tabs (LB/RB, not said), the Fighter ID entry, and the
-confirmation.
+tiles resolve to codes. At the user's request the tab (the grid's nearest
+text, which the picture rule used to take) is marked selected too, so
+switching with LB or RB says it before the country, "Asia. Afghanistan", and
+the country's `slot` is tied to the tab as well as the tile so the flag
+landed on is named even when it is the same one. Checked live ("All.
+Bulgaria"); not yet heard. Still to come in that flow: the Fighter ID entry
+and the confirmation.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
