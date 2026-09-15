@@ -531,10 +531,24 @@ def custom_list(cursor, songs=("Hillside Plaza", "Air Force Base", "Kanzuki Beac
 
 mem_c, reader_c, labels_c = custom_list(cursor=3)
 read_c = reader_c.items()
+read_c_before = custom_list(cursor=2)[1].items()
 check("the row with its highlight bar on is the selected one, with no gold anywhere",
       [it.text for it in read_c if it.selected] == ["Ring of Destiny"], repr([it.text for it in read_c if it.selected]))
 check("a song drawn in 0.6 grey is said to be unavailable, and its tick is not",
-      sf.landed_on([], read_c) == ["Ring of Destiny", "Unavailable"], repr(sf.landed_on([], read_c)))
+      sf.landed_on(read_c_before, read_c) == ["Ring of Destiny", "Unavailable"],
+      repr(sf.landed_on(read_c_before, read_c)))
+
+# Returning to the main menu, the banner takes the name of the mode you came
+# from and brightens into it, passing through that same grey while it is the
+# only thing selected: "TRAINING. Unavailable" as logged on 2026-09-15.
+fading_banner = [item("Dengster", 1379, 53),
+                 sf.TextItem("TRAINING", 799, 452, GREY60, 7, chosen=True),
+                 item("ARCADE", 442, 219, GREY), item("TRAINING", 442, 699, GREY)]
+check("a banner fading in is not called unavailable",
+      sf.landed_on([], fading_banner) == ["TRAINING"], repr(sf.landed_on([], fading_banner)))
+check("but a grey that was already there is",
+      sf.landed_on(read_c_before + fading_banner, read_c) == ["Ring of Destiny", "Unavailable"],
+      repr(sf.landed_on(read_c_before + fading_banner, read_c)))
 _, _, _ = custom_list(cursor=None)
 check("a list with no bar on selects nothing",
       not any(it.selected for it in custom_list(cursor=None)[1].items()))

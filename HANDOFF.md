@@ -466,7 +466,15 @@ Each row has the same parts, and the second, the highlight bar, is visible only
 on the row the cursor is on; `highlighted_row` compares visibility part by part
 (not tint, since grey and ordinary names mix in one list) and is used only for
 lists with no gold. Such an entry is said with "Unavailable" and without its
-tick. The same session showed the tab name, "BGM LIST", and the popup title,
+tick. A grey only counts in `landed_on` if the same text was grey a read ago:
+the main menu's banner at (799, 452) brightens from the 0.27 its entries are
+drawn in to white as it takes the name of the mode, and passing through 0.6
+while structurally chosen it said "TRAINING. Unavailable" on returning from
+Training (and the same for Arcade and Versus; the user reported it on
+2026-09-15, and `scaleform-log.txt` at 14:01:53 holds the frame, white a read
+later). The rows of a list are grey before the cursor reaches them, so real
+ones survive the test; arriving on a grey row with nothing grey behind it now
+says the name without "Unavailable", which the read key still gives. The same session showed the tab name, "BGM LIST", and the popup title,
 "Menu BGM List", read out on every scroll: rows empty for a moment while a
 list scrolls, and the picture grid rule then took the list for a grid of
 pictures and named it after the nearest text. Grids seen holding text are now

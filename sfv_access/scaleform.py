@@ -328,6 +328,13 @@ def landed_on(
     """
     old = {_where(it) for it in before}
     was_lit = {_where(it): it.ticked for it in before if it.selected}
+    # The main menu's banner brightens from the 0.27 its entries are drawn in
+    # to white as it takes the name of the mode you are on, and passes through
+    # the same 0.6 grey that marks an entry which cannot be chosen. Landing on
+    # it mid-fade said "TRAINING. Unavailable" on returning from Training. A
+    # grey that was already there a read ago is a real one: nothing fades that
+    # slowly, and the rows of a list are grey before the cursor reaches them.
+    was_grey = {(it.text, it.slot) for it in before if it.unavailable}
     lit = [it for it in after if it.selected]
     # Ticking the entry you are on changes nothing but its box, so that is
     # said on its own, without the name you already heard.
@@ -380,7 +387,7 @@ def landed_on(
             named.append(it.text)
             if it.note:
                 named.append(it.note)
-            elif it.unavailable:
+            elif it.unavailable and (it.text, it.slot) in was_grey:
                 named.append("Unavailable")   # its tick cannot be changed, so it goes unsaid
             elif it.ticked is not None:
                 named.append(tick_word(it.ticked))
