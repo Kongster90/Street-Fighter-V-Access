@@ -301,6 +301,12 @@ def notice(message=NOTICE, children=6):
 behind = [it for it in notice() if it.text == "Trials"]
 check("a notice's only button, built as a chosen one, is selected and reads the message first",
       sf.landed_on(behind, notice()) == [NOTICE, "Close"], repr(sf.landed_on(behind, notice())))
+check("the read key's prompt message is the question, without the answers",
+      sf.prompt_message(on_yes) == ["Are you sure you want to close the application?"],
+      repr(sf.prompt_message(on_yes)))
+check("a notice's message for the read key, before its one button",
+      sf.prompt_message(notice()) == [NOTICE], repr(sf.prompt_message(notice())))
+check("no prompt message on a menu", sf.prompt_message(on_story) == [] and sf.prompt_message(question_first) == [])
 check("a lone label without a message beside it is not a notice",
       not any(it.chosen for it in notice(message=None)))
 def short_list(cursor, extra_difference=False):

@@ -441,16 +441,16 @@ class App:
             foot = scaleform.footer(items)
             story = (scaleform.path_story(items) or scaleform.extra_battle_details(items)
                      or scaleform.notice_details(items))
+            question = scaleform.prompt_message(items)
             if story:
                 # Path select's description line is the same for every path;
                 # the story is what the user asked to hear.
                 said = memory_narration.phrase([said] + story)
+            elif question:
+                # A prompt's message, then its answer, as when it opened.
+                said = memory_narration.phrase(question + [said])
             elif foot is not None and not foot.selected:
                 said = memory_narration.phrase([said, foot.text])
-            # A prompt's message before its button, as arriving says it.
-            message = scaleform.prompt_message(items)
-            if said and message:
-                said = memory_narration.phrase(message + [said])
             # Stage conditions do not affect play, so moving through stage
             # select leaves them out; asking for a reading includes them.
             details = scaleform.stage_details(items)

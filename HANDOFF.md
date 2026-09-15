@@ -809,7 +809,10 @@ container count as a grid by its flag tiles alone, and `_flag_under_cursor`
 takes the one flag with every part shown (the outline among them) when
 `selected_tile` cannot decide. Heard in play on 2026-09-14 ("North America.
 Canada", "United States"), and the user chose their Home with it. Next came
-"Please choose a Fighter ID." with its notes and Next, read as a prompt. Still to come in that flow: the Fighter ID entry
+"Please choose a Fighter ID." with its notes and Next, read as a prompt.
+There the user pointed out, not for the first time, that Alt R said only
+"Next": `prompt_message` gives a prompt's panel texts besides its buttons,
+as the opening does, and Alt R now says them before the answer. Still to come in that flow: the Fighter ID entry
 and the confirmation.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do
@@ -1177,6 +1180,7 @@ standing instruction rather than something to be asked about each time.
   with these words is what they use.
 - A trial's list is read again on every restart.
 - A bought item in the shop says "Already purchased" after its name.
+- Alt R on a prompt says its message again, then the selected answer.
 - Notices after logging in say each entry once, a costume battle with whose
   costumes it offers rather than one entry per costume, and end with "Press
   Alt R for more information."

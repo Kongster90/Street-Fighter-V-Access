@@ -256,6 +256,27 @@ def _unique(texts: list[str]) -> list[str]:
     return [t for t in texts if not (t in seen or seen.add(t))]
 
 
+def prompt_message(items: list[TextItem]) -> list[str]:
+    """What an open prompt says besides its buttons, for the read key.
+
+    The same texts a prompt's opening reads before its answer: the rest of the
+    panel holding the chosen button's group. Alt R used to say only the answer,
+    "Next", and the user asked for the message again with it.
+    """
+    shown = [it for it in items if it.shown]
+    out = []
+    for button in shown:
+        if not (button.chosen and button.group and button.group in button.chain):
+            continue
+        at = button.chain.index(button.group)
+        if at + 1 >= len(button.chain):
+            continue
+        panel = button.chain[at + 1]
+        out += [it.text for it in shown
+                if not it.selected and panel in it.chain and button.group not in it.chain]
+    return _unique(out)
+
+
 def landed_on(
     before: list[TextItem], after: list[TextItem], recent_groups: frozenset = frozenset()
 ) -> list[str]:
