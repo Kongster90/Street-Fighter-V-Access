@@ -239,7 +239,7 @@ def selection_key(items: list[TextItem]):
     """
     foot = footer(items)
     return (
-        tuple((it.text, it.slot, it.ticked) for it in items if it.selected),
+        tuple((it.text, it.slot, it.ticked, it.note) for it in items if it.selected),
         foot.text if foot else None,
     )
 
@@ -310,6 +310,18 @@ def landed_on(
                and was_lit[_where(it)] is not None and was_lit[_where(it)] != it.ticked]
     if toggled:
         return [tick_word(it.ticked) for it in toggled[:1]]
+    # A new button assigned to the Controller Setting row you are on changes
+    # only its note, "left bumper" where it was "none", so that is said, with
+    # the row the button was taken from. A note arriving where there was none
+    # is the layout being read for the first time, not a change.
+    was_note = {_where(it): it.note for it in before if it.selected}
+    renoted = [it for it in lit if was_note.get(_where(it)) and it.note and was_note[_where(it)] != it.note]
+    if renoted:
+        it = renoted[0]
+        old_notes = {i.text: i.note for i in before if i.note}
+        donor = next((i.text for i in after if i is not it and i.note != old_notes.get(i.text)
+                      and old_notes.get(i.text) == it.note), None)
+        return [f"{it.note}, moved from {donor}" if donor and it.note != BUTTON_NONE else it.note]
     fresh = [it for it in lit if _where(it) not in was_lit]
     if fresh:
         old_groups = {it.group for it in before if it.chosen} | set(recent_groups)
@@ -1736,6 +1748,63 @@ def attack_details(data: AttackData) -> list[str]:
     if advantage:
         out.append(f"Frame advantage {advantage}")
     return out
+
+
+# ----------------------------------------------------------- controller setting
+#
+# Training's Controller Setting lists fourteen actions (x 804 from y 199, 44
+# apart) with each one's button drawn as a controller picture beside it, and
+# no text for the button, so only the action was said. The pictures' names
+# sit in script objects of a class ButtonConfig, but those are filled when
+# the screen opens and do not follow edits, and the picture loaders point one
+# row ahead. What does follow edits is the screen's own game object,
+# WSKeyConfigGFxPlayer: at +0x477 it keeps the layout being edited, fifteen
+# bytes and a controller type byte, and at +0x467 the layout the screen opened
+# with, which Restore Previous Settings goes back to. Found on 2026-09-14 by
+# searching all memory for the layout the user had just made (Throw on left
+# bumper, Button Combo 3 emptied); the profile's own copy changes only when the
+# screen is left. A byte per action in the game's order LP, MP, LK, MK, three
+# punches, HP, three kicks, HK, LP+LK, MP+MK, HP+HK, LP+MP, LK+MK, MK+HP, MP+LK,
+# each the button's number, 17 for none. The rows' actions came from the
+# ButtonConfig objects, which name each row's action code.
+
+CONTROLLER_HEADING = "Controller Type"
+CONTROLLER_ROWS = {
+    "Light Punch": 0, "Medium Punch": 1, "Hard Punch": 5, "Light Kick": 2, "Medium Kick": 3, "Hard Kick": 7,
+    "Throw": 8, "V-Skill": 9, "V-Trigger": 10, "V-Shift": 13,
+    "Button Combo 1": 11, "Button Combo 2": 12, "Button Combo 3": 4, "Button Combo 4": 6,
+}
+BUTTON_WORDS = {0: "up", 1: "down", 2: "left", 3: "right", 4: "X", 5: "Y", 6: "A", 7: "B",
+                8: "left bumper", 9: "right bumper", 10: "left trigger", 11: "right trigger",
+                12: "left stick press", 13: "right stick press", 14: "Start", 15: "Back"}
+BUTTON_NONE = "none"
+BUTTON_UNASSIGNED = 17
+KEY_CONFIG_FUNCTIONS = 15
+
+
+def on_controller_setting(items: list[TextItem]) -> bool:
+    shown = {it.text.strip() for it in items if it.shown}
+    return CONTROLLER_HEADING in shown and sum(label in shown for label in CONTROLLER_ROWS) >= 10
+
+
+def key_config_valid(config: bytes | None) -> bool:
+    """Fifteen button numbers, each a button or none, and a controller type."""
+    return (config is not None and len(config) >= KEY_CONFIG_FUNCTIONS + 1
+            and all(b <= BUTTON_UNASSIGNED for b in config[:KEY_CONFIG_FUNCTIONS]) and config[KEY_CONFIG_FUNCTIONS] <= 3)
+
+
+def button_words(number: int) -> str:
+    return BUTTON_WORDS.get(number, BUTTON_NONE if number == BUTTON_UNASSIGNED else f"button {number}")
+
+
+def mark_controller_buttons(items: list[TextItem], config: bytes | None) -> None:
+    """Note each Controller Setting row's button on its label, from the layout being edited."""
+    if not key_config_valid(config):
+        return
+    for it in items:
+        index = CONTROLLER_ROWS.get(it.text.strip())
+        if it.shown and index is not None:
+            it.note = button_words(config[index])
 
 
 # ---------------------------------------------------------------------- toasts

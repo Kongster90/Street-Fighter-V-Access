@@ -328,6 +328,54 @@ class Narrator:
         return ""
 
 
+KEY_CONFIG_CLASS = "WSKeyConfigGFxPlayer"
+KEY_CONFIG_EDITED = 0x477   # the layout being edited; +0x467 holds the one the screen opened with
+KEY_CONFIG_MOVIE = 0x318    # GFxMovie, set only on the instance showing
+
+
+class KeyConfig:
+    """The button layout the Controller Setting screen holds, edits included.
+
+    The screen's game object has to be found among some 150,000 objects, which
+    takes several seconds, so that is done once on a thread of its own, and the
+    object is remembered for as long as its bytes still make sense.
+    """
+
+    def __init__(self) -> None:
+        self.obj: int | None = None
+        self._thread: threading.Thread | None = None
+
+    def read(self) -> bytes | None:
+        from . import live
+
+        session = live.shared()
+        if self.obj is not None and session.attached:
+            config = session.pm.read(self.obj + KEY_CONFIG_EDITED, scaleform.KEY_CONFIG_FUNCTIONS + 1)
+            if scaleform.key_config_valid(config):
+                return config
+            self.obj = None
+        if self._thread is None or not self._thread.is_alive():
+            self._thread = threading.Thread(target=self._find, daemon=True)
+            self._thread.start()
+        return None
+
+    def _find(self) -> None:
+        from . import live
+
+        session = live.shared()
+        try:
+            if not session.attach():
+                return
+            for obj, _name in session.find_by_class(KEY_CONFIG_CLASS):
+                config = session.pm.read(obj + KEY_CONFIG_EDITED, scaleform.KEY_CONFIG_FUNCTIONS + 1)
+                if session.pm.ptr(obj + KEY_CONFIG_MOVIE) and scaleform.key_config_valid(config):
+                    self.obj = obj
+                    return
+            session.invalidate()
+        except Exception:
+            pass
+
+
 class Session:
     """The memory reader, kept attached to the game across it closing and opening.
 
@@ -357,6 +405,7 @@ class Session:
         self._arcade_marker: str | None = None
         self._arcade_seen_at = 0.0
         self._arcade_notes = 0
+        self.key_config = KeyConfig()
 
     @property
     def available(self) -> bool:
@@ -426,6 +475,11 @@ class Session:
             self._seen_text = True
         if not self._seen_text:
             return None
+        if scaleform.on_controller_setting(items):
+            try:
+                scaleform.mark_controller_buttons(items, self.key_config.read())
+            except Exception as exc:   # the buttons are extra; the rows still read without them
+                self.note(f"key config: read failed: {exc!r}")
         self.items = items
         if self._log_screens:
             self._log_screen(items, now)

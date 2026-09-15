@@ -1478,6 +1478,36 @@ check("a combo whose frame counters are hidden between hits is said once, at its
 never = narrate(hidden + [(2.5 + 0.5 * k, training(hits(8), None, None)) for k in range(6)])
 check("and if the counters never come back, once the numbers have held still",
       [s for _, s in never] == ["8 hits, 222 damage"], repr(never))
+CONTROLLER_LABELS = list(sf.CONTROLLER_ROWS)
+SAVED_LAYOUT = bytes([4, 5, 6, 7, 8, 9, 10, 11, 17, 17, 17, 17, 17, 17, 17, 0])
+EDITED_LAYOUT = bytes([4, 5, 6, 7, 17, 9, 10, 11, 8, 17, 17, 17, 17, 17, 17, 3])
+
+
+def controller(at, layout):
+    """Training's Controller Setting as read live: the heading, fourteen action rows, one gold."""
+    out = [item("Controller Type", 739, 156, GREY), item("CUSTOM", 1051, 160, GREY)]
+    out += [item(label, 804, 199 + 44 * n, GOLD if label == at else GREY) for n, label in enumerate(CONTROLLER_LABELS)]
+    sf.mark_controller_buttons(out, layout)
+    return out
+
+
+check("each Controller Setting row gets its button from the layout being edited",
+      [(it.text, it.note) for it in controller("Throw", EDITED_LAYOUT) if it.note][6:8] +
+      [(it.text, it.note) for it in controller("Throw", EDITED_LAYOUT) if it.note][12:14]
+      == [("Throw", "left bumper"), ("V-Skill", "none"), ("Button Combo 3", "none"), ("Button Combo 4", "left trigger")])
+check("the saved layout gives the game's defaults, three punches on Button Combo 3",
+      {it.text: it.note for it in controller("Throw", SAVED_LAYOUT)}["Button Combo 3"] == "left bumper"
+      and {it.text: it.note for it in controller("Throw", SAVED_LAYOUT)}["Hard Punch"] == "right bumper")
+check("no buttons from a layout that makes no sense",
+      not any(it.note for it in controller("Throw", bytes([40] * 16))) and sf.on_controller_setting(controller("Throw", None)))
+editing = narrate([(0.0, controller("Hard Kick", SAVED_LAYOUT)), (0.5, controller("Throw", SAVED_LAYOUT)),
+                   (1.0, controller("Throw", EDITED_LAYOUT)), (1.5, controller("V-Skill", EDITED_LAYOUT))])
+check("moving says each action's button, and assigning one says it and where it came from",
+      [s for _, s in editing] == ["Hard Kick. right trigger", "Throw. none", "left bumper, moved from Button Combo 3",
+                                  "V-Skill. none"], repr(editing))
+arriving = narrate([(0.0, controller("Throw", None)), (1.0, controller("Throw", EDITED_LAYOUT))])
+check("the layout arriving after the screen is not taken for a change",
+      [s for _, s in arriving] == ["Throw"], repr(arriving))
 check("a startup status line is a screen's summary",
       sf.screen_summary(logging_in) == (True, "Logging into the server..."), repr(sf.screen_summary(logging_in)))
 check("a line ending in dots among other text is not",

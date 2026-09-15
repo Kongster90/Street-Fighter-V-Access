@@ -932,6 +932,39 @@ active or recovery split and no advantage to give. A quick read every 30 to
 100 ms sees the first value two to six frames late, so a total said from it
 would be short by that much; not built, the user asked whether it exists.
 
+**Training's Controller Setting.** Fourteen action rows (x 804, y 199 on, 44
+apart: Light, Medium, Hard Punch, Light, Medium, Hard Kick, Throw, V-Skill,
+V-Trigger, V-Shift, Button Combo 1 to 4) with each button drawn as a picture
+at about (1120, row + 21) and no text, so only the action was said. What did
+not work, so nobody tries it again: the profile's `KWUserProfileDetails.
+KeyConfigData` (`/Script/GameProgressSave...MainUserProfileDetails` +0xB0,
+the struct `KWKeyConfigs`: `Data` fifteen bytes and `TypeData`) changes only
+when the screen is left; the `ButtonConfig` script objects (found by the
+pointer to their class name string at their start: label +0xA0, action code
++0xE0 such as "LPLK", picture URL node +0x100) are filled when the screen
+opens and ignore edits; the picture loaders' URLs (+0x208 of the loader,
+script object +0x2C8) point one row ahead, as the flag loaders did; matching
+the pictures by their pixels confuses X, Y, A and B and fails on the selected
+row, whose dark bar changes the icon. What works: searching all memory for
+the layout the user had just made found `WSKeyConfigGFxPlayer_1`
+(`/Game/Maps/Entry.Entry.PersistentLevel`) holding, in native memory past
+its properties, the layout the screen opened with at +0x467 and the one being
+edited at +0x477, each fifteen bytes and a type byte. A byte per action in
+the enum order LP, MP, LK, MK, P3, HP, K3, HK, LPLK, MPMK, HPHK, LPMP, LKMK,
+MKHP, MPLK, each the pad key number (up 0, down 1, left 2, right 3, X 4, Y 5,
+A 6, B 7, LB 8, RB 9, LT 10, RT 11, L3 12, R3 13, Start 14, Back 15, none
+17). The rows' actions came from the ButtonConfig codes: Throw LPLK, V-Skill
+MPMK, V-Trigger HPHK, V-Shift MKHP, Button Combo 1 LPMP, 2 LKMK, 3 P3, 4 K3.
+`memory_narration.KeyConfig` finds the instance through `live.find_by_class`
+on a thread (about five seconds, once; the instance with a GFxMovie and a
+layout that makes sense) and reads +0x477 each read; `mark_controller_buttons`
+notes each row's button, and `landed_on` says a note that changes on the
+selected row with the row it was taken from ("left bumper, moved from Button
+Combo 3"), the note having joined `selection_key`. A note appearing where
+there was none is the layout arriving, not an edit, and is not said. The
+user's hitbox button they call left trigger is the game's left bumper.
+Checked live; not yet heard.
+
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
 unavailable." at (95, 900) for a few seconds, selecting nothing, so nothing
