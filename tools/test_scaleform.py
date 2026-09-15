@@ -1275,7 +1275,14 @@ picture_field(imem, display_object(imem, iroot, 520, 440, WHITE), 0, 0,
               [("text", "DEADLINE:Sep 15, 2026, 9:00:00 PM (Days left: 1) Reward: "), ("picture", "icon_FM"),
                ("text", "50")])
 ireader = sf.ScaleformText(imem, MODULE)
+picture_field(imem, display_object(imem, iroot, 520, 600, WHITE), 0, 0,
+              [("picture", "USA"), ("text", "Kongster")])
+sf._country_names = {"USA": "United States"}
 reward = [it.text for it in ireader.items()]
+sf._country_names = None
+check("a flag before a Fighter ID is said as its country",
+      "United States, Kongster" in reward, repr(reward))
+reward = [text for text in reward if "Kongster" not in text]
 check("a Fight Money picture is said after its amount",
       reward == ["DEADLINE:Sep 15, 2026, 9:00:00 PM (Days left: 1) Reward: 50 Fight Money"] and not ireader.unknown_pictures,
       repr(reward))

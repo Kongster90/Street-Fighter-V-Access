@@ -828,9 +828,13 @@ twice is said twice; Alt R says the prompt and `entry_value_words`, "Kon, 3
 characters: capital K, o, n". Capitals are said, since a name heard as a word
 does not say how it is written. The Battle Lounge password uses the same
 description line over the lounge settings; its field is not known and
-`text_entry` does not match it. Checked live; not yet heard. After this the
-game checks the ID (strings mention "cannot be used" and IDs in use) and
-confirms. Still to come in that flow: the Fighter ID entry
+`text_entry` does not match it. Heard in play on 2026-09-14: the user typed
+their new ID letter by letter with it. The confirmation after it, a prompt
+with Yes, No and Do not change, read as any prompt; its message begins with
+the chosen Home's flag as a picture named by its code ("USA") before the ID,
+which `_with_pictures` now says as the country: "United States, Kongster. Are
+you sure you want to proceed using this information? ...". The game checks
+the ID after Yes; strings mention "cannot be used" and IDs in use. Still to come in that flow: the Fighter ID entry
 and the confirmation.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do

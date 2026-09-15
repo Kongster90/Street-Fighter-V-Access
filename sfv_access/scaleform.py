@@ -1852,6 +1852,12 @@ class ScaleformText:
                 icons = True
                 pieces.append(("text", f" {ICON_WORDS[name]} {chunk[1:]}"))
                 continue
+            if len(name) == 3 and name.isupper() and (name == COUNTRY_OTHER or name in country_names()):
+                # A flag before a Fighter ID, as on the change's confirmation:
+                # " Kongster" drawn after the United States flag.
+                icons = True
+                pieces.append(("text", f"{country_name(name)}, {chunk[1:]}"))
+                continue
             if input_words(name) is None:
                 if name not in SILENT_PICTURES and not name.startswith(SILENT_PICTURE_PREFIXES):
                     self.unknown_pictures.add(name)
