@@ -99,11 +99,33 @@ section of its own under "Reading the interface from memory"):
   menus, seen in the spoken log; nothing past their menus has been tried.
 - Quitting with F10 now closes the console window.
 
+Also in the mod, played by the user on 2026-09-14 (sections under "Reading
+the interface from memory" and "Where it stands"):
+
+- Starting the game: the notices after logging in, Current Missions and
+  Currently Available Extra Battle, each entry once, costume battles with
+  whose costumes, then "Press Alt R for more information." and Close, Alt R
+  giving deadlines and rewards.
+- The game's short messages at the foot of the screen, such as "Your
+  selection is currently unavailable." on the shop's Special.
+- The shop's item lists, a bought item saying "Already purchased".
+- The Fighter ID and Home change, start to finish: the change ticket prompt,
+  the Home screen's flags said as countries with their region tabs, the
+  Fighter ID typed with each character echoed and Alt R spelling it, the
+  confirmation with the flag said as the country, the too-short and taken
+  errors, and "Registration complete".
+- Alt R on any prompt says its message again before the selected answer.
+- Command pictures for charge ("hold back"), the full circle and rapid
+  presses; Guile, Zangief, E. Honda and Blanka checked.
+- Training's attack data: one sentence when an attack or combo is over, "2
+  hits, 57 damage, plus 9", and all of it on Alt R.
+
 Written and checked against the game or a recording, but not yet heard in
 play: Arcade's final-stage opponent card ("FINAL STAGE. SAGAT. REWARD.
 16620"); the Special Artwork credit after an ending; `SUMMARY_SETTLE`, which
-stops a summary being said twice when part of it arrives late; the startup
-challenge notices, which probably share the Trials notice's template.
+stops a summary being said twice when part of it arrives late; "Logging into
+the server..." said once at startup; reattaching to the game after it
+restarts with the mod running (fixed, the launcher had been taken).
 
 From the screen, the older path, now the fallback:
 
@@ -1132,7 +1154,9 @@ What follows is roughly in order of value.
 
    Heard and confirmed this session: see "What works". Waiting to be heard:
    Arcade's final-stage opponent card, the Special Artwork credit,
-   `SUMMARY_SETTLE`, and the startup challenge notices. Not yet tried at all:
+   `SUMMARY_SETTLE`, the login status line, and reattaching after a game
+   restart. The user judged Training "working well" on 2026-09-14. Not yet
+   tried at all:
    character select in Training and Arcade (if one does not read, look for
    its heading in the log; `CHARACTER_SELECT_HEADING` is the only thing
    recognising the screen), the result screen with two players, a draw, or
