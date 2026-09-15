@@ -1468,4 +1468,15 @@ the game, the pixel fallback's character select lookup built `live`'s name
 table while the game was still loading, and a name or class not found was
 cached as missing for the whole session. Misses are now looked for again
 after `live.MISS_RETRY` (15 s), and `KeyConfig` notes in the screen log
-whether it found the object, found none showing, or failed and why.
+whether it found the object, found none showing, or failed and why. That was
+not it, or not all of it: the next launch logged "0 instances" on Versus's
+Controller Settings while a fresh process found the class. The real fault was
+that `live` took the object and name counts once, on attaching; started with
+the game it attaches while the game loads, so every object made later lay
+beyond the count and was never scanned. `Live.refresh_counts` reads both
+counts again (the flat array's count at +8, the name table's after its chunk
+table) before each class search, instance search and name table read. In
+Versus the key configuration objects exist only while their screen is open
+(`WSVersusBattleSettingGFxPlayer.KeyConfigGFxPlayers` +0x4C8 is null after);
+with two players' screens open, `KeyConfig` would take the first with a
+movie, which may be the wrong player's.

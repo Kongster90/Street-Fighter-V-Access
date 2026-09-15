@@ -229,6 +229,27 @@ class Live:
     def attached(self) -> bool:
         return self.pm is not None
 
+    def refresh_counts(self) -> None:
+        """Read again how many objects and names the game has now.
+
+        Both counts were taken once, when attaching. Started with the game, the
+        mod attaches while it is still loading, and every object made after
+        that, Controller Setting's among them, lay beyond the count and was
+        never looked at; started by hand once the game was up, it worked.
+        """
+        if self.pm is None or self.objects is None or self.names is None:
+            return
+        if self.objects.flat:
+            count = self.pm.i32(self.objects.address + 8)
+            capacity = self.pm.i32(self.objects.address + 12)
+            if count is not None and 0 < count <= max(capacity or 0, count) and count < 8_000_000:
+                self.objects.num_elements = count
+        names = self.pm.i32(self.names.address + self.names.layout.count_offset)
+        per_chunk = self.names.layout.elements_per_chunk
+        if names is not None and 0 < names <= self.names.layout.chunk_table_size * per_chunk:
+            self.names.num_elements = names
+            self.names.num_chunks = (names + per_chunk - 1) // per_chunk
+
     # ---------------------------------------------------------------- queries
     CLASS_KINDS = ("Class", "BlueprintGeneratedClass", "DynamicClass")
 
@@ -242,6 +263,7 @@ class Live:
                 and time.monotonic() - self._name_lookup_at > MISS_RETRY):
             self._name_lookup = None
         if self._name_lookup is None:
+            self.refresh_counts()
             self._name_lookup_at = time.monotonic()
             table: dict[str, int] = {}
             layout = self.names.layout
@@ -278,6 +300,7 @@ class Live:
                 return self._class_cache[class_name]
             if time.monotonic() - self._class_missed_at.get(class_name, 0.0) < MISS_RETRY:
                 return None
+        self.refresh_counts()
         pm, names, objects = self.pm, self.names, self.objects
         layout = objects.layout
 
@@ -333,6 +356,7 @@ class Live:
         # A class that does not exist here should not be searched for again and
         # again while the same screen is open; `class_address` looks again
         # once its miss is `MISS_RETRY` old.
+        self.refresh_counts()
         pm, objects, names = self.pm, self.objects, self.names
         layout = objects.layout
         target = self.class_address(class_name)
