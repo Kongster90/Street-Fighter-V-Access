@@ -901,7 +901,14 @@ counter ran while player 1 moved before any hit, and a light attack's hit
 now takes `counter` and `advantage` from the right readout. The replay then
 gives light hits plus 4, blocked lights plus 2 or 3, knockdown enders plus
 22 and plus 27. Whether the readouts swap when player 1 is on the right side
-(Side Setting) is unknown.
+(Side Setting) is unknown. The user confirmed the signs in play.
+
+Attacks that miss: the attack values do not change and the bracket keeps the
+last advantage; only player 1's counter runs, from the action's total frames
+down to 0 ("13 (+3)", "7", "1" in the first log). There is no startup,
+active or recovery split and no advantage to give. A quick read every 30 to
+100 ms sees the first value two to six frames late, so a total said from it
+would be short by that much; not built, the user asked whether it exists.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently
