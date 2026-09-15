@@ -880,7 +880,18 @@ stood at 0 for `ATTACK_SETTLE` (0.25 s): "2 hits, 57 damage, plus 9",
 "Blocked, minus 2". A combo of 0 with damage and plus 52 turned up once (a
 throw or knockdown), so "Blocked" needs the advantage within 15. Alt R with
 nothing selected gives `attack_details`. Replaying the logged session gave
-one sentence per attack, 76 in all. Not yet heard.
+one sentence per attack, 76 in all.
+
+In play the user heard long combos said too soon: "3 hits", "5 hits", "6
+hits", "7 hits", "8 hits" through one. Through special moves and long
+combos both frame texts go away entirely, and a missing counter had been
+taken for one at rest. Now only player 1's counter showing 0 (with the other
+side's at 0 or gone) counts, the values must also have held still
+`ATTACK_SETTLE`, and when player 1's frame text stays away the values holding
+still `ATTACK_SETTLE_UNCOUNTED` (2 s) will do. In the log the frame text came
+back about a second after a long combo's last hit, so that combo is now "8
+hits, 275 damage, minus 10" once; a replay of the whole session from the
+screen log gave one sentence per attack and none mid-combo. Not yet heard.
 
 **The game's short messages.** Pressing X on Special in the shop seemed to do
 nothing but make a sound: the game showed "Your selection is\ncurrently

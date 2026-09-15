@@ -1429,8 +1429,8 @@ check("arriving says the prompt and how to type, then each character typed or de
 def training(values, own, other):
     """Training's attack data as logged: labels, player 1's values and frame, the other side's frame."""
     out = [item(sf.ATTACK_LABELS, 98, 195), item("Frame", 497, 196), item("Frame", 1457, 195),
-           item("0(+0)\n0(+0)\n0\n0%\n-", 1152, 195), item(values, 338, 195), item(own, 621, 195)]
-    return out + ([item(other, 1696, 195)] if other else [])
+           item("0(+0)\n0(+0)\n0\n0%\n-", 1152, 195), item(values, 338, 195)]
+    return out + ([item(own, 621, 195)] if own else []) + ([item(other, 1696, 195)] if other else [])
 
 
 TWO_HITS = "57(+27)\n133(+63)\n2\n90%\nHIGH"
@@ -1458,6 +1458,25 @@ combo = narrate([(0.0, training(ONE_HIT, "0 (-4)", None)),
                  (4.5, training(TWO_HITS, "0 (-4)", "0 (+4)")), (5.0, training(TWO_HITS, "0 (-4)", None))])
 check("a combo is said once when over, not hit by hit, and the same attack again is said again",
       [s for _, s in combo] == ["2 hits, 57 damage, plus 9", "2 hits, 57 damage, minus 4"], repr(combo))
+
+
+def hits(n):
+    return f"{24 * n + 30}(+24)\n{40 * n}(+40)\n{n}\n80%\nHIGH"
+
+
+# As logged at 20:38:48: through a long combo both frame texts go away, and
+# the hits land about a third of a second apart.
+hidden = [(0.0, training(ONE_HIT, "0 (-4)", None))]
+hidden += [(0.1 + 0.33 * k, training(hits(k + 2), None, None)) for k in range(7)]
+ending = [(2.5, training(hits(8), None, "27 (0)")), (3.0, training(hits(8), "14 (-10)", "4 (+10)")),
+          (3.2, training(hits(8), "0 (-10)", "0 (+10)")), (3.4, training(hits(8), "0 (-10)", "0 (+10)")),
+          (3.6, training(hits(8), "0 (-10)", "0 (+10)")), (4.0, training(hits(8), "0 (-10)", None))]
+long_combo = narrate(hidden + ending)
+check("a combo whose frame counters are hidden between hits is said once, at its end, with its advantage",
+      [s for _, s in long_combo] == ["8 hits, 222 damage, minus 10"], repr(long_combo))
+never = narrate(hidden + [(2.5 + 0.5 * k, training(hits(8), None, None)) for k in range(6)])
+check("and if the counters never come back, once the numbers have held still",
+      [s for _, s in never] == ["8 hits, 222 damage"], repr(never))
 check("a startup status line is a screen's summary",
       sf.screen_summary(logging_in) == (True, "Logging into the server..."), repr(sf.screen_summary(logging_in)))
 check("a line ending in dots among other text is not",

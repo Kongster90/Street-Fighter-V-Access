@@ -40,6 +40,10 @@ TRIAL_RESTART_GAP = 3.0
 # How long both of Training's frame counters must stand at 0 before an attack's
 # result is said. Between a combo's hits the other side's counter never rests.
 ATTACK_SETTLE = 0.25
+# When player 1's frame text has gone away, as it does through special moves
+# and long combos, the values holding still this long is taken as the end. In
+# the log the frame text came back about a second after a long combo's last hit.
+ATTACK_SETTLE_UNCOUNTED = 2.0
 RETRY = 3.0            # how often to look for the game while not attached
 ALIVE_CHECK = 1.0      # how often to confirm the attached game is still there
 # The block list is refreshed once a second in the background. If that falls
@@ -169,6 +173,7 @@ class Narrator:
         self.attack_pending = False
         self.attack_other_running = False
         self.attack_still_since: float | None = None
+        self.attack_changed_at = 0.0
         self.said = ""
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
@@ -277,18 +282,26 @@ class Narrator:
             if self.attack_values is not None:
                 if data.values != self.attack_values:
                     self.attack_pending = True
+                    self.attack_changed_at = now
                 # The same attack landing again leaves the values as they
                 # were; the other side's counter starting while this side's
                 # attack runs is what shows it landed.
                 elif other_running and own_running and not self.attack_other_running:
                     self.attack_pending = True
+                    self.attack_changed_at = now
             self.attack_values, self.attack_other_running = data.values, other_running
-            if own_running or other_running:
+            # Only a counter showing 0 is at rest. Through special moves and
+            # long combos both frame texts go away entirely, and taking that
+            # for rest said "3 hits", "5 hits", "6 hits" through one combo.
+            if data.counter == 0 and not other_running:
+                if self.attack_still_since is None:
+                    self.attack_still_since = now
+            else:
                 self.attack_still_since = None
-            elif self.attack_still_since is None:
-                self.attack_still_since = now
-            if (self.attack_pending and self.attack_still_since is not None
-                    and now - self.attack_still_since >= ATTACK_SETTLE):
+            quiet = now - self.attack_changed_at
+            counted = self.attack_still_since is not None and now - self.attack_still_since >= ATTACK_SETTLE
+            uncounted = data.counter is None and not other_running and quiet >= ATTACK_SETTLE_UNCOUNTED
+            if self.attack_pending and quiet >= ATTACK_SETTLE and (counted or uncounted):
                 self.attack_pending = False
                 parts = (parts or []) + [scaleform.attack_summary(data)]
                 self.said = ""   # the same result again is a new attack
