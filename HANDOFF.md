@@ -1793,6 +1793,19 @@ testing, the user's launch options point at the installed copy in
 `.venv\Scripts\python.exe tools\steam_launch_options.py --apply` (Steam
 closed) and delete that folder.
 
+**The VS screen online names both sides.** It used to call the far side the
+opponent, which is right against the CPU and wrong online: the user played a
+friend from the second player side on 2026-09-15 and heard their own fighter,
+AKIRA, named as the opponent. Nothing on that screen says which side is
+theirs (no "YOU" tag; the fight's own display has one, at (167, 90) or
+(1834, 90), but that comes after). Each side's Fighter ID sits on the row at
+y 901, under the fighter and over the title, and only an online match fills
+it, so when both are there `versus_summary` says "jamestoh, CAMMY, V-Skill 1,
+V-Trigger 1. Konggster, AKIRA, V-Skill 2, V-Trigger 1. The Grid." and the
+user picks out their own ID. If the mod ever learns the player's Fighter ID
+(the game's `KWUserProfileDetails` objects were tried and gave no strings),
+this could go back to naming the opponent alone.
+
 **Battle Lounge chat.** One text field at the top right holds the whole log,
 newest entry first: "[11:45 PM] jamestoh" with the message indented under it,
 or a line of its own for what the room does ("... has entered the room.",

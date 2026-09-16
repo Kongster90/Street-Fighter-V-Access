@@ -1020,8 +1020,50 @@ def mark_versus(items: list[TextItem]) -> None:
             it.chosen, it.group, it.slot = False, 0, 0
 
 
+# On the VS screen each side's Fighter ID sits on this row, under the fighter
+# and over the title. Only online is anyone named there.
+VERSUS_NAME_ROW = (880, 916)
+
+
+def _versus_value(shown: list[TextItem], label: TextItem) -> str | None:
+    """The version shown against one side's V-Skill or V-Trigger label."""
+    return next((v.text.strip() for v in shown
+                 if v is not label and len(v.chain) > 1 and len(label.chain) > 1
+                 and v.chain[1] == label.chain[1] and v.text.strip()), None)
+
+
+def _versus_versions(shown: list[TextItem], fighter: TextItem) -> list[str]:
+    """"V-Skill 1", "V-Trigger 1" for the side this fighter is on."""
+    out = []
+    for name in VERSUS_LABELS:
+        labels = [it for it in shown if it.text.strip() == name]
+        if not labels:
+            continue
+        label = min(labels, key=lambda it: abs(it.x - fighter.x))
+        value = _versus_value(shown, label)
+        if value is None:
+            continue
+        numeral = value.partition(" - ")[0].strip()
+        out.append(f"{VERSUS_WORDS[name]} {VERSION_NUMERALS.get(numeral, value)}")
+    return out
+
+
+def _versus_player(shown: list[TextItem], fighter: TextItem) -> str | None:
+    """The Fighter ID on this fighter's side, which only an online match shows."""
+    middle = STAGE_WIDTH / 2
+    row = [it for it in shown if VERSUS_NAME_ROW[0] <= it.y <= VERSUS_NAME_ROW[1]
+           and (it.x < middle) == (fighter.x < middle) and it.text.strip()]
+    return " ".join(row[0].text.split()) if row else None
+
+
 def versus_summary(items: list[TextItem]) -> str | None:
     """"Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area." on the VS screen.
+
+    Against the CPU the far side is the opponent and is the only one named.
+    Online it is not that simple: the user played a friend from the second
+    player side on 2026-09-15 and heard their own fighter called the opponent.
+    Nothing on the screen says which side is yours, so when both sides carry a
+    Fighter ID both are said, each with whose it is.
 
     None away from it, and until both fighters' names show. A version whose
     value does not start with a numeral is said by name; a stage that is not
@@ -1035,17 +1077,15 @@ def versus_summary(items: list[TextItem]) -> str | None:
     fighters = sorted((it for it in shown if it.text.strip() in names and panel in it.chain), key=lambda it: it.x)
     if not fighters or fighters[-1].x - fighters[0].x < STAGE_WIDTH / 4:
         return None
-    parts = [f"Opponent, {fighters[-1].text.strip()}"]
-    for label in VERSUS_LABELS:
-        right = max((it for it in shown if it.text.strip() == label), key=lambda it: it.x)
-        value = next((v.text.strip() for v in shown
-                      if v is not right and len(v.chain) > 1 and len(right.chain) > 1
-                      and v.chain[1] == right.chain[1] and v.text.strip()), None)
-        if value is None:
-            continue
-        numeral = value.partition(" - ")[0].strip()
-        parts.append(f"{VERSUS_WORDS[label]} {VERSION_NUMERALS.get(numeral, value)}")
-    sentence = ", ".join(parts)
+    sides = [fighters[0], fighters[-1]]
+    players = [_versus_player(shown, side) for side in sides]
+    if all(players):
+        sentence = ". ".join(
+            ", ".join([who, side.text.strip()] + _versus_versions(shown, side))
+            for side, who in zip(sides, players))
+    else:
+        sentence = ", ".join([f"Opponent, {sides[-1].text.strip()}"]
+                             + _versus_versions(shown, sides[-1]))
     known = game_strings()
     stages = [it.text.strip() for it in shown
               if len(it.chain) > 1 and it.chain[1] == panel and it.text.strip() in known

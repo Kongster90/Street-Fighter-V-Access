@@ -963,7 +963,8 @@ check("Arcade's result screen before the final stage says so",
 # The VS screen before a fight, as recorded: one panel holding both names,
 # each side's V-Skill and V-TRIGGER label and value, and the stage's name.
 def versus_screen(left="ZEKU", right="ABIGAIL", heading=None, gold=False,
-                  versions=("I - HUNGABEE", "I - MAX POWER"), stage="Metro City Bay Area"):
+                  versions=("I - HUNGABEE", "I - MAX POWER"), stage="Metro City Bay Area",
+                  players=None):
     mem = FakeMemory(size=0x21000)
     movie = display_object(mem, 0, 0, 0, WHITE)
     panel = display_object(mem, display_object(mem, movie, 0, 0, WHITE), 0, 0, WHITE)
@@ -980,6 +981,10 @@ def versus_screen(left="ZEKU", right="ABIGAIL", heading=None, gold=False,
             row = display_object(mem, panel, x, 702 + 52 * i, WHITE)
             text_field(mem, row, 185, 0, [label], tint=GOLD if gold and i == 0 and x < 960 else WHITE)
             text_field(mem, row, 0, -4, [value], tint=GOLD if gold and i == 0 and x < 960 else WHITE)
+    if players:
+        # Online, each side's Fighter ID sits under the fighter.
+        for who, x in zip(players, (586, 1770)):
+            text_field(mem, panel, x, 901, [who])
     if stage:
         text_field(mem, panel, 644, 979, [stage])
     return sf.ScaleformText(mem, MODULE).items()
@@ -2197,6 +2202,20 @@ check("it waits for the totals rather than growing as the screen fills in",
 check("the offline result screen still reads its own way",
       sf.online_result_summary(on_story) is None
       and sf.screen_summary(lounge_result())[1] == "You win. Total 1 win, 0 losses. First To 10")
+
+# Online, both sides carry a Fighter ID and nothing says which is the player's.
+# The user played a friend from the second player side on 2026-09-15 and heard
+# their own fighter, AKIRA, called the opponent.
+online_versus = versus_screen(left="CAMMY", right="AKIRA", versions=("II - TSUTENDA", "I - OTOKO NO SENAKA"),
+                              stage="The Grid", players=("jamestoh", "Konggster"))
+check("an online VS screen names both sides with whose they are",
+      sf.versus_summary(online_versus) ==
+      "jamestoh, CAMMY, V-Skill 1, V-Trigger 1. Konggster, AKIRA, V-Skill 2, V-Trigger 1. The Grid.",
+      repr(sf.versus_summary(online_versus)))
+check("against the CPU, with nobody named, the far side is still the opponent",
+      sf.versus_summary(versus_screen()) ==
+      "Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area.",
+      repr(sf.versus_summary(versus_screen())))
 
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
