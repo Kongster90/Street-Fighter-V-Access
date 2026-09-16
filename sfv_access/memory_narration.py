@@ -217,6 +217,12 @@ class Narrator:
         self.subtitle_said: tuple[str, str] | None = None
         self.said = ""
 
+    def health_words(self) -> str | None:
+        """"Health 95 percent" once the bar has settled, for the read key too."""
+        if not self.health_settled or self.health_value is None:
+            return None
+        return f"Health {round(self.health_value * 100)} percent"
+
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
         """The sentence to speak for this reading, or an empty string."""
         if scaleform.trial_restarted(self.previous, items) and now - self.restarted_at > TRIAL_RESTART_GAP:
@@ -276,8 +282,7 @@ class Narrator:
                 self.health_value = fullest
             if now - self.health_first_at >= HEALTH_CAP:
                 self.health_settled = True
-        health = (f"Health {round(self.health_value * 100)} percent"
-                  if self.health_settled and self.health_value is not None else None)
+        health = self.health_words()
         summary_screen, summary = scaleform.screen_summary(items, health)
         # Nothing is said about the screen while the bar is still moving: with
         # the reading inside the sentence, saying it early means saying it twice.

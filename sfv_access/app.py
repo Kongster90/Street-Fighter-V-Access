@@ -492,8 +492,9 @@ class App:
             details = scaleform.stage_details(items)
             if said and details:
                 said = memory_narration.phrase([said] + details)
-            _summary_screen, summary = scaleform.screen_summary(
-                items, self._health_reading() if scaleform.on_survival_supplements(items) else None)
+            # The narrator's reading, which has watched the bar settle, rather
+            # than a fresh glance that a shine could catch halfway.
+            _summary_screen, summary = scaleform.screen_summary(items, self.narrator.health_words())
             if summary:
                 said = memory_narration.phrase([summary, said])
             layout = scaleform.preview_summary(items)
