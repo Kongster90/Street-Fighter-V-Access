@@ -863,6 +863,16 @@ selected supplement is named first and the sentence follows. The reading is
 always the window's fullest: keeping the older value while a rise sat within
 tolerance stuck at 93 against a bar reading 95.
 
+**The bar is two colours.** It then said 33 percent for a bar a picture
+showed 60 percent full (`bar-0.png`, stage 3 of the user's run). A damaged
+bar runs from (91, 254, 39) at the end that empties first to (236, 252, 5) at
+the other, over (26, 26, 26); `hud._yellow` wanted red above 170, so only the
+yellow half of the fill counted. `hud._bar_lit` takes strong green with little
+blue as well, and `tools/test_hud.py` paints bars in those colours and checks
+they read as themselves. The full-health frames still read 95, 94 and 100, the
+100 being the shine-free one. A full bar is all gold, which is why the first
+picture read right and the damaged one did not.
+
 The opponent's name is still unsaid: Survival has no VS screen, its
 display names only PLAYER 1 and CPU, and the name sits in memory hidden
 (18:41:03 on 2026-09-15 logged 'CHUN-LI' among the hidden), so it wants the

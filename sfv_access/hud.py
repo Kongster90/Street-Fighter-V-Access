@@ -77,6 +77,23 @@ def _yellow(block: np.ndarray) -> np.ndarray:
     return (r > 170) & (g > 130) & (b < 160) & ((r - b) > 60)
 
 
+def _bar_lit(block: np.ndarray) -> np.ndarray:
+    """Whether each pixel is part of a health bar's fill.
+
+    The bar is not one colour: it runs from green at the end that empties
+    first to yellow at the other, and a damaged bar showed (91, 254, 39) at
+    one end and (236, 252, 5) at the other, over a (26, 26, 26) background.
+    Counting only the yellow of it called a bar that was 61 percent full 33,
+    which is what the user heard on Survival's supplement screen. Green is
+    taken as well: strong green, little blue, against that dark background.
+    """
+    r = block[..., 0].astype(np.int16)
+    g = block[..., 1].astype(np.int16)
+    b = block[..., 2].astype(np.int16)
+    green = (g > 200) & (b < 100) & (r > 60) & ((g - b) > 120)
+    return _yellow(block) | green
+
+
 def _lit_columns(rgb: np.ndarray, span: tuple[int, int]) -> np.ndarray | None:
     h, w = rgb.shape[:2]
     x0 = _scaled(span[0], w, BASE_W)
@@ -85,7 +102,7 @@ def _lit_columns(rgb: np.ndarray, span: tuple[int, int]) -> np.ndarray | None:
     y1 = _scaled(HEALTH_ROWS[1], h, BASE_H)
     if x1 <= x0 or y1 <= y0 or y1 > h or x1 > w:
         return None
-    return _yellow(rgb[y0:y1, x0:x1]).any(axis=0)
+    return _bar_lit(rgb[y0:y1, x0:x1]).any(axis=0)
 
 
 def _longest_run(lit: np.ndarray) -> int:
