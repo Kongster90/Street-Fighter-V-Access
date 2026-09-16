@@ -1445,6 +1445,11 @@ def extra_battle_details(items: list[TextItem], brief: bool = False) -> list[str
 # user's run on 2026-09-15, stage 1 of an Easy run.
 
 SURVIVAL_HEADING = "BATTLE SUPPLEMENT"
+# The screen after it, where the items bought are chosen for the fight:
+# "Grapes. x2", "Kanzuki-ryu Scroll. x1". What each one does is in the
+# description line, which the user asked to hear without pressing the read
+# key, a moment behind the name (see `Narrator.step`).
+SURVIVAL_ITEMS_HEADING = "Battle Items"
 SURVIVAL_NEXT_STAGE = "Next Stage"
 SURVIVAL_CPU_LEVEL = "CPU Level"
 SURVIVAL_SCORE = "SCORE"
@@ -1498,6 +1503,11 @@ def _survival_rows(shown: list[TextItem]) -> list[list[str]]:
 
 def on_survival_supplements(items: list[TextItem]) -> bool:
     return any(it.shown and it.text.strip() == SURVIVAL_HEADING for it in items)
+
+
+def on_battle_items(items: list[TextItem]) -> bool:
+    """Survival's Battle Items screen, which follows the supplement one."""
+    return any(it.shown and it.text.strip() == SURVIVAL_ITEMS_HEADING for it in items)
 
 
 def survival_summary(items: list[TextItem], health: str | None = None) -> str | None:

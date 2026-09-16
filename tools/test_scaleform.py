@@ -2054,6 +2054,42 @@ check("a first stage says no stage cleared, and the parameter increase can be mi
       and "Parameter Increase +999%" not in sf.survival_details(survival(parameter=False)),
       repr(sf.survival_summary(survival(next_stage="Next Stage 1"))))
 
+
+# Survival's Battle Items screen, as read live on 2026-09-15: the items with
+# how many are held, and a description line saying what the selected one does.
+def battle_items(selected="Grapes", description="Eat one to recover a little health."):
+    rows = [("Battle Items", 673, 199), ("Selected Supplement", 174, 206),
+            ("SCORE", 180, 246), ("13900", 498, 248),
+            ("Do not use a Supplement", 210, 277), ("0", 498, 279),
+            ("Grapes", 803, 344), ("x2", 1264, 344),
+            ("Selected Battle Items", 174, 361),
+            ("Kanzuki-ryu Scroll", 803, 386), ("x1", 1264, 386),
+            ("Do not use any Battle Items", 210, 401),
+            ("Masters Guide", 803, 512), ("x4", 1264, 512),
+            ("Next Stage 2", 1041.7, 976.8), (description, 110, 992)]
+    out = [item(text, x, y) for text, x, y in rows if text != selected]
+    out.append(sf.TextItem(selected, 803, 260, GOLD, 5))
+    return out
+
+
+described = mn.Narrator()
+grapes = battle_items()
+heard = [(t, said) for t, said in
+         [(t, described.step(grapes, t)) for t in (0.0, 0.2, 0.4, 0.6, 0.9, 1.2)] if said]
+check("an item's description follows its name after a moment, once",
+      [said for _t, said in heard] == ["Grapes", "Eat one to recover a little health."]
+      and heard[1][0] >= 0.5, repr(heard))
+
+# Moving on before it is due drops it: only the new name is said.
+moving = mn.Narrator()
+quick = [said for said in [moving.step(battle_items(), 0.0), moving.step(battle_items(), 0.2),
+                           moving.step(battle_items(selected="Masters Guide",
+                                                     description="Study to earn more score."), 0.4),
+                           moving.step(battle_items(selected="Masters Guide",
+                                                    description="Study to earn more score."), 0.6)] if said]
+check("moving on before it is due says the next name instead",
+      quick == ["Grapes", "Masters Guide"], repr(quick))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

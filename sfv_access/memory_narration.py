@@ -44,6 +44,11 @@ ATTACK_SETTLE = 0.25
 # and long combos, the values holding still this long is taken as the end. In
 # the log the frame text came back about a second after a long combo's last hit.
 ATTACK_SETTLE_UNCOUNTED = 2.0
+# On Survival's Battle Items screen the entries are things whose names say
+# nothing about what they do, so the description line follows the name by
+# itself after this long, at the user's request, rather than waiting for the
+# read key. Moving on before it is due drops it.
+DESCRIBE_AFTER = 0.5
 CONTROLS_HINT = "Press Alt B to cycle through button styles."
 # If arriving on Controller Setting names nothing, the hint is said alone after this.
 CONTROLS_HINT_WAIT = 0.6
@@ -163,6 +168,11 @@ class Narrator:
         # made a new sentence and the whole thing was said over and over.
         self.health_reading: str | None = None
         self.health_asked = False
+        # Battle Items: the entry whose description line is owed, when it was
+        # named, and whether it has been given. See `DESCRIBE_AFTER`.
+        self.described_key = None
+        self.described_at = 0.0
+        self.described_said = True
         # A short introduction, said once as its button is reached: see `step`.
         self.intro_said = ""
         # The game's short message last said, and when it last showed.
@@ -431,6 +441,17 @@ class Narrator:
                 if message not in (parts or []):
                     parts = (parts or []) + [message]
             self.toast_seen_at = now
+
+        # Battle Items: what the item does, a moment after its name.
+        if not scaleform.on_battle_items(items):
+            self.described_key, self.described_said = None, True
+        elif parts:
+            self.described_key, self.described_at, self.described_said = key, now, False
+        elif not self.described_said and self.described_key == key and now - self.described_at >= DESCRIBE_AFTER:
+            foot = scaleform.footer(items)
+            self.described_said = True
+            if foot is not None and not foot.selected and foot.text.strip():
+                parts = [scaleform.spoken_footer(foot.text)]
 
         said = phrase(parts or [])
         if said and said != self.said:

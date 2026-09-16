@@ -814,7 +814,18 @@ is there so it is said once and whole; `survival_details` gives the left panel
 on Alt R. The left panel stops at `FOOTER_TOP`, the description line having
 been read as the parameter increase while its percentage was not drawn, and
 the increase must look like a number. Not yet tried: later stages, a lost
-run, the save menu, and whatever Survival's end shows. At the user's request
+run, the save menu, and whatever Survival's end shows.
+
+**Survival's Battle Items screen** follows the supplement one, heading
+"Battle Items", and lists what the player holds with how many ("Grapes. x2",
+"Kanzuki-ryu Scroll. x1", "Masters Guide. x4"), the selected one gold at
+(803, 260) as the supplement list does, over the same left panel. It read
+already, but the names say nothing about what the things do, and that is in
+the description line. At the user's request the line now follows the name by
+itself after `DESCRIBE_AFTER` (0.5 s) on that screen alone, and moving on
+before it is due drops it, so running through the list stays quick. This is
+the one place that breaks the rule of naming on a move and leaving detail to
+Alt R. At the user's request
 the sentence carries the health they are taking into the next stage, since
 Survival does not refill it: `Narrator` asks its `health` callback for a
 reading, but only on that screen, and `app._health_reading` measures player
