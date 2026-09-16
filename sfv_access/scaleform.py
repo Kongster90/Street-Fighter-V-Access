@@ -1431,6 +1431,127 @@ def extra_battle_details(items: list[TextItem], brief: bool = False) -> list[str
     return extra_battle_brief(sentences) if brief else sentences
 
 
+# -------------------------------------------------------------------- survival
+#
+# Survival puts a Battle Supplement screen between fights. Its list of
+# supplements, each with what it costs in score, reads as any menu does, and
+# either side of it sits a panel nothing said: on the left the score there is
+# to spend, the supplement selected with its cost and what that leaves, the
+# battle items already bought and the parameter increase they add; on the
+# right the fight just won, its TIME and the score it earned, with "Next Stage
+# 2" and "CPU Level 2" naming what comes next. So the screen gets a sentence
+# of its own through `screen_summary`, said once as it arrives, and the read
+# key gives the left panel through `survival_details`. Read live from the
+# user's run on 2026-09-15, stage 1 of an Easy run.
+
+SURVIVAL_HEADING = "BATTLE SUPPLEMENT"
+SURVIVAL_NEXT_STAGE = "Next Stage"
+SURVIVAL_CPU_LEVEL = "CPU Level"
+SURVIVAL_SCORE = "SCORE"
+SURVIVAL_SELECTED = "Selected Supplement"
+SURVIVAL_ITEMS = "Selected Battle Items"
+SURVIVAL_PARAMETER = "Parameter Increase"
+# The left panel holds the score there is to spend; the right one's SCORE is
+# what the fight earned, and the summary says that one as the fight's score.
+SURVIVAL_PANEL_X = 600
+SURVIVAL_ROW_HEIGHT = 6
+# The parameter increase sits a row under its label and comes and goes as the
+# panel animates; without this the description line at the foot was read as it.
+_SURVIVAL_AMOUNT = re.compile(r"^[+-]?[\d,]+%?$")
+# A fight's time, hours:minutes'seconds''thousandths, and the score it earned.
+_SURVIVAL_TIME = re.compile(r"^(\d+):(\d\d)'(\d\d)''(\d+)$")
+_SURVIVAL_EARNED = re.compile(r"^\+\s*([\d,]+)$")
+
+
+def _survival_time_words(m) -> str:
+    hours, minutes, seconds, fraction = int(m.group(1)), int(m.group(2)), int(m.group(3)), m.group(4)
+    out = []
+    if hours:
+        out.append(f"{hours} hour{'s' if hours != 1 else ''}")
+    if minutes:
+        out.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+    out.append(f"{seconds}.{fraction} seconds")
+    return " ".join(out)
+
+
+def _survival_number(shown: list[TextItem], label: str) -> int | None:
+    """The number in "Next Stage 2" and "CPU Level 2"."""
+    for it in shown:
+        text = " ".join(it.text.split())
+        if text.startswith(label) and text[len(label):].strip().isdigit():
+            return int(text[len(label):].strip())
+    return None
+
+
+def _survival_rows(shown: list[TextItem]) -> list[list[str]]:
+    """The left panel's lines, each row's texts in order across."""
+    left = sorted((it for it in shown if it.x < SURVIVAL_PANEL_X and it.y < FOOTER_TOP),
+                  key=lambda it: (it.y, it.x))
+    rows: list[list[TextItem]] = []
+    for it in left:
+        if rows and it.y - rows[-1][0].y <= SURVIVAL_ROW_HEIGHT:
+            rows[-1].append(it)
+        else:
+            rows.append([it])
+    return [[" ".join(it.text.split()) for it in row] for row in rows]
+
+
+def on_survival_supplements(items: list[TextItem]) -> bool:
+    return any(it.shown and it.text.strip() == SURVIVAL_HEADING for it in items)
+
+
+def survival_summary(items: list[TextItem]) -> str | None:
+    """"Stage 1 cleared. Time 31.616 seconds. Score 13900. Next stage 2, CPU level 2."
+
+    None away from the screen, and until every part of it is showing, so the
+    sentence is said once and whole rather than growing as the panel arrives.
+    """
+    shown = [it for it in items if it.shown]
+    if not any(it.text.strip() == SURVIVAL_HEADING for it in shown):
+        return None
+    took = next((m for it in shown if (m := _SURVIVAL_TIME.fullmatch(it.text.strip()))), None)
+    earned = next((m.group(1) for it in shown if (m := _SURVIVAL_EARNED.fullmatch(it.text.strip()))), None)
+    stage = _survival_number(shown, SURVIVAL_NEXT_STAGE)
+    level = _survival_number(shown, SURVIVAL_CPU_LEVEL)
+    if took is None or earned is None or stage is None or level is None:
+        return None
+    parts = [f"Stage {stage - 1} cleared"] if stage > 1 else []
+    parts += [f"Time {_survival_time_words(took)}", f"Score {earned}",
+              f"Next stage {stage}", f"CPU level {level}"]
+    return phrase(parts)
+
+
+def survival_details(items: list[TextItem]) -> list[str]:
+    """The left panel for the read key: what there is to spend, on what, and what it leaves."""
+    if not on_survival_supplements(items):
+        return []
+    rows = _survival_rows([it for it in items if it.shown])
+    first = [row[0] for row in rows]
+    out = []
+    if SURVIVAL_SCORE in first:
+        at = first.index(SURVIVAL_SCORE)
+        if len(rows[at]) > 1:
+            out.append(f"Score {rows[at][1]}")
+        # Under the score, the supplement selected with its cost, and under
+        # that alone what buying it would leave.
+        if at + 1 < len(rows):
+            spend = rows[at + 1]
+            out.append(f"{SURVIVAL_SELECTED}: {spend[0]}" + (f", costing {spend[1]}" if len(spend) > 1 else ""))
+        if at + 2 < len(rows) and len(rows[at + 2]) == 1 and rows[at + 2][0].replace(",", "").isdigit():
+            out.append(f"Score left {rows[at + 2][0]}")
+    if SURVIVAL_ITEMS in first:
+        at = first.index(SURVIVAL_ITEMS)
+        end = first.index(SURVIVAL_PARAMETER) if SURVIVAL_PARAMETER in first else len(rows)
+        bought = [" ".join(row) for row in rows[at + 1:end]]
+        out.append(f"{SURVIVAL_ITEMS}: " + (", ".join(bought) if bought else "none"))
+    if SURVIVAL_PARAMETER in first:
+        at = first.index(SURVIVAL_PARAMETER)
+        value = rows[at][1] if len(rows[at]) > 1 else (" ".join(rows[at + 1]) if at + 1 < len(rows) else "")
+        if value and _SURVIVAL_AMOUNT.fullmatch(value):
+            out.append(f"{SURVIVAL_PARAMETER} {value}")
+    return out
+
+
 # ---------------------------------------------------------------- notice lists
 #
 # After logging in, the main menu opens under notices, one after another, each
@@ -2242,7 +2363,8 @@ def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
     tips, summary = tips_screen(items)
     if tips:
         return True, summary
-    summary = (versus_summary(items) or ending_summary(items) or trial_summary(items) or status_line(items)
+    summary = (versus_summary(items) or survival_summary(items) or ending_summary(items)
+               or trial_summary(items) or status_line(items)
                or demonstration_page(items) or tutorial_instruction(items))
     return summary is not None, summary
 

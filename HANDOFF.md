@@ -797,6 +797,25 @@ back", spoken-log.txt from 18:06:15), the crossover costume ones sharing a
 title, fee, difficulty and conditions and differing in their rewards further
 down the panel.
 
+**Survival's Battle Supplement screen.** Read live from the user's run on
+2026-09-15 (stage 1 of Easy, `tools/read_scaleform.py`). Down the middle a
+list of supplements with their costs, which read as a menu already ("Health
+Recovery: Medium. -9000"); on the left a spending panel (Selected Supplement,
+SCORE and its number, the supplement with its cost, what that leaves, Selected
+Battle Items, Parameter Increase with its percentage a row below); on the
+right the fight just won (TIME "0:00'31''616", "+ 13900", SCORE); and at the
+foot "Next Stage 2", which alternates with "CPU Level 2" in the same place.
+The fight's own HUD is still on the screen behind it ('9999999', '9:59:59.99',
+'STAGE ', 'PLAYER 1'), so anchors are the "BATTLE SUPPLEMENT" heading, the
+time's shape, "+ " and a number, and the "Next Stage" and "CPU Level" labels.
+`survival_summary` says "Stage 1 cleared. Time 31.616 seconds. Score 13900.
+Next stage 2. CPU level 2" through `screen_summary`, waiting until every part
+is there so it is said once and whole; `survival_details` gives the left panel
+on Alt R. The left panel stops at `FOOTER_TOP`, the description line having
+been read as the parameter increase while its percentage was not drawn, and
+the increase must look like a number. Not yet tried: later stages, a lost
+run, the save menu, and whatever Survival's end shows.
+
 **Starting the game.** Recorded on 2026-09-14 with a quiet recorder beside
 the mod (`snapshots/scaleform-startup`, from the Capcom title onward): black,
 the title with "Applying Title Update Ver.07.011..." and then "Connecting to

@@ -1978,6 +1978,56 @@ text_field(mem, display_object(mem, row, 200, 0, WHITE, children=2), 0, 0, ["No"
 check("gold elsewhere does not stop a choice being found",
       [it.text for it in sf.ScaleformText(mem, MODULE).items() if it.chosen] == ["Yes"])
 
+
+# Survival's Battle Supplement screen, every text as read live from the user's
+# run on 2026-09-15, stage 1 of Easy: the supplement list down the middle, the
+# spending panel on the left, the fight just won on the right, and the fight's
+# own HUD left over at the top.
+def survival(gain="+ 13900", took="0:00'31''616", next_stage="Next Stage 2", parameter=True):
+    rows = [("9999999", 593, 78), ("STAGE ", 1327, 78), ("00", 894, 81), ("CPU", 1099, 83),
+            ("PLAYER 1", 167, 88), ("Konggster", 1233, 120), ("EASY", 1840, 120),
+            ("STAGE 1 ", 1031.6, 122), ("TIME", 960, 180), ("BATTLE SUPPLEMENT", 673, 199),
+            ("Selected Supplement", 174, 206), ("9:59:59.99", 960, 206), ("CPU Level 2", 1812.5, 226.4),
+            ("SCORE", 180, 246), ("13900", 498, 248),
+            ("Do not use a Supplement", 210, 277), ("0", 498, 279),
+            ("Health Recovery: Medium", 803, 302), ("-9000", 1264, 302), ("13900", 258, 311),
+            ("TIME", 1580, 327.8), (took, 1553.5, 330.8),
+            ("Critical Gauge Boost 2", 803, 344), ("-3000", 1264, 344),
+            ("Selected Battle Items", 174, 361), (gain, 1787.3, 366.2),
+            ("V-Gauge Boost", 803, 386), ("-1000", 1264, 386),
+            ("SCORE", 1566.2, 407.6), (" 13900", 1779.7, 410.5),
+            ("Attack Power Up", 803, 428), ("-2000", 1264, 428),
+            ("Defense Up 3", 803, 470), ("-6000", 1264, 470),
+            ("Double Down 1", 803, 512), ("-5000", 1264, 512),
+            ("  Open Save Menu", 1310, 948), (next_stage, 1041.7, 976.8),
+            ("Choose not to use any Supplements.", 110, 992)]
+    if parameter:
+        rows += [("Parameter Increase", 174, 593), ("+999%", 427, 639)]
+    out = [item(text, x, y) for text, x, y in rows]
+    out.append(sf.TextItem("Do not use a Supplement", 803, 260, GOLD, 5))
+    return out
+
+
+check("the supplement screen is said as one sentence, the fight and what comes next",
+      sf.survival_summary(survival()) ==
+      "Stage 1 cleared. Time 31.616 seconds. Score 13900. Next stage 2. CPU level 2",
+      repr(sf.survival_summary(survival())))
+check("it waits for the whole panel rather than growing as it arrives",
+      sf.survival_summary(survival(gain="")) is None and sf.survival_summary(survival(took="")) is None
+      and sf.survival_summary(survival(next_stage="")) is None)
+check("no survival summary elsewhere", sf.survival_summary(on_story) is None
+      and not sf.survival_details(on_story))
+check("the read key gives the spending panel",
+      sf.survival_details(survival()) == [
+          "Score 13900", "Selected Supplement: Do not use a Supplement, costing 0", "Score left 13900",
+          "Selected Battle Items: none", "Parameter Increase +999%"],
+      repr(sf.survival_details(survival())))
+check("a first stage says no stage cleared, and the parameter increase can be missing",
+      sf.survival_summary(survival(next_stage="Next Stage 1")) ==
+      "Time 31.616 seconds. Score 13900. Next stage 1. CPU level 2"
+      and "Parameter Increase +999%" not in sf.survival_details(survival(parameter=False)),
+      repr(sf.survival_summary(survival(next_stage="Next Stage 1"))))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

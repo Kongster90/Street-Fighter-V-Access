@@ -452,7 +452,7 @@ class App:
             said = memory_narration.selection_phrase(items)
             foot = scaleform.footer(items)
             story = (scaleform.path_story(items) or scaleform.extra_battle_details(items)
-                     or scaleform.notice_details(items))
+                     or scaleform.notice_details(items) or scaleform.survival_details(items))
             question = scaleform.prompt_message(items)
             entry = scaleform.text_entry(items)
             if entry is not None:
