@@ -20,6 +20,7 @@ import re
 import sys
 import threading
 import time
+import traceback
 from pathlib import Path
 
 from . import capture as _capture
@@ -29,8 +30,8 @@ from .hotkeys import Hotkeys
 from .speech import Speaker
 
 SNAPSHOT_DIR = Path(__file__).resolve().parent.parent / "snapshots"
-# If one pass of the narration loop takes longer than this, what every thread
-# was doing is written to the hang log. Narration going silent with nothing in
+# If one pass of the narration loop takes longer than this, where it is stuck
+# is written to the hang log (see `_watch_stalls`). Narration going silent with nothing in
 # the other logs to say why is what this is for. The user hears a pass of a
 # couple of seconds as the speech stopping and then naming whatever they have
 # reached, the entries passed through in between never read, so the threshold
@@ -40,6 +41,11 @@ HANG_SECONDS = 2.0
 # show how often the loop falls behind a player moving through a menu.
 SLOW_SECONDS = 0.8
 HANG_LOG = SNAPSHOT_DIR / "hang-log.txt"
+# Whatever kills the mod, written down however it was started: from the
+# desktop shortcut an error reached only the console window, and started with
+# the game it reached console-log.txt, which each launch empties.
+CRASH_LOG = SNAPSHOT_DIR / "crash-log.txt"
+NEWLINE = chr(10)
 
 # Plain Alt, at the user's request: fewer keys to press, and Windows claims some
 # Control Alt combinations for itself. Quit is F10 and the memory or screen
@@ -331,6 +337,11 @@ class App:
         # Button Preview: each button said as it is pressed, while it is open.
         self.presses = pads.PressWatcher(self._on_preview_press)
         self._hang_file = None
+        self._crash_file = None
+        # When the narration loop's current pass began, None between passes,
+        # and which thread runs it: what `_watch_stalls` looks at.
+        self._pass_started: float | None = None
+        self._watch_thread_id: int | None = None
 
     # -------------------------------------------------------------- lifecycle
     def run(self) -> None:
@@ -378,8 +389,10 @@ class App:
             self._hang_file.flush()
         except OSError:
             self._hang_file = None
+        self._install_crash_log()
 
         threading.Thread(target=self._watch_loop, daemon=True).start()
+        threading.Thread(target=self._watch_stalls, daemon=True).start()
         self.presses.start()
         if self.with_game:
             threading.Thread(target=self._follow_game, daemon=True).start()
@@ -849,13 +862,13 @@ class App:
         tick runs one or the other, never both, so they cannot talk over each
         other.
         """
+        self._watch_thread_id = threading.get_ident()
         while not self._stop.is_set():
             if not self.watching:
                 time.sleep(WATCH_INTERVAL)
                 continue
             started = time.monotonic()
-            if self._hang_file is not None:
-                faulthandler.dump_traceback_later(HANG_SECONDS, file=self._hang_file)
+            self._pass_started = started
             try:
                 if self.use_memory:
                     items = self.session.read()
@@ -874,8 +887,8 @@ class App:
                 self.session.note(f"watch error: {exc!r}")
                 time.sleep(0.5)
             finally:
+                self._pass_started = None
                 if self._hang_file is not None:
-                    faulthandler.cancel_dump_traceback_later()
                     took = time.monotonic() - started
                     if took > SLOW_SECONDS:
                         self._hang_file.write(
@@ -884,6 +897,75 @@ class App:
                         self._hang_file.flush()
                 time.sleep(memory_narration.POLL if self.use_memory and self.session.available
                            else WATCH_INTERVAL)
+
+    def _watch_stalls(self) -> None:
+        """Write where the narration loop is stuck, once for each pass that runs long.
+
+        Until 2026-09-16 faulthandler's timed dump did this, and it was the
+        likely cause of a tester's crashes: it reads every thread's stack
+        without the interpreter's lock while those threads carry on, which
+        Python's own documentation warns can crash the process. On a slower
+        machine than the user's, passes ran past HANG_SECONDS 112 times, and
+        three of six sessions ended partway through writing a dump. This takes
+        only the stuck thread's stack, and with the lock held.
+        """
+        reported = None
+        while not self._stop.wait(0.5):
+            started = self._pass_started
+            if started is None or started == reported or self._hang_file is None:
+                continue
+            if time.monotonic() - started < HANG_SECONDS:
+                continue
+            reported = started
+            frame = sys._current_frames().get(self._watch_thread_id)
+            if frame is None:
+                continue
+            try:
+                self._hang_file.write(
+                    f"{_dt.datetime.now():%H:%M:%S} a pass has run {time.monotonic() - started:.1f} s, at:{NEWLINE}"
+                    + "".join(traceback.format_stack(frame)))
+                self._hang_file.flush()
+            except (OSError, ValueError):
+                pass
+
+    def _install_crash_log(self) -> None:
+        """Write whatever kills the mod to crash-log.txt.
+
+        faulthandler covers a crash in native code, where Python never gets to
+        say anything, and dumps every thread then, when the process is going
+        anyway. The hooks cover an error nothing caught, on any thread. What
+        they write is also still shown wherever it would have been.
+        """
+        try:
+            SNAPSHOT_DIR.mkdir(exist_ok=True)
+            self._crash_file = CRASH_LOG.open("a", encoding="utf-8")
+            self._crash_file.write(f"{NEWLINE}=== {_dt.datetime.now():%Y-%m-%d %H:%M:%S} mod started{NEWLINE}")
+            self._crash_file.flush()
+        except OSError:
+            self._crash_file = None
+            return
+        faulthandler.enable(file=self._crash_file, all_threads=True)
+
+        def record(where: str, kind, value, tb) -> None:
+            try:
+                self._crash_file.write(f"{_dt.datetime.now():%H:%M:%S} uncaught error {where}{NEWLINE}"
+                                       + "".join(traceback.format_exception(kind, value, tb)))
+                self._crash_file.flush()
+            except (OSError, ValueError):
+                pass
+
+        main_hook, thread_hook = sys.excepthook, threading.excepthook
+
+        def on_main(kind, value, tb):
+            record("on the main thread", kind, value, tb)
+            main_hook(kind, value, tb)
+
+        def on_thread(args):
+            name = args.thread.name if args.thread is not None else "a thread"
+            record(f"in {name}", args.exc_type, args.exc_value, args.exc_traceback)
+            thread_hook(args)
+
+        sys.excepthook, threading.excepthook = on_main, on_thread
 
     def _say_and_log(self, said: str) -> None:
         print(said)

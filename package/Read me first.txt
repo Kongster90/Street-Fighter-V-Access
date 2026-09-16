@@ -83,7 +83,7 @@ Say which screen you were on, what you did, and what you heard, or that nothing 
 
 It helps a lot to send the logs from this folder:
 %LOCALAPPDATA%\Programs\SFV Access\snapshots
-The useful files are spoken-log.txt, scaleform-log.txt and console-log.txt. Be aware that they record everything on screen, including your Fighter ID and anything else the game shows.
+The useful files are spoken-log.txt, scaleform-log.txt, hang-log.txt and crash-log.txt, and console-log.txt if the mod starts with the game. If the mod closes by itself, crash-log.txt is the one that says why. Be aware that they record everything on screen, including your Fighter ID and anything else the game shows.
 
 Mention the version, which is in VERSION.txt in the same folder as this file.
 

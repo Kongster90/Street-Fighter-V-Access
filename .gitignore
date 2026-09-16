@@ -46,3 +46,6 @@ UE4SS/
 
 # Packages built for players by tools/build_package.py.
 dist/
+
+# Logs sent in by testers: their Fighter IDs, chat and screens, never committed.
+Friend-Logs/

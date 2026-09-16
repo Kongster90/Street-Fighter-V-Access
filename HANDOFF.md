@@ -1844,6 +1844,28 @@ heard nothing at all after a match until "Play Again". `match_banner` takes a
 text of that wording within `MATCH_BANNER_MIDDLE` of the stage's middle, so a
 title in a corner cannot pass for one, and `screen_summary` says it.
 
+**A tester's crashes, and the stall dump that caused them.** On 2026-09-16 a
+tester reported the mod crashing and sent snapshots (kept in `Friend-Logs/`,
+which .gitignore keeps out of the repository, since tester logs carry their
+Fighter IDs and chat). No error was logged anywhere, but three of their six
+sessions ended partway through writing a thread dump to hang-log.txt, cut off
+mid-line, out of 112 dumps; the user's own log had none. The dump was
+`faulthandler.dump_traceback_later`, and its threshold had been lowered from
+five seconds to two the evening before (097c5b3). It reads every thread's
+stack without the interpreter's lock while they run, which Python's
+documentation warns can crash, and on the tester's slower machine passes ran
+past two seconds constantly: their log is full of "empty check, 0 texts"
+passes of about a second, the quick read finding nothing and
+`refresh_pages` walking the address space (memory.regions) every
+`EMPTY_CHECK`. `App._watch_stalls` now takes only the stuck thread's stack,
+through `sys._current_frames` with the lock held, once per long pass. And
+`App._install_crash_log` writes whatever kills the mod to crash-log.txt
+however it was started (from the desktop shortcut an error reached only the
+console window): `faulthandler.enable` for a crash in native code, and
+`sys.excepthook` and `threading.excepthook` for errors nothing caught.
+`tools/test_watchdog.py` checks both. Still open: why that machine is blind so
+often and its empty checks so slow.
+
 ## Running things
 
 Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod
