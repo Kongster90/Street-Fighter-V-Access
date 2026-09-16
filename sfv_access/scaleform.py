@@ -1571,6 +1571,101 @@ def survival_details(items: list[TextItem]) -> list[str]:
     return out
 
 
+# A Survival run's result screen, won or lost. Read live on 2026-09-15 from a
+# run the user lost on purpose at stage 7. Down the left, each label with its
+# value under it: SURVIVAL, the difficulty, the player, STAGES CLEARED "6",
+# CLEAR TIME "-:--'--''---" when the run was not finished, SCORE "69014" with
+# "NEW" over it for a record. Down the right, Match History: every opponent
+# fought with the time it took, which is the only place Survival names them.
+# "Press any button" waits at the foot, and a screen silently waiting for a
+# button sounds to the user like nothing happening, so it is said.
+
+SURVIVAL_RESULT_MODE = "SURVIVAL"
+SURVIVAL_STAGES = "STAGES CLEARED"
+SURVIVAL_CLEAR_TIME = "CLEAR TIME"
+SURVIVAL_SCORE_LABEL = "SCORE"
+SURVIVAL_NEW_RECORD = "NEW"
+SURVIVAL_HISTORY = "Match History"
+SURVIVAL_PRESS = "Press any button"
+# The left column holds the labels and their values; the history is over here.
+SURVIVAL_RESULT_LEFT = 700
+SURVIVAL_HISTORY_LEFT = 1400
+SURVIVAL_VALUE_BELOW = 60    # how far under its label a value sits
+SURVIVAL_HISTORY_ROW = 8     # how far apart a name and its time can be
+
+
+def _under(shown: list[TextItem], label: str) -> list[TextItem]:
+    """The values under a label in the result screen's left column."""
+    anchor = next((it for it in shown if it.text.strip() == label and it.x < SURVIVAL_RESULT_LEFT), None)
+    if anchor is None:
+        return []
+    return sorted((it for it in shown
+                   if it.x < SURVIVAL_RESULT_LEFT and 0 < it.y - anchor.y <= SURVIVAL_VALUE_BELOW),
+                  key=lambda it: it.y)
+
+
+def _time_or_none(text: str) -> str | None:
+    """A time as words, or None for the dashes shown when a run was not finished."""
+    m = _SURVIVAL_TIME.fullmatch(text.strip())
+    return _survival_time_words(m) if m else None
+
+
+def on_survival_result(items: list[TextItem]) -> bool:
+    """The screen a Survival run ends on, whether it was finished or lost."""
+    shown = {it.text.strip() for it in items if it.shown}
+    return SURVIVAL_RESULT_MODE in shown and SURVIVAL_STAGES in shown and RESULT_HEADING in shown
+
+
+def survival_match_history(items: list[TextItem]) -> list[str]:
+    """Every opponent of the run with the time that fight took, in order."""
+    shown = [it for it in items if it.shown and it.x >= SURVIVAL_HISTORY_LEFT]
+    names = [it for it in shown if _time_or_none(it.text) is None and it.text.strip()
+             and it.text.strip() != SURVIVAL_HISTORY.strip()]
+    out = []
+    for name in sorted(names, key=lambda it: it.y):
+        beside = [it for it in shown if abs(it.y - name.y) <= SURVIVAL_HISTORY_ROW
+                  and _time_or_none(it.text) is not None]
+        if beside:
+            out.append(f"{name.text.strip()} {_time_or_none(beside[0].text)}")
+    return out
+
+
+def survival_result(items: list[TextItem], brief: bool = False) -> list[str]:
+    """A run's result: how far it got, how long it took, what it scored.
+
+    Brief for arriving, which is everything but the match history; the read
+    key gives that, since seven fights is a long thing to hear unasked.
+    Nothing until the screen is whole, so it is said once rather than growing.
+    """
+    if not on_survival_result(items):
+        return []
+    shown = [it for it in items if it.shown]
+    stages = _under(shown, SURVIVAL_STAGES)
+    score = _under(shown, SURVIVAL_SCORE_LABEL)
+    if not stages or not score:
+        return []
+    difficulty = _under(shown, SURVIVAL_RESULT_MODE)
+    out = [f"Survival result, {difficulty[0].text.strip()}" if difficulty else "Survival result"]
+    out.append(f"Stages cleared {stages[0].text.strip()}")
+    cleared = next((_time_or_none(it.text) for it in _under(shown, SURVIVAL_CLEAR_TIME)), None)
+    if cleared:
+        out.append(f"Clear time {cleared}")
+    numbers = [it.text.strip() for it in score if it.text.strip() != SURVIVAL_NEW_RECORD]
+    record = any(it.text.strip() == SURVIVAL_NEW_RECORD for it in score)
+    if numbers:
+        out.append(f"Score {numbers[0]}" + (", a new record" if record else ""))
+    if not brief:
+        out += survival_match_history(items)
+    if any(it.text.strip().startswith(SURVIVAL_PRESS) for it in shown):
+        out.append(SURVIVAL_PRESS)
+    return out
+
+
+def survival_result_summary(items: list[TextItem]) -> str | None:
+    said = survival_result(items, brief=True)
+    return phrase(said) if said else None
+
+
 # ---------------------------------------------------------------- notice lists
 #
 # After logging in, the main menu opens under notices, one after another, each
@@ -2382,7 +2477,8 @@ def screen_summary(items: list[TextItem], health: str | None = None) -> tuple[bo
     tips, summary = tips_screen(items)
     if tips:
         return True, summary
-    summary = (versus_summary(items) or survival_summary(items, health) or ending_summary(items)
+    summary = (versus_summary(items) or survival_summary(items, health)
+               or survival_result_summary(items) or ending_summary(items)
                or trial_summary(items) or status_line(items)
                or demonstration_page(items) or tutorial_instruction(items))
     return summary is not None, summary

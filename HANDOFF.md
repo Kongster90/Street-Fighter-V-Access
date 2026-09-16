@@ -879,7 +879,22 @@ they read as themselves. The full-health frames still read 95, 94 and 100, the
 100 being the shine-free one. A full bar is all gold, which is why the first
 picture read right and the damaged one did not.
 
-The opponent's name is still unsaid: Survival has no VS screen, its
+**The screen a run ends on.** Read live on 2026-09-15 from a run the user
+lost on purpose at stage 7, having heard only fragments of it ("RESULT.
+SURVIVAL. EASY. Konggster. 0:00'34''400", then "RESULT. Match History. STAGES
+CLEARED"): it arrives in pieces and `on_results` does not hold, there being no
+WIN or LOSE on it. Down the left each label has its value under it (SURVIVAL /
+EASY / the player, STAGES CLEARED "6", CLEAR TIME "-:--'--''---" when the run
+was not finished, SCORE "69014" under "NEW" for a record); down the right,
+Match History pairs every opponent with the time that fight took, which is the
+only place Survival names them. `survival_result_summary` says "Survival
+result, EASY. Stages cleared 6. Score 69014, a new record. Press any button"
+through `screen_summary`, waiting until the stages and score are there so it
+is said whole; `survival_result` gives the seven fights on Alt R. "Press any
+button" is said because a screen silently waiting for one sounds like nothing
+happening.
+
+The opponent's name during a run is still unsaid: Survival has no VS screen, its
 display names only PLAYER 1 and CPU, and the name sits in memory hidden
 (18:41:03 on 2026-09-15 logged 'CHUN-LI' among the hidden), so it wants the
 live-state route through `live.py`, as character select did.

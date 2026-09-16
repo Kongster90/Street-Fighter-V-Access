@@ -2098,6 +2098,44 @@ quick = [said for said in [moving.step(battle_items(), 0.0), moving.step(battle_
 check("moving on before it is due says the next name instead",
       quick == ["Grapes", "Masters Guide"], repr(quick))
 
+
+# The screen a Survival run ends on, read live on 2026-09-15 from a run lost
+# at stage 7: labels down the left with their values under them, every
+# opponent with the time that fight took down the right.
+def survival_result_screen(stages="6", clear_time="-:--'--''---", record=True):
+    rows = [("RESULT", 68, 7), ("Match History\n", 1441.6, 158.6), ("SURVIVAL", 100, 173.3),
+            ("0:00'31''616", 1703.2, 212.7), ("EASY", 107.5, 216.7), ("CHUN-LI", 1523.5, 216.7),
+            ("Konggster", 298.9, 236.4), ("0:00'33''150", 1696.4, 252.1), ("VEGA", 1516.7, 256.1),
+            ("0:00'28''150", 1689.6, 291.5), ("SAGAT", 1509.9, 295.4),
+            ("STAGES CLEARED\n", 122.9, 311.2), ("0:00'27''950", 1682.7, 330.9), ("LUKE", 1503.1, 334.8),
+            (stages, 492.7, 350.6), ("0:00'27''200", 1675.9, 370.3), ("CLEAR TIME\n", 133.8, 374.2),
+            ("G", 1496.2, 374.2), (clear_time, 502.5, 407.7), ("0:00'30''666", 1669.1, 409.7),
+            ("KOLIN", 1489.4, 413.6), ("0:00'34''400", 1662.3, 449.1), ("SCORE\n", 147.4, 453),
+            ("E. HONDA", 1482.6, 453), ("69014", 518.7, 501.3), ("Press any button\n", 960, 1006)]
+    out = [item(text, x, y) for text, x, y in rows]
+    if record:
+        out.append(item("NEW", 527.4, 487.5))
+    return out
+
+
+check("a lost run says how far it got and what it scored, and that a button is wanted",
+      sf.survival_result_summary(survival_result_screen()) ==
+      "Survival result, EASY. Stages cleared 6. Score 69014, a new record. Press any button",
+      repr(sf.survival_result_summary(survival_result_screen())))
+check("a finished run says its clear time, and an ordinary score is not a record",
+      sf.survival_result_summary(survival_result_screen(stages="10", clear_time="0:03'51''300", record=False)) ==
+      "Survival result, EASY. Stages cleared 10. Clear time 3 minutes 51.300 seconds. Score 69014. "
+      "Press any button",
+      repr(sf.survival_result_summary(survival_result_screen(stages="10", clear_time="0:03'51''300",
+                                                             record=False))))
+check("the read key adds every opponent and the time that fight took",
+      sf.survival_result(survival_result_screen())[3:-1] == [
+          "CHUN-LI 31.616 seconds", "VEGA 33.150 seconds", "SAGAT 28.150 seconds", "LUKE 27.950 seconds",
+          "G 27.200 seconds", "KOLIN 30.666 seconds", "E. HONDA 34.400 seconds"],
+      repr(sf.survival_result(survival_result_screen())[3:-1]))
+check("nothing of it elsewhere", sf.survival_result_summary(on_story) is None
+      and not sf.survival_result(survival()) and sf.survival_summary(survival_result_screen()) is None)
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)
