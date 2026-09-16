@@ -2212,6 +2212,21 @@ check("an online VS screen names both sides with whose they are",
       sf.versus_summary(online_versus) ==
       "jamestoh, CAMMY, V-Skill 1, V-Trigger 1. Konggster, AKIRA, V-Skill 2, V-Trigger 1. The Grid.",
       repr(sf.versus_summary(online_versus)))
+check("knowing whose game it is, only the opponent is named, from either side",
+      sf.versus_summary(online_versus, me="Konggster") ==
+      "Opponent, jamestoh, CAMMY, V-Skill 1, V-Trigger 1. The Grid."
+      and sf.versus_summary(online_versus, me="jamestoh") ==
+      "Opponent, Konggster, AKIRA, V-Skill 2, V-Trigger 1. The Grid.",
+      repr(sf.versus_summary(online_versus, me="Konggster")))
+check("a Fighter ID that is on neither side names both, as not knowing does",
+      sf.versus_summary(online_versus, me="somebody else") == sf.versus_summary(online_versus))
+check("the main menu's card is where the player's own Fighter ID is learnt",
+      sf.player_card([item("Konggster", 1379, 53)]) == "Konggster"
+      # The main menu fixture carries the card, as the real screen does.
+      and sf.player_card(on_story) == "Dengster"
+      # A name anywhere else, such as a lounge's list of players, is not it.
+      and sf.player_card([item("Konggster", 421, 65)]) is None
+      and sf.player_card(online_versus) is None)
 check("against the CPU, with nobody named, the far side is still the opponent",
       sf.versus_summary(versus_screen()) ==
       "Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area.",

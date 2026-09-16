@@ -1023,6 +1023,22 @@ def mark_versus(items: list[TextItem]) -> None:
 # On the VS screen each side's Fighter ID sits on this row, under the fighter
 # and over the title. Only online is anyone named there.
 VERSUS_NAME_ROW = (880, 916)
+# The main menu's own card, top right beside the version and the League
+# Points. In every logged screen only the player's own Fighter ID has ever
+# been drawn there, 1,930 readings of it and nobody else's, so it is where the
+# mod learns whose game this is.
+PLAYER_CARD_AT = (1379, 53)
+PLAYER_CARD_TOLERANCE = 12
+
+
+def player_card(items: list[TextItem]) -> str | None:
+    """The player's own Fighter ID, when the screen shows their card."""
+    for it in items:
+        if (it.shown and abs(it.x - PLAYER_CARD_AT[0]) <= PLAYER_CARD_TOLERANCE
+                and abs(it.y - PLAYER_CARD_AT[1]) <= PLAYER_CARD_TOLERANCE
+                and chr(10) not in it.text.strip() and it.text.strip()):
+            return " ".join(it.text.split())
+    return None
 
 
 def _versus_value(shown: list[TextItem], label: TextItem) -> str | None:
@@ -1056,7 +1072,7 @@ def _versus_player(shown: list[TextItem], fighter: TextItem) -> str | None:
     return " ".join(row[0].text.split()) if row else None
 
 
-def versus_summary(items: list[TextItem]) -> str | None:
+def versus_summary(items: list[TextItem], me: str | None = None) -> str | None:
     """"Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area." on the VS screen.
 
     Against the CPU the far side is the opponent and is the only one named.
@@ -1079,7 +1095,14 @@ def versus_summary(items: list[TextItem]) -> str | None:
         return None
     sides = [fighters[0], fighters[-1]]
     players = [_versus_player(shown, side) for side in sides]
-    if all(players):
+    if me and me in players:
+        # The player's own Fighter ID is known and one side carries it, so the
+        # other side is the opponent, whichever side the player is on.
+        theirs = 1 - players.index(me)
+        side = sides[theirs]
+        sentence = ", ".join([f"Opponent, {players[theirs]}, {side.text.strip()}"]
+                             + _versus_versions(shown, side))
+    elif all(players):
         sentence = ". ".join(
             ", ".join([who, side.text.strip()] + _versus_versions(shown, side))
             for side, who in zip(sides, players))
@@ -2593,7 +2616,8 @@ def path_story(items: list[TextItem]) -> list[str]:
     return [line.strip() for line in story.text.splitlines() if line.strip()]
 
 
-def screen_summary(items: list[TextItem], health: str | None = None) -> tuple[bool, str | None]:
+def screen_summary(items: list[TextItem], health: str | None = None,
+                   me: str | None = None) -> tuple[bool, str | None]:
     """For screens read as one sentence rather than by what is selected.
 
     Whether this is one, and the sentence once all of it is showing: the
@@ -2614,7 +2638,7 @@ def screen_summary(items: list[TextItem], health: str | None = None) -> tuple[bo
     # since that rule wants the heading and the outcome in one movie and
     # this screen is read whether or not it is built that way.
     summary = (match_banner(items) or online_result_summary(items)
-               or versus_summary(items) or survival_summary(items, health)
+               or versus_summary(items, me) or survival_summary(items, health)
                or survival_result_summary(items) or ending_summary(items)
                or trial_summary(items) or status_line(items)
                or demonstration_page(items) or tutorial_instruction(items))

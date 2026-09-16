@@ -1802,9 +1802,15 @@ theirs (no "YOU" tag; the fight's own display has one, at (167, 90) or
 y 901, under the fighter and over the title, and only an online match fills
 it, so when both are there `versus_summary` says "jamestoh, CAMMY, V-Skill 1,
 V-Trigger 1. Konggster, AKIRA, V-Skill 2, V-Trigger 1. The Grid." and the
-user picks out their own ID. If the mod ever learns the player's Fighter ID
-(the game's `KWUserProfileDetails` objects were tried and gave no strings),
-this could go back to naming the opponent alone.
+user picks out their own ID. At the user's request the mod now learns whose
+game it is: `player_card` reads the main menu's own card at (1379, 53), where
+across every logged screen only their Fighter ID has ever been drawn (1,930
+readings of "Konggster" and nothing else), `buttons.remember_fighter_id` keeps
+it in settings.json, and with it known the VS screen names the opponent alone
+again, from either side: "Opponent, jamestoh, CAMMY, V-Skill 1, V-Trigger 1.
+The Grid." Both sides are still said when the ID is unknown or on neither
+side. The game's `KWUserProfileDetails` objects were tried first and gave no
+strings.
 
 **Battle Lounge chat.** One text field at the top right holds the whole log,
 newest entry first: "[11:45 PM] jamestoh" with the message indented under it,

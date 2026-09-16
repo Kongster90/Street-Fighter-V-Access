@@ -21,7 +21,7 @@ import time
 import traceback
 from pathlib import Path
 
-from . import scaleform
+from . import buttons, scaleform
 
 LOG = Path(__file__).resolve().parent.parent / "snapshots" / "scaleform-log.txt"
 LOG_LIMIT = 5 * 1024 * 1024   # rotated to .old beyond this
@@ -261,6 +261,13 @@ class Narrator:
         # The result and VS screens arrive in pieces with nothing selected, and
         # saying what changed would read them out one by one. Each gets one
         # sentence instead, when complete; a menu on them reads as any menu.
+        # Whose game this is, learnt from the main menu's card and kept in the
+        # settings, so an online VS screen can tell the player's side from
+        # their opponent's. Only worth writing once.
+        card = scaleform.player_card(items)
+        if card and card != buttons.fighter_id():
+            buttons.remember_fighter_id(card)
+
         # Survival's supplement screen is the one whose sentence needs something
         # off the picture: the health bar still drawn behind it. See HEALTH_WINDOW.
         on_supplements = scaleform.on_survival_supplements(items)
@@ -286,7 +293,7 @@ class Narrator:
             if now - self.health_first_at >= HEALTH_CAP:
                 self.health_settled = True
         health = self.health_words()
-        summary_screen, summary = scaleform.screen_summary(items, health)
+        summary_screen, summary = scaleform.screen_summary(items, health, buttons.fighter_id())
         # Nothing is said about the screen while the bar is still moving: with
         # the reading inside the sentence, saying it early means saying it twice.
         if on_supplements and not self.health_settled:

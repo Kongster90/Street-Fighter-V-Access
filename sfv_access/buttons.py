@@ -87,6 +87,19 @@ def toggle_subtitles() -> bool:
     return on
 
 
+# The player's own Fighter ID, learnt from the main menu's card and kept so
+# that an online VS screen can tell their side from their opponent's. Online
+# that screen names both sides and nothing on it says which is which.
+def fighter_id() -> str | None:
+    name = _load().get("fighter_id")
+    return name if isinstance(name, str) and name.strip() else None
+
+
+def remember_fighter_id(name: str) -> None:
+    if name.strip() and name.strip() != fighter_id():
+        _save("fighter_id", name.strip())
+
+
 def key_words(key: str) -> str:
     """An Unreal key name as said: "LeftShift" as "Left Shift", "SpaceBar" as "Space Bar"."""
     return re.sub(r"(?<=[a-z])(?=[A-Z0-9])", " ", key)

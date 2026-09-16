@@ -495,7 +495,8 @@ class App:
                 said = memory_narration.phrase([said] + details)
             # The narrator's reading, which has watched the bar settle, rather
             # than a fresh glance that a shine could catch halfway.
-            _summary_screen, summary = scaleform.screen_summary(items, self.narrator.health_words())
+            _summary_screen, summary = scaleform.screen_summary(
+                items, self.narrator.health_words(), buttons.fighter_id())
             if summary:
                 said = memory_narration.phrase([summary, said])
             layout = scaleform.preview_summary(items)
