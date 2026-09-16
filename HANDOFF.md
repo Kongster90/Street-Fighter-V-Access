@@ -820,9 +820,15 @@ Survival does not refill it: `Narrator` asks its `health` callback for a
 reading, but only on that screen, and `app._health_reading` measures player
 one's bar with `hud.health_fraction` off a frame up to half a second old. The
 bars are the fight's own, still drawn behind the screen; if they cannot be
-read the sentence is what it was. Whether they really are drawn there was
-never confirmed by eye, so if the reading is missing or wrong, that is where
-to look. The opponent's name is still unsaid: Survival has no VS screen, its
+read the sentence is what it was. The first try read one frame per pass and
+said the sentence over and over, the same bar reading 94, 100, 0, 95, 96, 97
+as the screen flashed (spoken-log.txt 19:41:56 onwards on 2026-09-15). Now
+`app._health_reading` takes `HEALTH_FRAMES` frames `HEALTH_FRAME_GAP` apart,
+uses the middle reading and only if `HEALTH_AGREE` of them sit within
+`HEALTH_TOLERANCE` of it, and the narrator asks once per visit and keeps the
+answer (`health_reading`, `health_asked`), so a wobble can no longer make a
+new sentence. Whether the number is the real one is still unconfirmed; if it
+is wrong, read it from the game rather than the picture. The opponent's name is still unsaid: Survival has no VS screen, its
 display names only PLAYER 1 and CPU, and the name sits in memory hidden
 (18:41:03 on 2026-09-15 logged 'CHUN-LI' among the hidden), so it wants the
 live-state route through `live.py`, as character select did.

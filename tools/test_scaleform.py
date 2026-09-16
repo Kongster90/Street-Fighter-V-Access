@@ -2038,6 +2038,16 @@ mn.Narrator(health=lambda: asked.append("asked") or "Health 5 percent").step(on_
 check("the narrator asks for a reading on that screen and nowhere else",
       on_supplements == ["asked"] and asked == [], repr((on_supplements, asked)))
 
+# The reading wobbles by a percent between captures, and the sentence carries
+# it, so a fresh reading each time said the whole thing over and over.
+wobble = iter(["Health 62 percent", "Health 61 percent", "Health 62 percent", "Health 60 percent"])
+steady = mn.Narrator(health=lambda: next(wobble))
+spoken = [said for now, said in
+          [(t, steady.step(survival(), t)) for t in (0.0, 0.5, 1.0, 1.5, 2.0)] if said]
+check("the screen's sentence is said once, not again for every wobble in the bars",
+      spoken == ["Stage 1 cleared. Health 62 percent. Time 31.616 seconds. Score 13900. "
+                 "Next stage 2. CPU level 2. Do not use a Supplement"], repr(spoken))
+
 check("a first stage says no stage cleared, and the parameter increase can be missing",
       sf.survival_summary(survival(next_stage="Next Stage 1")) ==
       "Time 31.616 seconds. Score 13900. Next stage 1. CPU level 2"

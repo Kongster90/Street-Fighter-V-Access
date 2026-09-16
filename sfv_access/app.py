@@ -84,6 +84,14 @@ MEMORY_INTERVAL = 0.35
 GAME_WAIT_SECONDS = 180.0
 GAME_GONE_SECONDS = 3.0
 
+# Measuring the health bars behind Survival's supplement screen: how many
+# frames are taken, how far apart, how many must agree with the middle one and
+# how close that counts as. A single frame there read 94, 100 and 0 in turn.
+HEALTH_FRAMES = 5
+HEALTH_FRAME_GAP = 0.05
+HEALTH_AGREE = 3
+HEALTH_TOLERANCE = 0.03
+
 # The " 5 of 6." a narrated entry ends with. Stripped before comparing one
 # announcement with the last, since the count depends on how much text was
 # recognised that frame and the entry itself may not have changed at all.
@@ -417,19 +425,33 @@ class App:
             return None, None
         return bgra, _capture.to_rgb(bgra)
 
-    def _health_reading(self, max_age: float = 0.5) -> str | None:
-        """"Health 62 percent" from the bars on screen, or None if there are none.
+    def _health_reading(self) -> str | None:
+        """"Health 95 percent" from the bars on screen, or None if they cannot be trusted.
 
         Survival's supplement screen keeps the fight's display behind it, so
-        the health carried into the next stage can be measured there. Only
-        that screen asks for this, and a frame up to half a second old will do,
-        since health does not change while the screen is up.
+        the health carried into the next stage can be measured there. One
+        frame is not enough: on that screen the same bar read 94, then 100,
+        then 0 from one frame to the next, the screen flashing as it arrived.
+        So several frames are taken and the middle reading is used, and only
+        if most of them sit close to it. Asked for once per visit to the
+        screen, which is why it can afford the frames it takes.
         """
-        _bgra, rgb = self._frames(max_age=max_age)
-        if rgb is None:
+        shares = []
+        for n in range(HEALTH_FRAMES):
+            if n:
+                time.sleep(HEALTH_FRAME_GAP)
+            _bgra, rgb = self._frames()
+            if rgb is None:
+                continue
+            share = hud.health_fraction(rgb, hud.HEALTH["p1"])
+            if share is not None:
+                shares.append(share)
+        if len(shares) < HEALTH_AGREE:
             return None
-        share = hud.health_fraction(rgb, hud.HEALTH["p1"])
-        return None if share is None else f"Health {round(share * 100)} percent"
+        middle = sorted(shares)[len(shares) // 2]
+        if sum(abs(share - middle) <= HEALTH_TOLERANCE for share in shares) < HEALTH_AGREE:
+            return None
+        return f"Health {round(middle * 100)} percent"
 
     def _refresh_lines(self, bgra) -> tuple[list, str]:
         items = ocr.reading_order(ocr.read(bgra))

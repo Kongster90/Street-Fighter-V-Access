@@ -157,6 +157,12 @@ class Narrator:
         self.summary_since = 0.0
         self.summary_held: list[str] = []
         self.restarted_at = float("-inf")
+        # The health reading for the supplement screen showing now, taken once
+        # as it arrives. Measured off the picture, it wobbles by a percent from
+        # read to read, and since it is part of the screen's sentence, a wobble
+        # made a new sentence and the whole thing was said over and over.
+        self.health_reading: str | None = None
+        self.health_asked = False
         # A short introduction, said once as its button is reached: see `step`.
         self.intro_said = ""
         # The game's short message last said, and when it last showed.
@@ -223,8 +229,13 @@ class Narrator:
         # saying what changed would read them out one by one. Each gets one
         # sentence instead, when complete; a menu on them reads as any menu.
         # Survival's supplement screen is the one whose sentence needs something
-        # off the picture: the health bars still drawn behind it.
-        health = self.health() if self.health and scaleform.on_survival_supplements(items) else None
+        # off the picture: the health bars still drawn behind it. Read once
+        # while it shows, since health does not change while it is up.
+        if not scaleform.on_survival_supplements(items):
+            self.health_reading, self.health_asked = None, False
+        elif self.health is not None and not self.health_asked:
+            self.health_reading, self.health_asked = self.health(), True
+        health = self.health_reading
         summary_screen, summary = scaleform.screen_summary(items, health)
         if summary_screen:
             self.summary_seen_at = now
