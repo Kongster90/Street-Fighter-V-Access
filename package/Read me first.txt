@@ -56,8 +56,9 @@ Arcade, Versus and Training, including the result screen and Training's attack d
 Trials, with each combo in words, and Demonstrations.
 The Story tutorial's instructions and tips.
 The shop, notices and missions after logging in, and Extra Battle.
+Survival: the supplements and battle items between stages, how each fight went with the health you carry on with, and the result at the end of a run.
 
-Not yet: online matches past their menus, Survival, story chapters, and the fights themselves. There are no sounds for health or distance yet.
+Not yet: online matches past their menus, story chapters, and the fights themselves. There are no sounds for health or distance yet.
 
 
 Keyboard players
