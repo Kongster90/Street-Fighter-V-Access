@@ -246,20 +246,28 @@ class Narrator:
         # event before BEGIN BATTLE, a notice's list before Close. Notices
         # follow one another with Close in the same place, so a new list with
         # its Close still selected is introduced too, though Close did not move.
-        intro, button = phrase(scaleform.extra_battle_details(items, brief=True)), scaleform.EXTRA_BATTLE_BUTTON
+        # The bumpers move between Extra Battle's events without moving the
+        # selection off BEGIN BATTLE, so a different event is named where it
+        # stands, by its title alone; the read key gives the rest.
+        details = scaleform.extra_battle_details(items, brief=True)
+        intro, button = phrase(details), scaleform.EXTRA_BATTLE_BUTTON
+        # An event's deadline counts down, and a brief that differs only in
+        # that is the same event, not a move to another one.
+        held, moved_on = phrase([s for s in details if not s.startswith(scaleform.EXTRA_BATTLE_DEADLINE)]), details[:1]
         if not intro:
             intro, button = phrase(scaleform.notice_details(items, brief=True)), scaleform.NOTICE_BUTTON
+            held, moved_on = intro, [intro, button]
         if not intro:
             self.intro_said = ""
-        elif intro != self.intro_said:
+        elif held != self.intro_said:
             reached = parts and button in (p.strip() for p in parts)
-            # Only for notices: an Extra Battle's brief carries its time
-            # remaining, which would be said again each time it changed.
-            still_on = (button == scaleform.NOTICE_BUTTON and self.intro_said
-                        and any(it.selected and it.text.strip() == button for it in items))
-            if reached or still_on:
-                self.intro_said = intro
-                parts = [intro] + (parts if reached else [button])
+            still_on = self.intro_said and any(it.selected and it.text.strip() == button for it in items)
+            if reached:
+                self.intro_said = held
+                parts = [intro] + parts
+            elif still_on:
+                self.intro_said = held
+                parts = moved_on
 
         # Typing into a field selects nothing either. Arriving says the prompt
         # before the instructions; each change says the characters typed or

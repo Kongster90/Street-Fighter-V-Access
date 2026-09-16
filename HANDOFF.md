@@ -783,7 +783,14 @@ Win the battle!". `extra_battle_details` turns it into sentences; the
 narrator says the brief form (title, deadline, fee, difficulty, clear
 conditions, the deadline and fee added at the user's request) once before
 BEGIN BATTLE on arriving, and Alt R says all of it. Confirmed in play by
-the user on 2026-09-14.
+the user on 2026-09-14. On 2026-09-15 the user found that the bumpers, which
+move between the events on offer, said nothing: they swap the panel's contents
+and leave BEGIN BATTLE gold, so nothing is newly selected and `landed_on`
+returns nothing (`scaleform-log.txt` from 17:58:23 holds four such reads).
+`Narrator.step` now names a new event where it stands, by its title alone,
+the user having asked long ago that a move say the name and leave detail to
+Alt R. What marks it as another event is the brief without its DEADLINE line,
+since the deadline counts down while the same event shows.
 
 **Starting the game.** Recorded on 2026-09-14 with a quiet recorder beside
 the mod (`snapshots/scaleform-startup`, from the Capcom title onward): black,

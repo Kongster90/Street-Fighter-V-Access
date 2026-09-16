@@ -1187,16 +1187,17 @@ attempts = narrate([(0.0, trial()), (0.5, trial()), (1.0, trial(landed=2)), (1.5
                     (10.0, trial(landed=1))])
 check("a trial is said once, not while steps land or reset, and again on each restart and Try Again",
       [s for _, s in attempts] == [LIST, LIST, "Try Again", LIST], repr([(t, s[:20]) for t, s in attempts]))
-def extra_battle(panel=True):
+def extra_battle(panel=True, title="[Quick & Immovable]  Get the Crossover Costume! [2]",
+                 remaining="(19:55 remaining)", fee="2000 FM"):
     """Extra Battle's event panel as read live, beside the gold BEGIN BATTLE."""
     menu = sf.TextItem("Extra Battle", 157, 331, GOLD, 5, chain=(1, 2, 90, 99))
     button = sf.TextItem("BEGIN BATTLE", 756, 796, GOLD, 5, chain=(3, 4, 91, 99))
     out = [menu, button]
     if panel:
-        rows = [("[Quick & Immovable]  Get the Crossover Costume! [2]", 258, 219),
+        rows = [(title, 258, 219),
                 ("START", 312, 285), ("Sep 7, 2026, 10:00:00 PM", 495, 285),
-                ("DEADLINE", 312, 311), ("Sep 14, 2026, 9:00:00 PM", 495, 311), ("(19:55 remaining)", 755, 311),
-                ("REWARD", 312, 336), ("PARTICIPATION FEE (FM)", 312, 420), ("2000 FM", 595, 420),
+                ("DEADLINE", 312, 311), ("Sep 14, 2026, 9:00:00 PM", 495, 311), (remaining, 755, 311),
+                ("REWARD", 312, 336), ("PARTICIPATION FEE (FM)", 312, 420), (fee, 595, 420),
                 ("NO. OF REMAINING PLAYS", 312, 450), ("No Limit", 595, 450),
                 ("Difficulty\nEasy\n\nClear Reward\n\"Forest\" Gem, 100 EXP\n\nNote: First completion only.", 260, 564),
                 ("Clear Conditions: Win the battle!", 260, 734)]
@@ -1221,6 +1222,20 @@ check("arriving at BEGIN BATTLE says the event's title, deadline, fee, difficult
                                   "Clear Conditions: Win the battle! BEGIN BATTLE"], repr(arrival))
 check("no Extra Battle details elsewhere", sf.extra_battle_details(on_story) == []
       and sf.extra_battle_details(extra_battle(panel=False)) == [])
+
+# The bumpers swap the panel for another event's while BEGIN BATTLE stays gold.
+next_event = extra_battle(title="Middle Class Shadaloo Grunt!", fee="500 FM")
+counted_down = extra_battle(remaining="(19:54 remaining)")
+between = narrate([(0.0, [extra_battle()[0]]), (0.5, extra_battle()), (1.0, counted_down),
+                   (2.0, counted_down), (3.0, next_event), (4.0, next_event), (5.0, extra_battle())])
+check("moving between events names each one, and a deadline ticking down says nothing",
+      [s for _, s in between] == ["Extra Battle",
+                                  "[Quick & Immovable] Get the Crossover Costume! [2]. "
+                                  "DEADLINE: Sep 14, 2026, 9:00:00 PM (19:55 remaining). "
+                                  "PARTICIPATION FEE (FM): 2000 FM. Difficulty: Easy. "
+                                  "Clear Conditions: Win the battle! BEGIN BATTLE",
+                                  "Middle Class Shadaloo Grunt!",
+                                  "[Quick & Immovable] Get the Crossover Costume! [2]"], repr(between))
 
 MISSIONS_TEXT = (" Perform a cross-up 10 time(s)!\nDEADLINE:Sep 15, 2026, 9:00:00 PM (Days left: 1) Reward: 50 Fight Money\n\n"
                  " Win 1 Battle Lounge match(es)!\nDEADLINE:Sep 17, 2026, 9:00:00 PM (Days left: 3) Reward: 500 Fight Money\n\n")

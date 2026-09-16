@@ -1358,12 +1358,18 @@ def describe_inputs(pieces: list[tuple[str, str]]) -> str:
 # EXP"), and "Clear Conditions: Win the battle!". Only BEGIN BATTLE was said.
 # Arriving now says the title, difficulty and clear conditions first; the read
 # key says the rest.
+#
+# The bumpers move between the events on offer, which swaps the panel's
+# contents and leaves the selection on BEGIN BATTLE, so none of them was said
+# while the user moved through four of them on 2026-09-15. The narrator names
+# a new event there by its title; see `Narrator.step`.
 
 EXTRA_BATTLE_LABELS = ("PARTICIPATION FEE (FM)", "NO. OF REMAINING PLAYS")
 EXTRA_BATTLE_BUTTON = "BEGIN BATTLE"
 # Said on arriving after the title, in the panel's order; the user asked for
 # the deadline and fee alongside difficulty and clear conditions.
 EXTRA_BATTLE_BRIEF = ("DEADLINE", "PARTICIPATION FEE", "Difficulty", "Clear Conditions")
+EXTRA_BATTLE_DEADLINE = "DEADLINE"
 HEADING_MAX = 40
 
 
