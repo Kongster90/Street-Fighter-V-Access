@@ -12,6 +12,10 @@ with whoever made them.
 
 The copied Python is checked before zipping by importing everything the mod
 needs with it, isolated from this machine's own Python.
+
+Afterwards it tidies up: the staging folder goes, being a full unzipped copy
+worth 129 MB that is rebuilt from scratch every time, and so do older zips,
+the user wanting only the newest kept. Both are named as they are removed.
 """
 
 from __future__ import annotations
@@ -67,6 +71,18 @@ def copy_python(target: Path) -> None:
         or (Path(d) == packages and n.lower().startswith(PACKAGES_SKIP))])
 
 
+def tidy(keep: Path) -> None:
+    """Remove the staging folder and every zip but the one just built."""
+    stage = DIST / "stage"
+    if stage.exists():
+        shutil.rmtree(stage, ignore_errors=True)
+        print(f"removed {stage}")
+    for old in sorted(DIST.glob(f"{NAME.replace(' ', '-')}-*.zip")):
+        if old.resolve() != keep.resolve():
+            old.unlink()
+            print(f"removed {old}")
+
+
 def main() -> int:
     if sys.prefix == sys.base_prefix:
         print("Run this with the virtual environment's Python, whose packages go into the package.")
@@ -117,6 +133,7 @@ def main() -> int:
                 zf.write(path, path.relative_to(stage))
     size = zip_path.stat().st_size / 1024 / 1024
     print(f"wrote {zip_path} ({size:.0f} MB)")
+    tidy(zip_path)
     return 0
 
 
