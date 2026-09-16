@@ -65,6 +65,17 @@ Keyboard players
 If you redo your keyboard mapping in Options, Other Settings, Keyboard Settings, press the key the mod names at each step. The game's own instructions have left and right swapped, and heavy kick and all three punches swapped too, so the mod names each step by what the key really does.
 
 
+Updating to a newer version
+
+When you get a newer zip, install it the same way over the top. There is no need to uninstall first.
+
+1. Close Street Fighter V. If you start the mod yourself, press F10 to close it too.
+2. Extract the new zip and run Install SFV Access from it.
+3. Answer the question about starting with the game as you like. Your answer can differ from last time.
+
+Your own things are kept: your settings, the game's text the mod set up the first time, and the logs. The version you are running is in VERSION.txt in %LOCALAPPDATA%\Programs\SFV Access.
+
+
 Reporting a problem
 
 Say which screen you were on, what you did, and what you heard, or that nothing was said.
