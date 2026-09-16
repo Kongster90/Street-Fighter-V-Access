@@ -850,7 +850,20 @@ reading (`app._health_reading`), and the narrator asks once per visit. The
 same probe run while the user had tabbed away read 0 percent five times over,
 having captured the Claude window, so the reading is taken only while the
 game is in front. Opponent's bar: not drawn on that screen, only player
-one's. The opponent's name is still unsaid: Survival has no VS screen, its
+one's.
+
+Taking five frames in a row as the screen opened then said 33 percent to a
+user who had lost almost nothing: the bar arrives filling up from empty. So
+`app._health_share` returns one frame's reading, cheap enough to ask for every
+pass, and `Narrator` watches it: the fullest of the last `HEALTH_WINDOW`
+samples (which ignores the shine), believed once it has held within
+`HEALTH_TOLERANCE` for `HEALTH_STEADY`, or after `HEALTH_CAP`. The screen's
+sentence waits for that, since saying it early means saying it twice, so the
+selected supplement is named first and the sentence follows. The reading is
+always the window's fullest: keeping the older value while a rise sat within
+tolerance stuck at 93 against a bar reading 95.
+
+The opponent's name is still unsaid: Survival has no VS screen, its
 display names only PLAYER 1 and CPU, and the name sits in memory hidden
 (18:41:03 on 2026-09-15 logged 'CHUN-LI' among the hidden), so it wants the
 live-state route through `live.py`, as character select did.
