@@ -2168,6 +2168,36 @@ both = arriving.step(lounge("[11:47 PM] jamestoh\n  Again?\n[11:46 PM] Konggster
 check("two lines at once are said oldest first",
       both == "Konggster says, Sure. jamestoh says, Again?", repr(both))
 
+
+# A lounge match's end, read live on 2026-09-15 from the user's room: the
+# banner across the middle of the stage, then a result screen showing the
+# player's own side alone with the room's running score on the right.
+def lounge_result(outcome="WIN", losses="0 LOSSES", totals=True):
+    rows = [("RESULT", 68, 7), ("PLAYER 2", 261.9, 155.6), (outcome, 274, 231.4),
+            ("Konggster", 290.2, 319.1), ("I'm Too Sexy for This Battle", 165.4, 331.9),
+            ("PLAYER\n", 226.2, 1000.6)]
+    if totals:
+        rows += [("YOU", 1432, 129), ("TOTAL", 1813.1, 236.4), ("1 WIN", 1804, 306.3),
+                 (losses, 1796, 352.6), ("First To 10", 1787.3, 402.8)]
+    return [item(text, x, y) for text, x, y in rows]
+
+
+check("a match's end is said as the game puts it across the stage",
+      sf.match_banner([item("YOU LOSE", 960, 520)]) == "YOU LOSE"
+      and sf.match_banner([item("YOU WIN", 960, 540)]) == "YOU WIN")
+check("a name in the corner is not a banner", sf.match_banner([item("YOU WIN", 100, 540)]) is None
+      and sf.match_banner(on_story) is None)
+check("a lounge result says how it went, the room's score and the rule",
+      sf.online_result_summary(lounge_result()) == "You win. Total 1 win, 0 losses. First To 10"
+      and sf.online_result_summary(lounge_result("LOSE", "3 LOSSES")) ==
+      "You lose. Total 1 win, 3 losses. First To 10",
+      repr(sf.online_result_summary(lounge_result("LOSE", "3 LOSSES"))))
+check("it waits for the totals rather than growing as the screen fills in",
+      sf.online_result_summary(lounge_result(totals=False)) is None)
+check("the offline result screen still reads its own way",
+      sf.online_result_summary(on_story) is None
+      and sf.screen_summary(lounge_result())[1] == "You win. Total 1 win, 0 losses. First To 10")
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

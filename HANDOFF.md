@@ -1804,16 +1804,26 @@ new entries first. Beware the two texts at (153, 35) and (1567, 35) in a
 match: those are the players' titles ("I'm Too Sexy for This Battle",
 "Attack Attack Attack!"), not anything anyone sent.
 
-**The online result screen is still open.** After a lounge match nothing was
+**The online result screen, done.** After a lounge match nothing was
 said until Play Again appeared. It carries RESULT and a WIN, so `on_results`
 holds and `result_summary` is asked, but the screen is laid out differently
 from the offline one and it gives up: "YOU" at (1432, 129) and "PLAYER 2" at
 (262, 156), one "WIN" at (274, 231) over the winner's panel, and a TOTAL panel
 on the right with "1 WIN", "0 LOSSES" and the rule ("First To 10"), plus the
-player's title, Fight Money, EXP and levels. A dump of one is at
-scaleform-log.txt 23:43:44 on 2026-09-15. What is missing before this can be
-written: a screen from a match the user lost, to see where WIN and LOSE sit
-and whether "YOU" moves with the sides.
+player's title, Fight Money, EXP and levels. Dumps of both are at
+scaleform-log.txt 23:43:44 (won) and the scratchpad recorder at 23:56:40
+(lost) on 2026-09-15: the outcome sits in the same place either way, over the
+player's own panel, the screen showing only their side. So
+`online_result_summary` says "You lose. Total 1 win, 3 losses. First To 10",
+waiting for the totals so it is said whole. It is tried both under
+`on_results` and in the general chain, since the first wants the heading and
+the outcome in one movie and this screen need not be built that way.
+
+Better still, a match ends with a banner across the middle of the stage, "YOU
+WIN" at (960, 540) or "YOU LOSE" at (960, 520), and nothing said it: the user
+heard nothing at all after a match until "Play Again". `match_banner` takes a
+text of that wording within `MATCH_BANNER_MIDDLE` of the stage's middle, so a
+title in a corner cannot pass for one, and `screen_summary` says it.
 
 ## Running things
 

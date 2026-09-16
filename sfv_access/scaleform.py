@@ -1666,6 +1666,60 @@ def survival_result_summary(items: list[TextItem]) -> str | None:
     return phrase(said) if said else None
 
 
+# --------------------------------------------------------------- online results
+#
+# A match ends with a banner across the middle of the stage, "YOU WIN" at
+# (960, 540) or "YOU LOSE" at (960, 520), which nothing selected and nothing
+# said: online with a friend on 2026-09-15 the user heard neither, and then
+# only "Play Again" once the result screen's button arrived.
+#
+# That result screen is laid out nothing like the offline one, so
+# `result_summary` gives up on it. It shows the player's own side alone:
+# "PLAYER 2" over their name and title with "WIN" or "LOSE" above, and on the
+# right a TOTAL panel with the running score of the room ("1 WIN",
+# "0 LOSSES") and the rule being played ("First To 10"). The opponent is not
+# named anywhere on it.
+
+MATCH_BANNERS = ("YOU WIN", "YOU LOSE", "DRAW", "TIME UP")
+MATCH_BANNER_MIDDLE = 300      # how far from the middle of the stage it may sit
+_ONLINE_TALLY = re.compile(r"^(\d+)\s+(WIN|WINS|LOSS|LOSSES)$", re.I)
+_ONLINE_RULE = re.compile(r"^(?:First To|Best Of)\s+\d+$", re.I)
+
+
+def match_banner(items: list[TextItem]) -> str | None:
+    """"YOU WIN" or "YOU LOSE" as a match ends, or None."""
+    for it in items:
+        text = " ".join(it.text.split())
+        if (it.shown and text.upper() in MATCH_BANNERS
+                and abs(it.x - STAGE_WIDTH / 2) <= MATCH_BANNER_MIDDLE):
+            return text.upper()
+    return None
+
+
+def online_result_summary(items: list[TextItem]) -> str | None:
+    """"You lose. Total 1 win, 3 losses. First to 10.", or None off that screen.
+
+    Waits for the totals, which arrive after the rest, so it is said once and
+    whole rather than growing as the screen fills in.
+    """
+    shown = [it for it in items if it.shown]
+    if not any(it.text.strip() == RESULT_HEADING for it in shown):
+        return None
+    outcome = next((it.text.strip() for it in shown if it.text.strip() in RESULT_OUTCOMES), None)
+    tallies = [_ONLINE_TALLY.fullmatch(" ".join(it.text.split()))
+               for it in sorted(shown, key=lambda it: it.y)]
+    tallies = [m for m in tallies if m]
+    if outcome is None or not tallies:
+        return None
+    parts = [f"You {RESULT_VERBS[outcome].rstrip('s')}"]
+    parts.append("Total " + ", ".join(f"{m.group(1)} {m.group(2).lower()}" for m in tallies))
+    rule = next((" ".join(it.text.split()) for it in shown
+                 if _ONLINE_RULE.fullmatch(" ".join(it.text.split()))), None)
+    if rule:
+        parts.append(rule)
+    return phrase(parts)
+
+
 # ------------------------------------------------------------------ lounge chat
 #
 # A Battle Lounge keeps its whole chat log in one text field at the top right,
@@ -2509,14 +2563,18 @@ def screen_summary(items: list[TextItem], health: str | None = None) -> tuple[bo
     and says "FINAL STAGE"; its card, gold, follows (`_show_final_opponent`).
     """
     if on_results(items):
-        summary = result_summary(items)
+        summary = result_summary(items) or online_result_summary(items)
         if summary is None and any(it.shown and it.text.strip() == ARCADE_FINAL_STAGE for it in items):
             summary = ARCADE_FINAL_STAGE
         return True, summary
     tips, summary = tips_screen(items)
     if tips:
         return True, summary
-    summary = (versus_summary(items) or survival_summary(items, health)
+    # The online result screen is tried here as well as under `on_results`,
+    # since that rule wants the heading and the outcome in one movie and
+    # this screen is read whether or not it is built that way.
+    summary = (match_banner(items) or online_result_summary(items)
+               or versus_summary(items) or survival_summary(items, health)
                or survival_result_summary(items) or ending_summary(items)
                or trial_summary(items) or status_line(items)
                or demonstration_page(items) or tutorial_instruction(items))
