@@ -814,7 +814,18 @@ is there so it is said once and whole; `survival_details` gives the left panel
 on Alt R. The left panel stops at `FOOTER_TOP`, the description line having
 been read as the parameter increase while its percentage was not drawn, and
 the increase must look like a number. Not yet tried: later stages, a lost
-run, the save menu, and whatever Survival's end shows.
+run, the save menu, and whatever Survival's end shows. At the user's request
+the sentence carries the health they are taking into the next stage, since
+Survival does not refill it: `Narrator` asks its `health` callback for a
+reading, but only on that screen, and `app._health_reading` measures player
+one's bar with `hud.health_fraction` off a frame up to half a second old. The
+bars are the fight's own, still drawn behind the screen; if they cannot be
+read the sentence is what it was. Whether they really are drawn there was
+never confirmed by eye, so if the reading is missing or wrong, that is where
+to look. The opponent's name is still unsaid: Survival has no VS screen, its
+display names only PLAYER 1 and CPU, and the name sits in memory hidden
+(18:41:03 on 2026-09-15 logged 'CHUN-LI' among the hidden), so it wants the
+live-state route through `live.py`, as character select did.
 
 **Starting the game.** Recorded on 2026-09-14 with a quiet recorder beside
 the mod (`snapshots/scaleform-startup`, from the Capcom title onward): black,

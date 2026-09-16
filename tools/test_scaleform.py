@@ -2022,6 +2022,22 @@ check("the read key gives the spending panel",
           "Score 13900", "Selected Supplement: Do not use a Supplement, costing 0", "Score left 13900",
           "Selected Battle Items: none", "Parameter Increase +999%"],
       repr(sf.survival_details(survival())))
+asked: list = []
+check("health goes into the summary when the bars can be read",
+      sf.survival_summary(survival(), "Health 62 percent") ==
+      "Stage 1 cleared. Health 62 percent. Time 31.616 seconds. Score 13900. Next stage 2. CPU level 2",
+      repr(sf.survival_summary(survival(), "Health 62 percent")))
+check("and the sentence is the same as before when they cannot",
+      sf.survival_summary(survival(), None) == sf.survival_summary(survival()))
+# The reading costs a screen capture, so it is asked for on that screen alone.
+asked.clear()
+mn.Narrator(health=lambda: asked.append("asked") or "Health 5 percent").step(survival(), 0.5)
+on_supplements = list(asked)
+asked.clear()
+mn.Narrator(health=lambda: asked.append("asked") or "Health 5 percent").step(on_story, 0.5)
+check("the narrator asks for a reading on that screen and nowhere else",
+      on_supplements == ["asked"] and asked == [], repr((on_supplements, asked)))
+
 check("a first stage says no stage cleared, and the parameter increase can be missing",
       sf.survival_summary(survival(next_stage="Next Stage 1")) ==
       "Time 31.616 seconds. Score 13900. Next stage 1. CPU level 2"

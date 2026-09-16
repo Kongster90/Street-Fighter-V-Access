@@ -127,9 +127,11 @@ class Narrator:
     replayed through it in a test.
     """
 
-    def __init__(self, subtitles: bool = False) -> None:
+    def __init__(self, subtitles: bool = False, health=None) -> None:
         # Whether story scenes' subtitles are said: the player's choice, kept across resets.
         self.subtitles = subtitles
+        # Asked for a health reading on the one screen that wants one, or None.
+        self.health = health
         self.reset()
 
     def reset(self) -> None:
@@ -220,7 +222,10 @@ class Narrator:
         # The result and VS screens arrive in pieces with nothing selected, and
         # saying what changed would read them out one by one. Each gets one
         # sentence instead, when complete; a menu on them reads as any menu.
-        summary_screen, summary = scaleform.screen_summary(items)
+        # Survival's supplement screen is the one whose sentence needs something
+        # off the picture: the health bars still drawn behind it.
+        health = self.health() if self.health and scaleform.on_survival_supplements(items) else None
+        summary_screen, summary = scaleform.screen_summary(items, health)
         if summary_screen:
             self.summary_seen_at = now
             if not any(it.selected for it in items):

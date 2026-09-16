@@ -326,7 +326,8 @@ class App:
         # Narration from memory, preferred whenever the game can be read.
         self.use_memory = True
         self.session = memory_narration.Session()
-        self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on())
+        self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on(),
+                                                 health=self._health_reading)
         # Button Preview: each button said as it is pressed, while it is open.
         self.presses = pads.PressWatcher(self._on_preview_press)
         self._hang_file = None
@@ -416,6 +417,20 @@ class App:
             return None, None
         return bgra, _capture.to_rgb(bgra)
 
+    def _health_reading(self, max_age: float = 0.5) -> str | None:
+        """"Health 62 percent" from the bars on screen, or None if there are none.
+
+        Survival's supplement screen keeps the fight's display behind it, so
+        the health carried into the next stage can be measured there. Only
+        that screen asks for this, and a frame up to half a second old will do,
+        since health does not change while the screen is up.
+        """
+        _bgra, rgb = self._frames(max_age=max_age)
+        if rgb is None:
+            return None
+        share = hud.health_fraction(rgb, hud.HEALTH["p1"])
+        return None if share is None else f"Health {round(share * 100)} percent"
+
     def _refresh_lines(self, bgra) -> tuple[list, str]:
         items = ocr.reading_order(ocr.read(bgra))
         _header, body, footer = menu.split_chrome(items)
@@ -473,7 +488,8 @@ class App:
             details = scaleform.stage_details(items)
             if said and details:
                 said = memory_narration.phrase([said] + details)
-            _summary_screen, summary = scaleform.screen_summary(items)
+            _summary_screen, summary = scaleform.screen_summary(
+                items, self._health_reading() if scaleform.on_survival_supplements(items) else None)
             if summary:
                 said = memory_narration.phrase([summary, said])
             layout = scaleform.preview_summary(items)

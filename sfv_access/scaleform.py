@@ -1500,11 +1500,14 @@ def on_survival_supplements(items: list[TextItem]) -> bool:
     return any(it.shown and it.text.strip() == SURVIVAL_HEADING for it in items)
 
 
-def survival_summary(items: list[TextItem]) -> str | None:
-    """"Stage 1 cleared. Time 31.616 seconds. Score 13900. Next stage 2, CPU level 2."
+def survival_summary(items: list[TextItem], health: str | None = None) -> str | None:
+    """"Stage 1 cleared. Health 62 percent. Time 31.616 seconds. Score 13900. Next stage 2."
 
     None away from the screen, and until every part of it is showing, so the
     sentence is said once and whole rather than growing as the panel arrives.
+    `health` is what the bars still drawn behind the screen read, measured off
+    the picture by the caller: health carries from stage to stage in Survival,
+    so the user asked to hear it before choosing whether to buy a recovery.
     """
     shown = [it for it in items if it.shown]
     if not any(it.text.strip() == SURVIVAL_HEADING for it in shown):
@@ -1516,6 +1519,8 @@ def survival_summary(items: list[TextItem]) -> str | None:
     if took is None or earned is None or stage is None or level is None:
         return None
     parts = [f"Stage {stage - 1} cleared"] if stage > 1 else []
+    if health:
+        parts.append(health)
     parts += [f"Time {_survival_time_words(took)}", f"Score {earned}",
               f"Next stage {stage}", f"CPU level {level}"]
     return phrase(parts)
@@ -2346,7 +2351,7 @@ def path_story(items: list[TextItem]) -> list[str]:
     return [line.strip() for line in story.text.splitlines() if line.strip()]
 
 
-def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
+def screen_summary(items: list[TextItem], health: str | None = None) -> tuple[bool, str | None]:
     """For screens read as one sentence rather than by what is selected.
 
     Whether this is one, and the sentence once all of it is showing: the
@@ -2363,7 +2368,7 @@ def screen_summary(items: list[TextItem]) -> tuple[bool, str | None]:
     tips, summary = tips_screen(items)
     if tips:
         return True, summary
-    summary = (versus_summary(items) or survival_summary(items) or ending_summary(items)
+    summary = (versus_summary(items) or survival_summary(items, health) or ending_summary(items)
                or trial_summary(items) or status_line(items)
                or demonstration_page(items) or tutorial_instruction(items))
     return summary is not None, summary
