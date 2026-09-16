@@ -44,6 +44,18 @@ ATTACK_SETTLE = 0.25
 # and long combos, the values holding still this long is taken as the end. In
 # the log the frame text came back about a second after a long combo's last hit.
 ATTACK_SETTLE_UNCOUNTED = 2.0
+# Survival's health bar, measured off the picture on the supplement screen.
+# It cannot be trusted at a glance: the bar arrives filling up from empty (a
+# reading taken as the screen opened said 33 percent when the player had lost
+# almost nothing), and once it is full a shine sweeps along it, hiding a
+# stretch (95 where a screenshot showed the bar full). So the reading is the
+# fullest of the last few samples, which ignores the shine, and it is watched
+# until that stops moving, which waits out the filling. The screen's sentence
+# is held back until then, so it is said once with the right number.
+HEALTH_WINDOW = 4          # samples kept, about a second
+HEALTH_TOLERANCE = 0.02    # a change smaller than this is not the bar moving
+HEALTH_STEADY = 0.6        # how long it must hold still to be believed
+HEALTH_CAP = 4.0           # give up waiting and say whatever it reads
 # On Survival's Battle Items screen the entries are things whose names say
 # nothing about what they do, so the description line follows the name by
 # itself after this long, at the user's request, rather than waiting for the
@@ -162,12 +174,14 @@ class Narrator:
         self.summary_since = 0.0
         self.summary_held: list[str] = []
         self.restarted_at = float("-inf")
-        # The health reading for the supplement screen showing now, taken once
-        # as it arrives. Measured off the picture, it wobbles by a percent from
-        # read to read, and since it is part of the screen's sentence, a wobble
-        # made a new sentence and the whole thing was said over and over.
-        self.health_reading: str | None = None
-        self.health_asked = False
+        # The health bar on the supplement screen showing now: the last few
+        # samples, the fullest of them, when that last changed, when the
+        # screen arrived, and whether it has held still long enough to say.
+        self.health_samples: list[float] = []
+        self.health_value: float | None = None
+        self.health_moved_at = 0.0
+        self.health_first_at = 0.0
+        self.health_settled = False
         # Battle Items: the entry whose description line is owed, when it was
         # named, and whether it has been given. See `DESCRIBE_AFTER`.
         self.described_key = None
@@ -239,14 +253,36 @@ class Narrator:
         # saying what changed would read them out one by one. Each gets one
         # sentence instead, when complete; a menu on them reads as any menu.
         # Survival's supplement screen is the one whose sentence needs something
-        # off the picture: the health bars still drawn behind it. Read once
-        # while it shows, since health does not change while it is up.
-        if not scaleform.on_survival_supplements(items):
-            self.health_reading, self.health_asked = None, False
-        elif self.health is not None and not self.health_asked:
-            self.health_reading, self.health_asked = self.health(), True
-        health = self.health_reading
+        # off the picture: the health bar still drawn behind it. See HEALTH_WINDOW.
+        on_supplements = scaleform.on_survival_supplements(items)
+        if not on_supplements:
+            self.health_samples, self.health_value = [], None
+            self.health_settled, self.health_first_at = self.health is None, 0.0
+        elif self.health is not None and not self.health_settled:
+            self.health_first_at = self.health_first_at or now
+            share = self.health()
+            if share is not None:
+                self.health_samples = (self.health_samples + [share])[-HEALTH_WINDOW:]
+                fullest = max(self.health_samples)
+                # The reading is always the fullest of the window; the
+                # tolerance only decides whether the bar counts as still
+                # moving. Keeping the older value while a rise was within
+                # tolerance stuck at 93 with the bar reading 95.
+                if self.health_value is None or abs(fullest - self.health_value) > HEALTH_TOLERANCE:
+                    self.health_moved_at = now
+                elif (len(self.health_samples) >= HEALTH_WINDOW
+                      and now - self.health_moved_at >= HEALTH_STEADY):
+                    self.health_settled = True
+                self.health_value = fullest
+            if now - self.health_first_at >= HEALTH_CAP:
+                self.health_settled = True
+        health = (f"Health {round(self.health_value * 100)} percent"
+                  if self.health_settled and self.health_value is not None else None)
         summary_screen, summary = scaleform.screen_summary(items, health)
+        # Nothing is said about the screen while the bar is still moving: with
+        # the reading inside the sentence, saying it early means saying it twice.
+        if on_supplements and not self.health_settled:
+            summary = None
         if summary_screen:
             self.summary_seen_at = now
             if not any(it.selected for it in items):

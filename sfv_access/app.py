@@ -84,16 +84,6 @@ MEMORY_INTERVAL = 0.35
 GAME_WAIT_SECONDS = 180.0
 GAME_GONE_SECONDS = 3.0
 
-# Measuring the health bar behind Survival's supplement screen: how many
-# frames to take and how far apart. A shine sweeps along the bar there, hiding
-# a stretch of it in any one frame (94, 100, 0, 95 in turn from single frames),
-# and a screenshot of the screen showed the bar full while a frame read 95. A
-# shine only ever takes lit columns away, never adds them, so the fullest
-# frame is the true reading and the rest are that sweep passing through.
-HEALTH_FRAMES = 5
-HEALTH_FRAME_GAP = 0.05
-HEALTH_SAMPLES_NEEDED = 2
-
 # The " 5 of 6." a narrated entry ends with. Stripped before comparing one
 # announcement with the last, since the count depends on how much text was
 # recognised that frame and the entry itself may not have changed at all.
@@ -337,7 +327,7 @@ class App:
         self.use_memory = True
         self.session = memory_narration.Session()
         self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on(),
-                                                 health=self._health_reading)
+                                                 health=self._health_share)
         # Button Preview: each button said as it is pressed, while it is open.
         self.presses = pads.PressWatcher(self._on_preview_press)
         self._hang_file = None
@@ -427,35 +417,23 @@ class App:
             return None, None
         return bgra, _capture.to_rgb(bgra)
 
-    def _health_reading(self) -> str | None:
-        """"Health 100 percent" from the bar on screen, or None if it cannot be read.
+    def _health_share(self) -> float | None:
+        """How full player one's health bar is, 0 to 1, or None if it cannot be read.
 
         Survival's supplement screen keeps the fight's display behind it, so
         the health carried into the next stage can be measured there. One
-        frame is not enough: a shine sweeps along the bar and hides part of it,
-        which read as 94 or 95 percent after a perfect KO. The fullest of
-        several frames is the true one. Asked for once per visit to the
-        screen, which is why it can afford the frames it takes.
+        frame, cheap enough to ask for on every pass: the narrator takes many
+        and decides which to believe, since the bar arrives filling up and a
+        shine sweeps along it once it is full.
         """
+        window = game.find_window()
         # What is captured is whatever is in front, so a reading taken while
         # the player has tabbed away measures the desktop: five frames of the
         # Claude window read as 0 percent during a test.
-        window = game.find_window()
         if window is None or not window.is_foreground:
             return None
-        shares = []
-        for n in range(HEALTH_FRAMES):
-            if n:
-                time.sleep(HEALTH_FRAME_GAP)
-            _bgra, rgb = self._frames()
-            if rgb is None:
-                continue
-            share = hud.health_fraction(rgb, hud.HEALTH["p1"])
-            if share is not None:
-                shares.append(share)
-        if len(shares) < HEALTH_SAMPLES_NEEDED:
-            return None
-        return f"Health {round(max(shares) * 100)} percent"
+        _bgra, rgb = self._frames()
+        return None if rgb is None else hud.health_fraction(rgb, hud.HEALTH["p1"])
 
     def _refresh_lines(self, bgra) -> tuple[list, str]:
         items = ocr.reading_order(ocr.read(bgra))

@@ -2031,22 +2031,30 @@ check("and the sentence is the same as before when they cannot",
       sf.survival_summary(survival(), None) == sf.survival_summary(survival()))
 # The reading costs a screen capture, so it is asked for on that screen alone.
 asked.clear()
-mn.Narrator(health=lambda: asked.append("asked") or "Health 5 percent").step(survival(), 0.5)
+mn.Narrator(health=lambda: asked.append("asked") or 0.5).step(survival(), 0.5)
 on_supplements = list(asked)
 asked.clear()
-mn.Narrator(health=lambda: asked.append("asked") or "Health 5 percent").step(on_story, 0.5)
+mn.Narrator(health=lambda: asked.append("asked") or 0.5).step(on_story, 0.5)
 check("the narrator asks for a reading on that screen and nowhere else",
       on_supplements == ["asked"] and asked == [], repr((on_supplements, asked)))
 
-# The reading wobbles by a percent between captures, and the sentence carries
-# it, so a fresh reading each time said the whole thing over and over.
-wobble = iter(["Health 62 percent", "Health 61 percent", "Health 62 percent", "Health 60 percent"])
-steady = mn.Narrator(health=lambda: next(wobble))
-spoken = [said for now, said in
-          [(t, steady.step(survival(), t)) for t in (0.0, 0.5, 1.0, 1.5, 2.0)] if said]
-check("the screen's sentence is said once, not again for every wobble in the bars",
-      spoken == ["Stage 1 cleared. Health 62 percent. Time 31.616 seconds. Score 13900. "
-                 "Next stage 2. CPU level 2. Do not use a Supplement"], repr(spoken))
+# The bar arrives filling up and then a shine sweeps along it, so the reading
+# is the fullest of the last few samples, watched until it stops moving.
+filling = iter([0.33, 0.61, 0.88, 0.93, 0.95, 0.93, 0.95, 0.94, 0.95, 0.95, 0.95, 0.95])
+settling = mn.Narrator(health=lambda: next(filling, 0.95))
+heard = [said for said in
+         [settling.step(survival(), t / 10) for t in range(0, 30, 2)] if said]
+check("the sentence waits for the bar to stop filling, then says it once",
+      heard == ["Do not use a Supplement",
+                "Stage 1 cleared. Health 95 percent. Time 31.616 seconds. Score 13900. "
+                "Next stage 2. CPU level 2"], repr(heard))
+
+# A shine dips one sample; the fullest of the window ignores it.
+dipping = iter([0.95, 0.95, 0.95, 0.95, 0.62, 0.95, 0.95, 0.95, 0.95, 0.95])
+shone = mn.Narrator(health=lambda: next(dipping, 0.95))
+said = [s for s in [shone.step(survival(), t / 10) for t in range(0, 30, 2)] if s]
+check("a shine sweeping the bar does not lower the reading",
+      any("Health 95 percent" in s for s in said), repr(said))
 
 check("a first stage says no stage cleared, and the parameter increase can be missing",
       sf.survival_summary(survival(next_stage="Next Stage 1")) ==
