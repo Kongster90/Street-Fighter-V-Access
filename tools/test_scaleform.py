@@ -1188,7 +1188,7 @@ attempts = narrate([(0.0, trial()), (0.5, trial()), (1.0, trial(landed=2)), (1.5
 check("a trial is said once, not while steps land or reset, and again on each restart and Try Again",
       [s for _, s in attempts] == [LIST, LIST, "Try Again", LIST], repr([(t, s[:20]) for t, s in attempts]))
 def extra_battle(panel=True, title="[Quick & Immovable]  Get the Crossover Costume! [2]",
-                 remaining="(19:55 remaining)", fee="2000 FM"):
+                 remaining="(19:55 remaining)", fee="2000 FM", reward="\"Forest\" Gem, 100 EXP"):
     """Extra Battle's event panel as read live, beside the gold BEGIN BATTLE."""
     menu = sf.TextItem("Extra Battle", 157, 331, GOLD, 5, chain=(1, 2, 90, 99))
     button = sf.TextItem("BEGIN BATTLE", 756, 796, GOLD, 5, chain=(3, 4, 91, 99))
@@ -1199,7 +1199,7 @@ def extra_battle(panel=True, title="[Quick & Immovable]  Get the Crossover Costu
                 ("DEADLINE", 312, 311), ("Sep 14, 2026, 9:00:00 PM", 495, 311), (remaining, 755, 311),
                 ("REWARD", 312, 336), ("PARTICIPATION FEE (FM)", 312, 420), (fee, 595, 420),
                 ("NO. OF REMAINING PLAYS", 312, 450), ("No Limit", 595, 450),
-                ("Difficulty\nEasy\n\nClear Reward\n\"Forest\" Gem, 100 EXP\n\nNote: First completion only.", 260, 564),
+                (f"Difficulty\nEasy\n\nClear Reward\n{reward}\n\nNote: First completion only.", 260, 564),
                 ("Clear Conditions: Win the battle!", 260, 734)]
         out += [sf.TextItem(text, x, y, WHITE, 5, chain=(100 + n, 200 + n, 80, 91, 99))
                 for n, (text, x, y) in enumerate(rows)]
@@ -1228,6 +1228,11 @@ next_event = extra_battle(title="Middle Class Shadaloo Grunt!", fee="500 FM")
 counted_down = extra_battle(remaining="(19:54 remaining)")
 between = narrate([(0.0, [extra_battle()[0]]), (0.5, extra_battle()), (1.0, counted_down),
                    (2.0, counted_down), (3.0, next_event), (4.0, next_event), (5.0, extra_battle())])
+same_title = extra_battle(reward="RASHID : Airman")
+sharing = narrate([(0.0, [extra_battle()[0]]), (0.5, extra_battle()), (1.0, extra_battle()),
+                   (2.0, same_title), (3.0, same_title)])
+check("two events sharing a title are still both named, their rewards differing",
+      [s for _, s in sharing][-1:] == ["[Quick & Immovable] Get the Crossover Costume! [2]"], repr(sharing))
 check("moving between events names each one, and a deadline ticking down says nothing",
       [s for _, s in between] == ["Extra Battle",
                                   "[Quick & Immovable] Get the Crossover Costume! [2]. "

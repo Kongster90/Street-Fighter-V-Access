@@ -789,8 +789,13 @@ and leave BEGIN BATTLE gold, so nothing is newly selected and `landed_on`
 returns nothing (`scaleform-log.txt` from 17:58:23 holds four such reads).
 `Narrator.step` now names a new event where it stands, by its title alone,
 the user having asked long ago that a move say the name and leave detail to
-Alt R. What marks it as another event is the brief without its DEADLINE line,
-since the deadline counts down while the same event shows.
+Alt R. What marks it as another event is the whole panel without its DEADLINE
+line, since the deadline counts down while the same event shows. The brief
+alone was not enough: the user then heard silences of ten seconds and more
+moving through the six events on offer on 2026-09-15 ("it hangs and comes
+back", spoken-log.txt from 18:06:15), the crossover costume ones sharing a
+title, fee, difficulty and conditions and differing in their rewards further
+down the panel.
 
 **Starting the game.** Recorded on 2026-09-14 with a quiet recorder beside
 the mod (`snapshots/scaleform-startup`, from the Capcom title onward): black,

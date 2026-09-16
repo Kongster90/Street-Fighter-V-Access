@@ -1398,6 +1398,13 @@ def _paragraph_sentences(text: str) -> list[str]:
     return out
 
 
+def extra_battle_brief(sentences: list[str]) -> list[str]:
+    """The arriving form of a panel already read: title, deadline, fee, difficulty, conditions."""
+    wanted = [sentences[0]] if sentences else []
+    wanted += [s for s in sentences[1:] if s.startswith(EXTRA_BATTLE_BRIEF)]
+    return wanted
+
+
 def extra_battle_details(items: list[TextItem], brief: bool = False) -> list[str]:
     """An Extra Battle event's panel as sentences, in reading order; `brief` for arriving.
 
@@ -1421,11 +1428,7 @@ def extra_battle_details(items: list[TextItem], brief: bool = False) -> list[str
             sentences.append(f"{row[0].text.strip()}: {' '.join(it.text.strip() for it in row[1:])}")
         elif not sentences or ":" in row[0].text or len(row[0].text.strip()) > HEADING_MAX:
             sentences.append(" ".join(row[0].text.split()))
-    if not brief:
-        return sentences
-    wanted = [sentences[0]] if sentences else []
-    wanted += [s for s in sentences[1:] if s.startswith(EXTRA_BATTLE_BRIEF)]
-    return wanted
+    return extra_battle_brief(sentences) if brief else sentences
 
 
 # ---------------------------------------------------------------- notice lists

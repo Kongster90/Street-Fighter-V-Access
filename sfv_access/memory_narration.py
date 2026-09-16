@@ -249,11 +249,15 @@ class Narrator:
         # The bumpers move between Extra Battle's events without moving the
         # selection off BEGIN BATTLE, so a different event is named where it
         # stands, by its title alone; the read key gives the rest.
-        details = scaleform.extra_battle_details(items, brief=True)
-        intro, button = phrase(details), scaleform.EXTRA_BATTLE_BUTTON
-        # An event's deadline counts down, and a brief that differs only in
-        # that is the same event, not a move to another one.
-        held, moved_on = phrase([s for s in details if not s.startswith(scaleform.EXTRA_BATTLE_DEADLINE)]), details[:1]
+        details = scaleform.extra_battle_details(items)
+        brief = scaleform.extra_battle_brief(details)
+        intro, button = phrase(brief), scaleform.EXTRA_BATTLE_BUTTON
+        # What marks one event as another is the whole panel bar its deadline,
+        # which counts down while the same event shows. The brief alone was not
+        # enough: the crossover costume events share a title, fee, difficulty
+        # and conditions, and differ in their rewards further down, so moving
+        # between two of them said nothing and sounded like a hang.
+        held, moved_on = phrase([s for s in details if not s.startswith(scaleform.EXTRA_BATTLE_DEADLINE)]), brief[:1]
         if not intro:
             intro, button = phrase(scaleform.notice_details(items, brief=True)), scaleform.NOTICE_BUTTON
             held, moved_on = intro, [intro, button]
