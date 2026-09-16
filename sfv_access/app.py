@@ -334,8 +334,12 @@ class App:
         # Narration from memory, preferred whenever the game can be read.
         self.use_memory = True
         self.session = memory_narration.Session()
-        self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on(),
-                                                 health=self._health_reading)
+        # No health in Survival's sentence until the bars behind that screen are
+        # understood: after a perfect KO, which leaves full health, the reading
+        # was 94 to 97 with the odd 100 and 0, so the number it would settle on
+        # is wrong. Pass `health=self._health_reading` again once a snapshot of
+        # the screen says where the bar really is.
+        self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on())
         # Button Preview: each button said as it is pressed, while it is open.
         self.presses = pads.PressWatcher(self._on_preview_press)
         self._hang_file = None
