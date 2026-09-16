@@ -84,13 +84,15 @@ MEMORY_INTERVAL = 0.35
 GAME_WAIT_SECONDS = 180.0
 GAME_GONE_SECONDS = 3.0
 
-# Measuring the health bars behind Survival's supplement screen: how many
-# frames are taken, how far apart, how many must agree with the middle one and
-# how close that counts as. A single frame there read 94, 100 and 0 in turn.
+# Measuring the health bar behind Survival's supplement screen: how many
+# frames to take and how far apart. A shine sweeps along the bar there, hiding
+# a stretch of it in any one frame (94, 100, 0, 95 in turn from single frames),
+# and a screenshot of the screen showed the bar full while a frame read 95. A
+# shine only ever takes lit columns away, never adds them, so the fullest
+# frame is the true reading and the rest are that sweep passing through.
 HEALTH_FRAMES = 5
 HEALTH_FRAME_GAP = 0.05
-HEALTH_AGREE = 3
-HEALTH_TOLERANCE = 0.03
+HEALTH_SAMPLES_NEEDED = 2
 
 # The " 5 of 6." a narrated entry ends with. Stripped before comparing one
 # announcement with the last, since the count depends on how much text was
@@ -334,12 +336,8 @@ class App:
         # Narration from memory, preferred whenever the game can be read.
         self.use_memory = True
         self.session = memory_narration.Session()
-        # No health in Survival's sentence until the bars behind that screen are
-        # understood: after a perfect KO, which leaves full health, the reading
-        # was 94 to 97 with the odd 100 and 0, so the number it would settle on
-        # is wrong. Pass `health=self._health_reading` again once a snapshot of
-        # the screen says where the bar really is.
-        self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on())
+        self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on(),
+                                                 health=self._health_reading)
         # Button Preview: each button said as it is pressed, while it is open.
         self.presses = pads.PressWatcher(self._on_preview_press)
         self._hang_file = None
@@ -430,16 +428,21 @@ class App:
         return bgra, _capture.to_rgb(bgra)
 
     def _health_reading(self) -> str | None:
-        """"Health 95 percent" from the bars on screen, or None if they cannot be trusted.
+        """"Health 100 percent" from the bar on screen, or None if it cannot be read.
 
         Survival's supplement screen keeps the fight's display behind it, so
         the health carried into the next stage can be measured there. One
-        frame is not enough: on that screen the same bar read 94, then 100,
-        then 0 from one frame to the next, the screen flashing as it arrived.
-        So several frames are taken and the middle reading is used, and only
-        if most of them sit close to it. Asked for once per visit to the
+        frame is not enough: a shine sweeps along the bar and hides part of it,
+        which read as 94 or 95 percent after a perfect KO. The fullest of
+        several frames is the true one. Asked for once per visit to the
         screen, which is why it can afford the frames it takes.
         """
+        # What is captured is whatever is in front, so a reading taken while
+        # the player has tabbed away measures the desktop: five frames of the
+        # Claude window read as 0 percent during a test.
+        window = game.find_window()
+        if window is None or not window.is_foreground:
+            return None
         shares = []
         for n in range(HEALTH_FRAMES):
             if n:
@@ -450,12 +453,9 @@ class App:
             share = hud.health_fraction(rgb, hud.HEALTH["p1"])
             if share is not None:
                 shares.append(share)
-        if len(shares) < HEALTH_AGREE:
+        if len(shares) < HEALTH_SAMPLES_NEEDED:
             return None
-        middle = sorted(shares)[len(shares) // 2]
-        if sum(abs(share - middle) <= HEALTH_TOLERANCE for share in shares) < HEALTH_AGREE:
-            return None
-        return f"Health {round(middle * 100)} percent"
+        return f"Health {round(max(shares) * 100)} percent"
 
     def _refresh_lines(self, bgra) -> tuple[list, str]:
         items = ocr.reading_order(ocr.read(bgra))

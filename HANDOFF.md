@@ -838,14 +838,19 @@ as the screen flashed (spoken-log.txt 19:41:56 onwards on 2026-09-15). Now
 uses the middle reading and only if `HEALTH_AGREE` of them sit within
 `HEALTH_TOLERANCE` of it, and the narrator asks once per visit and keeps the
 answer (`health_reading`, `health_asked`), so a wobble can no longer make a
-new sentence. The number is wrong, though: the user's fight ended in a
-perfect KO, which leaves full health, and the readings were 94 to 97 with the
-odd 100 and 0. So `App` no longer passes `health` to the narrator and the
-sentence goes back to what it was; everything else is in place, and passing it
-again is one line. Next: a snapshot of that screen (Alt S) to see whether a
-health bar is drawn there at all and where, since `hud.HEALTH["p1"]` is the
-span the fight's own HUD uses. Failing that, read the value from the game
-through `live.py` rather than off the picture. The opponent's name is still unsaid: Survival has no VS screen, its
+new sentence. Reading the middle of them was wrong: the user's fight
+ended in a perfect KO, which leaves full health, and the readings were 94 to
+97 with the odd 100. A watcher of its own (a second process, so its capture
+does not disturb the mod's) saved three frames of the screen and the picture
+settled it: player one's bar is drawn there, in the fight's own place, and it
+was full, 732 of 735 columns lit in the best frame, while another read 95. A
+shine sweeps along the bar and hides a stretch of it, and a shine can only
+take lit columns away, so the fullest of `HEALTH_FRAMES` frames is the true
+reading (`app._health_reading`), and the narrator asks once per visit. The
+same probe run while the user had tabbed away read 0 percent five times over,
+having captured the Claude window, so the reading is taken only while the
+game is in front. Opponent's bar: not drawn on that screen, only player
+one's. The opponent's name is still unsaid: Survival has no VS screen, its
 display names only PLAYER 1 and CPU, and the name sits in memory hidden
 (18:41:03 on 2026-09-15 logged 'CHUN-LI' among the hidden), so it wants the
 live-state route through `live.py`, as character select did.
