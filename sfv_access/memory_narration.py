@@ -563,6 +563,7 @@ class Session:
         self._wide_thread: threading.Thread | None = None
         self._next_wide_sweep = 0.0
         self.attached_now = False   # set when a read has just attached or reattached
+        self.last_read = "no read yet"   # what the last read did, for the hang log
         self._pictures_noted: set[str] = set()
         self._arcade_marker: str | None = None
         self._arcade_seen_at = 0.0
@@ -618,8 +619,10 @@ class Session:
             self._next_attempt = now + RETRY
             return None
         try:
+            kind = "quick read"
             if time.monotonic() - self.reader.pages_refreshed_at > STALE_PAGES:
                 self.reader.refresh_pages()
+                kind = "quick read after a block refresh"
             items = self.reader.items(quick=True)
             if items:
                 self._empty_since, self._use_full = None, False
@@ -627,10 +630,14 @@ class Session:
                 # Quick reads are still missing what a full search found: keep
                 # searching in full, slower but not silent, until they recover.
                 items = self.reader.items()
+                kind = "full search"
                 self._use_full = bool(items)
             elif self._seen_text:
                 items = self._check_empty(now)
+                kind = "empty check"
                 self._use_full = bool(items)
+            # What the loop's slow passes were doing, for the hang log.
+            self.last_read = f"{kind}, {len(items or [])} texts"
         except Exception as exc:
             self.note(f"read failed, detaching: {exc!r}\n" + traceback.format_exc())
             self.close()

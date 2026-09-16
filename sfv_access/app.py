@@ -31,8 +31,14 @@ from .speech import Speaker
 SNAPSHOT_DIR = Path(__file__).resolve().parent.parent / "snapshots"
 # If one pass of the narration loop takes longer than this, what every thread
 # was doing is written to the hang log. Narration going silent with nothing in
-# the other logs to say why is what this is for.
-HANG_SECONDS = 5.0
+# the other logs to say why is what this is for. The user hears a pass of a
+# couple of seconds as the speech stopping and then naming whatever they have
+# reached, the entries passed through in between never read, so the threshold
+# is well under the five seconds it began at.
+HANG_SECONDS = 2.0
+# Shorter passes than that are still worth a line, with what the read did, to
+# show how often the loop falls behind a player moving through a menu.
+SLOW_SECONDS = 0.8
 HANG_LOG = SNAPSHOT_DIR / "hang-log.txt"
 
 # Plain Alt, at the user's request: fewer keys to press, and Windows claims some
@@ -848,9 +854,10 @@ class App:
                 if self._hang_file is not None:
                     faulthandler.cancel_dump_traceback_later()
                     took = time.monotonic() - started
-                    if took > HANG_SECONDS:
+                    if took > SLOW_SECONDS:
                         self._hang_file.write(
-                            f"{_dt.datetime.now():%H:%M:%S} that pass took {took:.1f} s\n")
+                            f"{_dt.datetime.now():%H:%M:%S} that pass took {took:.1f} s"
+                            f" ({self.session.last_read if self.use_memory else 'pixel reading'})\n")
                         self._hang_file.flush()
                 time.sleep(memory_narration.POLL if self.use_memory and self.session.available
                            else WATCH_INTERVAL)
