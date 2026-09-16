@@ -189,6 +189,9 @@ class Narrator:
         self.described_said = True
         # A short introduction, said once as its button is reached: see `step`.
         self.intro_said = ""
+        # The newest chat entry in the lounge, once it has been heard or
+        # counted as history. None away from a lounge.
+        self.chat_said: str | None = None
         # The game's short message last said, and when it last showed.
         self.toast_said = ""
         self.toast_seen_at = 0.0
@@ -467,6 +470,19 @@ class Narrator:
                 parts = (parts or []) + [phrase(list(line))]
                 self.said = ""
             self.subtitle_said = line
+
+        # A lounge's chat selects nothing either. What is already in the log
+        # on arriving is history; what appears after that is said, oldest of
+        # the new entries first.
+        chat = scaleform.lounge_chat(items)
+        if not chat:
+            self.chat_said = None
+        elif self.chat_said is None:
+            self.chat_said = chat[0]
+        elif chat[0] != self.chat_said:
+            fresh = chat[:chat.index(self.chat_said)] if self.chat_said in chat else chat[:1]
+            self.chat_said = chat[0]
+            parts = (parts or []) + list(reversed(fresh))
 
         # The game's short messages select nothing, so they are said as they
         # appear: once while they show, and again if the same one comes back,

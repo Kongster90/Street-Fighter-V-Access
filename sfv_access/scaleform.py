@@ -1666,6 +1666,45 @@ def survival_result_summary(items: list[TextItem]) -> str | None:
     return phrase(said) if said else None
 
 
+# ------------------------------------------------------------------ lounge chat
+#
+# A Battle Lounge keeps its whole chat log in one text field at the top right,
+# newest entry first: "[11:45 PM] jamestoh" with the message indented on the
+# next line, or a line of its own for what the room does ("[11:34 PM]
+# jamestoh has entered the room."). Nothing selects it, so none of it was ever
+# said and the user heard nothing while their friend typed. New entries are
+# said as they arrive, oldest of them first; the log that is already there on
+# arriving is history, not news (see `Narrator.step`).
+
+LOUNGE_CHAT_LEFT = 1000
+LOUNGE_CHAT_TOP = 200
+_CHAT_ENTRY = re.compile(r"^\[\s*\d{1,2}:\d{2}(?::\d{2})?\s*(?:[AP]M)?\s*\]\s*(.*)$", re.I)
+
+
+def lounge_chat(items: list[TextItem]) -> list[str]:
+    """The lounge's chat as sentences, newest first, or nothing off that screen."""
+    field = next((it for it in items
+                  if it.shown and it.x >= LOUNGE_CHAT_LEFT and it.y <= LOUNGE_CHAT_TOP
+                  and _CHAT_ENTRY.match(it.text.strip().splitlines()[0] if it.text.strip() else "")), None)
+    if field is None:
+        return []
+    lines = [line for line in field.text.splitlines() if line.strip()]
+    out, n = [], 0
+    while n < len(lines):
+        entry = _CHAT_ENTRY.match(lines[n].strip())
+        if entry is None:
+            n += 1
+            continue
+        who = entry.group(1).strip()
+        message = ""
+        if n + 1 < len(lines) and _CHAT_ENTRY.match(lines[n + 1].strip()) is None:
+            message = " ".join(lines[n + 1].split())
+            n += 1
+        out.append(f"{who} says, {message}" if message else who)
+        n += 1
+    return out
+
+
 # ---------------------------------------------------------------- notice lists
 #
 # After logging in, the main menu opens under notices, one after another, each

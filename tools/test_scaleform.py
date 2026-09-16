@@ -2136,6 +2136,38 @@ check("the read key adds every opponent and the time that fight took",
 check("nothing of it elsewhere", sf.survival_result_summary(on_story) is None
       and not sf.survival_result(survival()) and sf.survival_summary(survival_result_screen()) is None)
 
+
+# A Battle Lounge's chat log, one field at the top right holding every entry
+# newest first, as read live on 2026-09-15 from the user's room.
+CHAT_LOG = ("[11:45 PM] jamestoh\n  Thanks for the match!\n"
+            "[11:45 PM] jamestoh\n  Let's have a good match!\n"
+            "[11:40 PM] jamestoh and Konggster have begun a match.\n"
+            "[11:34 PM] jamestoh has entered the room.\n")
+
+
+def lounge(log=CHAT_LOG):
+    return [item("Konggster", 421, 65), item("READY", 197, 67), item(log, 1140, 68),
+            item("1 WIN", 810, 85), item("Private Slots", 91, 290)]
+
+
+check("a lounge's chat reads as who said what, newest first",
+      sf.lounge_chat(lounge()) == [
+          "jamestoh says, Thanks for the match!", "jamestoh says, Let's have a good match!",
+          "jamestoh and Konggster have begun a match.", "jamestoh has entered the room."],
+      repr(sf.lounge_chat(lounge())))
+check("no chat elsewhere", sf.lounge_chat(on_story) == [])
+
+# What is in the log on arriving is history; what arrives after it is said.
+arriving = mn.Narrator()
+said = [s for s in [arriving.step(lounge(), 0.0), arriving.step(lounge(), 0.5)] if s]
+check("the log already there is not read out on arriving", said == [], repr(said))
+spoken = arriving.step(lounge("[11:46 PM] jamestoh\n  Nice one!\n" + CHAT_LOG), 1.0)
+check("a new line is said as it arrives", spoken == "jamestoh says, Nice one!", repr(spoken))
+both = arriving.step(lounge("[11:47 PM] jamestoh\n  Again?\n[11:46 PM] Konggster\n  Sure\n"
+                            "[11:46 PM] jamestoh\n  Nice one!\n" + CHAT_LOG), 1.5)
+check("two lines at once are said oldest first",
+      both == "Konggster says, Sure. jamestoh says, Again?", repr(both))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

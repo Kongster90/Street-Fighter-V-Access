@@ -1793,6 +1793,28 @@ testing, the user's launch options point at the installed copy in
 `.venv\Scripts\python.exe tools\steam_launch_options.py --apply` (Steam
 closed) and delete that folder.
 
+**Battle Lounge chat.** One text field at the top right holds the whole log,
+newest entry first: "[11:45 PM] jamestoh" with the message indented under it,
+or a line of its own for what the room does ("... has entered the room.",
+"... have begun a match."). Nothing selects it, so the user heard nothing
+while their friend typed (2026-09-15). `scaleform.lounge_chat` turns it into
+"jamestoh says, Thanks for the match!"; `Narrator` counts the log that is
+there on arriving as history and says what appears after it, oldest of the
+new entries first. Beware the two texts at (153, 35) and (1567, 35) in a
+match: those are the players' titles ("I'm Too Sexy for This Battle",
+"Attack Attack Attack!"), not anything anyone sent.
+
+**The online result screen is still open.** After a lounge match nothing was
+said until Play Again appeared. It carries RESULT and a WIN, so `on_results`
+holds and `result_summary` is asked, but the screen is laid out differently
+from the offline one and it gives up: "YOU" at (1432, 129) and "PLAYER 2" at
+(262, 156), one "WIN" at (274, 231) over the winner's panel, and a TOTAL panel
+on the right with "1 WIN", "0 LOSSES" and the rule ("First To 10"), plus the
+player's title, Fight Money, EXP and levels. A dump of one is at
+scaleform-log.txt 23:43:44 on 2026-09-15. What is missing before this can be
+written: a screen from a match the user lost, to see where WIN and LOSE sit
+and whether "YOU" moves with the sides.
+
 ## Running things
 
 Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod
