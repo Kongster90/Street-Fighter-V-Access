@@ -808,6 +808,12 @@ foot "Next Stage 2", which alternates with "CPU Level 2" in the same place.
 The fight's own HUD is still on the screen behind it ('9999999', '9:59:59.99',
 'STAGE ', 'PLAYER 1'), so anchors are the "BATTLE SUPPLEMENT" heading, the
 time's shape, "+ " and a number, and the "Next Stage" and "CPU Level" labels.
+Two scores sit on that screen and the user asked which was which: the "+ N"
+beside the fight's time is what the stage earned, the panel's SCORE is the
+running total and what there is to spend (stages 1 to 3 earned 13900, 12790
+and 11704 against a total of 38394). They are said as "Score for the stage"
+and "Total score ..., to spend".
+
 `survival_summary` says "Stage 1 cleared. Time 31.616 seconds. Score 13900.
 Next stage 2. CPU level 2" through `screen_summary`, waiting until every part
 is there so it is said once and whole; `survival_details` gives the left panel

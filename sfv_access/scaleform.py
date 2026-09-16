@@ -1531,7 +1531,11 @@ def survival_summary(items: list[TextItem], health: str | None = None) -> str | 
     parts = [f"Stage {stage - 1} cleared"] if stage > 1 else []
     if health:
         parts.append(health)
-    parts += [f"Time {_survival_time_words(took)}", f"Score {earned}",
+    # Two scores on one screen: what the stage earned, in the panel with the
+    # fight's time, and the running total in the panel with the supplements,
+    # which is also what there is to spend. The user asked which was which,
+    # so each is said as what it is.
+    parts += [f"Time {_survival_time_words(took)}", f"Score for the stage {earned}",
               f"Next stage {stage}", f"CPU level {level}"]
     return phrase(parts)
 
@@ -1546,7 +1550,7 @@ def survival_details(items: list[TextItem]) -> list[str]:
     if SURVIVAL_SCORE in first:
         at = first.index(SURVIVAL_SCORE)
         if len(rows[at]) > 1:
-            out.append(f"Score {rows[at][1]}")
+            out.append(f"Total score {rows[at][1]}, to spend")
         # Under the score, the supplement selected with its cost, and under
         # that alone what buying it would leave.
         if at + 1 < len(rows):

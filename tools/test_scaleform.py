@@ -2010,7 +2010,7 @@ def survival(gain="+ 13900", took="0:00'31''616", next_stage="Next Stage 2", par
 
 check("the supplement screen is said as one sentence, the fight and what comes next",
       sf.survival_summary(survival()) ==
-      "Stage 1 cleared. Time 31.616 seconds. Score 13900. Next stage 2. CPU level 2",
+      "Stage 1 cleared. Time 31.616 seconds. Score for the stage 13900. Next stage 2. CPU level 2",
       repr(sf.survival_summary(survival())))
 check("it waits for the whole panel rather than growing as it arrives",
       sf.survival_summary(survival(gain="")) is None and sf.survival_summary(survival(took="")) is None
@@ -2019,13 +2019,13 @@ check("no survival summary elsewhere", sf.survival_summary(on_story) is None
       and not sf.survival_details(on_story))
 check("the read key gives the spending panel",
       sf.survival_details(survival()) == [
-          "Score 13900", "Selected Supplement: Do not use a Supplement, costing 0", "Score left 13900",
+          "Total score 13900, to spend", "Selected Supplement: Do not use a Supplement, costing 0", "Score left 13900",
           "Selected Battle Items: none", "Parameter Increase +999%"],
       repr(sf.survival_details(survival())))
 asked: list = []
 check("health goes into the summary when the bars can be read",
       sf.survival_summary(survival(), "Health 62 percent") ==
-      "Stage 1 cleared. Health 62 percent. Time 31.616 seconds. Score 13900. Next stage 2. CPU level 2",
+      "Stage 1 cleared. Health 62 percent. Time 31.616 seconds. Score for the stage 13900. Next stage 2. CPU level 2",
       repr(sf.survival_summary(survival(), "Health 62 percent")))
 check("and the sentence is the same as before when they cannot",
       sf.survival_summary(survival(), None) == sf.survival_summary(survival()))
@@ -2046,8 +2046,8 @@ heard = [said for said in
          [settling.step(survival(), t / 10) for t in range(0, 30, 2)] if said]
 check("the sentence waits for the bar to stop filling, then says it once",
       heard == ["Do not use a Supplement",
-                "Stage 1 cleared. Health 95 percent. Time 31.616 seconds. Score 13900. "
-                "Next stage 2. CPU level 2"], repr(heard))
+                "Stage 1 cleared. Health 95 percent. Time 31.616 seconds. "
+                "Score for the stage 13900. Next stage 2. CPU level 2"], repr(heard))
 
 # A shine dips one sample; the fullest of the window ignores it.
 dipping = iter([0.95, 0.95, 0.95, 0.95, 0.62, 0.95, 0.95, 0.95, 0.95, 0.95])
@@ -2058,7 +2058,7 @@ check("a shine sweeping the bar does not lower the reading",
 
 check("a first stage says no stage cleared, and the parameter increase can be missing",
       sf.survival_summary(survival(next_stage="Next Stage 1")) ==
-      "Time 31.616 seconds. Score 13900. Next stage 1. CPU level 2"
+      "Time 31.616 seconds. Score for the stage 13900. Next stage 1. CPU level 2"
       and "Parameter Increase +999%" not in sf.survival_details(survival(parameter=False)),
       repr(sf.survival_summary(survival(next_stage="Next Stage 1"))))
 
