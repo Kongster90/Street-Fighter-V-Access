@@ -13,8 +13,8 @@ with whoever made them.
 The copied Python is checked before zipping by importing everything the mod
 needs with it, isolated from this machine's own Python.
 
-package\What's new.txt, the changelog testers read, goes in with the rest of
-package\; a build on a day with no entry in it says so, since a zip handed
+package\\What's new.txt, the changelog testers read, goes in with the rest of
+package\\; a build on a day with no entry in it says so, since a zip handed
 out with last time's list tells testers nothing changed.
 
 Afterwards it tidies up: the staging folder goes, being a full unzipped copy

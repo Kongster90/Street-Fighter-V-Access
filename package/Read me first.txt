@@ -57,8 +57,10 @@ Trials, with each combo in words, and Demonstrations.
 The Story tutorial's instructions and tips.
 The shop, notices and missions after logging in, and Extra Battle.
 Survival: the supplements and battle items between stages, how each fight went with the health you carry on with, and the result at the end of a run.
+Online: the VS screen, who won as each match ends, the result screen and Battle Lounge chat.
+Story: Character Story's chapters and each fighter's profile, and subtitles with Alt T.
 
-Not yet: online matches past their menus, story chapters, and the fights themselves. There are no sounds for health or distance yet.
+Not yet: the fights themselves. There are no sounds for health or distance yet.
 
 
 Keyboard players
