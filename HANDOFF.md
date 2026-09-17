@@ -1929,7 +1929,7 @@ came out as "3. Apprentice Alley. DHALSIM. VS", "1. ???" and "2" (2026-09-17).
 for the pieces a move names, and Alt R gives it with `story_profile`. The
 opponent is told from a title by `fighter_names`, since an epilogue's title
 sits in the opponent's column. What Oro's chapter 2 is, with no title drawn,
-is not known.
+is not known. Confirmed in play by the user on 2026-09-17.
 
 ## Running things
 
