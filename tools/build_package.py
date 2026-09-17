@@ -13,6 +13,10 @@ with whoever made them.
 The copied Python is checked before zipping by importing everything the mod
 needs with it, isolated from this machine's own Python.
 
+package\What's new.txt, the changelog testers read, goes in with the rest of
+package\; a build on a day with no entry in it says so, since a zip handed
+out with last time's list tells testers nothing changed.
+
 Afterwards it tidies up: the staging folder goes, being a full unzipped copy
 worth 129 MB that is rebuilt from scratch every time, and so do older zips,
 the user wanting only the newest kept. Both are named as they are removed.
@@ -30,6 +34,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
 NAME = "SFV Access"
+CHANGES = ROOT / "package" / "What's new.txt"
 
 # From the committed files, only what a player's copy runs.
 CODE_FILES = ("run.py", "start_with_game.pyw", "character_names.json", "roster.json", "Start SFV Access.bat")
@@ -90,6 +95,9 @@ def main() -> int:
     if git("status", "--porcelain", "--", "sfv_access", "tools", "package", *CODE_FILES):
         print("There are uncommitted changes to the mod. Commit them first, so the package matches a commit.")
         return 1
+    today = f"{dt.date.today():%d %B %Y}".lstrip("0")
+    if today not in CHANGES.read_text(encoding="utf-8"):
+        print(f"note: {CHANGES.name} has no entry for {today}; add one before handing this zip out.")
     commit = git("rev-parse", "--short", "HEAD")
     stamp = f"{dt.date.today():%Y-%m-%d}-{commit}"
     stage = DIST / "stage"

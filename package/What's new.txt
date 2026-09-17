@@ -1,0 +1,38 @@
+What's new in Street Fighter V Access
+
+Each test version, newest first. The version you have is in VERSION.txt, beside this file.
+
+
+17 September 2026
+
+The mod's keys only work while Street Fighter V is in front. In any other program they do what they normally do. F10 now closes the mod only while you are in the game.
+Arcade: after each fight the result screen says your scores and your total. After the bonus stage it says how many barrels you broke.
+Arcade: the card offering the bonus stage is read, before the tips.
+Arcade: the VS screen no longer calls the CPU "REWARD", and before the final stage the opponent's card keeps its reward.
+Character Story: each chapter is said as a sentence, such as "Chapter 3, Apprentice Alley, versus DHALSIM", and a locked chapter as locked. Alt R adds the fighter's profile.
+Options, Screen Settings: Screen Brightness says its level, such as "8 of 10", and each change.
+This file, What's new.txt, comes with every version from now on.
+
+
+16 September 2026
+
+Fixed the mod closing by itself on some computers.
+If the mod does close by itself, crash-log.txt in the snapshots folder now says why, however you started it.
+Online: "YOU WIN" or "YOU LOSE" is said the moment a match ends, and the result screen says how it went, the room's running score and the rule.
+Battle Lounge chat is read as messages arrive.
+The VS screen names your opponent whichever side you are on. The mod learns your Fighter ID from the main menu the first time it sees it.
+
+
+15 September 2026, second version
+
+The installer asks whether the mod should start with the game, and puts a Street Fighter V Access shortcut on your desktop either way.
+Survival: between stages you hear the stage you cleared, the health you carry on with, the time, the score for the stage, and the next stage and CPU level. Alt R gives your total score to spend.
+Survival: each Battle Item says what it does a moment after its name, and the end of a run says how far you got, your score, and on Alt R every opponent.
+Extra Battle: each event is named as you move between them with the bumpers.
+The main menu no longer says "Unavailable" when you come back from a mode.
+Read me first.txt explains how to update to a newer version.
+
+
+15 September 2026
+
+The first test version.

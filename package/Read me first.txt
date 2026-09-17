@@ -2,7 +2,7 @@ Street Fighter V Access
 
 A mod that makes Street Fighter V speak through your screen reader. It reads the menus, character and stage select, and much more straight from the game, and speaks through NVDA.
 
-This is a test version. Thank you for trying it.
+This is a test version. Thank you for trying it. What's new.txt, beside this file, lists what has changed in each version.
 
 
 What you need
@@ -74,7 +74,7 @@ When you get a newer zip, install it the same way over the top. There is no need
 2. Extract the new zip and run Install SFV Access from it.
 3. Answer the question about starting with the game as you like. Your answer can differ from last time.
 
-Your own things are kept: your settings, the game's text the mod set up the first time, and the logs. The version you are running is in VERSION.txt in %LOCALAPPDATA%\Programs\SFV Access.
+What's new.txt in the new version lists what has changed. Your own things are kept: your settings, the game's text the mod set up the first time, and the logs. The version you are running is in VERSION.txt in %LOCALAPPDATA%\Programs\SFV Access.
 
 
 Reporting a problem

@@ -1957,6 +1957,14 @@ columns of fighters' names) whose position is not text. Offered on 2026-09-17:
 announcing the mode with its controls, and saying the position from the
 display data as the slider's level is read. The user declined both for now.
 
+**What's new.txt.** At the user's request (2026-09-17) the package carries a
+changelog for testers, `package/What's new.txt`, newest version first, in the
+guide's plain style, written from the user's side ("Survival: between stages
+you hear..."), never commit messages. Add an entry, headed with the day
+("17 September 2026"), before building a zip; `build_package` warns when
+today has none. Entries written after the fact for the zips of 15 and 16
+September came from `git log` between the builds.
+
 ## Running things
 
 Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod
