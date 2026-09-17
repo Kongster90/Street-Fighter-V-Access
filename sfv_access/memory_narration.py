@@ -310,7 +310,12 @@ class Narrator:
                 if now - self.summary_since >= settle:
                     # Anything selected while it settled comes after it, once:
                     # the final stage's opponent card arrives with FINAL STAGE.
-                    held = [p for p in self.summary_held + (parts or []) if p not in summary]
+                    # Left out only when it is one of the summary's own
+                    # sentences: matched as part of one, the card's REWARD went
+                    # missing after a score line starting "REWARD 26890".
+                    sentences = {" ".join(x.split()) for x in summary.split(". ")}
+                    held = [p for p in self.summary_held + (parts or [])
+                            if " ".join(p.split()).rstrip(".") not in sentences and p != summary]
                     self.summary_said, self.summary_held = summary, []
                     parts = [summary] + scaleform._unique(held)
                 else:

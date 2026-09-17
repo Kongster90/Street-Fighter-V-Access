@@ -146,11 +146,13 @@ Played by the user on 2026-09-15:
   day, not yet heard from a launch).
 
 Written and checked against the game or a recording, but not yet heard in
-play: Arcade's final-stage opponent card ("FINAL STAGE. SAGAT. REWARD.
-16620"); the Special Artwork credit after an ending; `SUMMARY_SETTLE`, which
-stops a summary being said twice when part of it arrives late; "Logging into
-the server..." said once at startup; Controller Settings with both players'
-screens open in Versus.
+play: Controller Settings with both players' screens open in Versus. Heard in
+the user's Arcade run of 2026-09-16, and so ticked off: an ending ("G. The
+so-called "President of the World"..."), the Special Artwork credit after it
+and the Gallery messages, Arcade's final-stage opponent card ("FINAL STAGE.
+RYU. REWARD. 35570"), the bonus stage and its result, the score summaries,
+and summaries said once each (`SUMMARY_SETTLE`); "Logging into the server..."
+at startup has been heard at every login since.
 
 From the screen, the older path, now the fallback:
 
@@ -1269,7 +1271,12 @@ ending itself was heard in play. After it came a page crediting an unlocked
 picture, "Special Artwork: BENGUS" alone at (160, 911); the game has 57
 strings of that kind ("Special Artwork: <artist>", "SF Legacy: ...
 Artwork"), so a single shown text containing "Artwork" that is one of the
-game's strings is read too. Checked live, not yet heard.
+game's strings is read too. Both heard in play again on 2026-09-16, the user
+confirming the ending read out: "G. The so-called "President of the World"
+traveled the globe...", then "Special Artwork: BENGUS". The final opponent's
+card after a score line lost its REWARD ("FINAL STAGE. M. BISON. 28000"),
+since held-back parts were dropped when found anywhere inside the summary;
+now only the summary's own sentences are.
 
 **Demonstrations.** Asked for on 2026-09-15. Choosing one (Challenges,
 Demonstrations, VOL. 1, "#01. Basic Controls") loads with a tips screen:
@@ -1507,9 +1514,9 @@ What follows is roughly in order of value.
    the Fighter ID and Home change, Guile's, Zangief's, E. Honda's and Blanka's
    command lists, Training's attack data, Controller Settings with Button
    Preview, and Keyboard Settings; the user ended it with everything they had
-   tried working. Waiting to be heard: Arcade's final-stage opponent card, the
-   Special Artwork credit, `SUMMARY_SETTLE`, the login status line. Not yet
-   tried at all:
+   tried working. All four that were waiting to be heard (Arcade's final-stage opponent
+   card, the Special Artwork credit, `SUMMARY_SETTLE`, the login status line)
+   were heard on 2026-09-16. Not yet tried at all:
    character select in Training and Arcade (if one does not read, look for
    its heading in the log; `CHARACTER_SELECT_HEADING` is the only thing
    recognising the screen), the result screen with two players, a draw, or

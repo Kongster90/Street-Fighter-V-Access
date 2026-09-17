@@ -2276,6 +2276,17 @@ check("it waits for the total, which arrives last",
 check("nothing of it elsewhere", sf.arcade_result_summary(on_story) is None
       and sf.arcade_result_summary(lounge_result()) is None)
 
+# Before the final stage the scores and FINAL STAGE are one sentence, and the
+# opponent's card follows. Heard on 2026-09-16 as "FINAL STAGE. M. BISON.
+# 28000", the card's REWARD dropped for appearing inside "REWARD 26890".
+final_scores = arcade_scores() + [item("FINAL STAGE", 240, 700)]
+final_scores = [it for it in final_scores if it.text != "NEXT STAGE"]
+card = [sf.TextItem("M. BISON", 1192, 452, GOLD, 5), sf.TextItem("REWARD", 1255, 511, GOLD, 5),
+        sf.TextItem("28000", 1406, 511, GOLD, 5)]
+heard = narrate([(0.0, final_scores + card), (0.5, final_scores + card), (1.0, final_scores + card)])
+check("the final opponent's card keeps its REWARD after a score line that has one",
+      [s for _, s in heard][-1:] and "M. BISON. REWARD. 28000" in [s for _, s in heard][-1], repr(heard))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)
