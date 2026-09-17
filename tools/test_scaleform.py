@@ -2318,6 +2318,51 @@ check("the read key's profile is the fighter and their lines",
       repr(sf.story_profile(oro_story(3))))
 check("no chapter elsewhere", sf.story_chapter(on_story) is None and sf.story_profile(on_story) == [])
 
+# Screen Settings' Screen Brightness, built as the game builds it: the row's
+# label, and beside it a track of ten empty cells 28 pixels apart with two
+# groups laid over it, one showing, each with a marker and a filled cell per
+# level at the track's places. No text gives the level.
+def brightness_row(level, other_level=None, beside=None):
+    mem = FakeMemory(size=0x21000)
+    root = display_object(mem, 0, 0, 0, WHITE)
+    screen = display_object(mem, root, 0, 0, WHITE)
+    row = display_object(mem, screen, 0, 0, WHITE)
+    label = display_object(mem, row, 613, 521, WHITE)
+    text_field(mem, label, 0, 0, ["Screen Brightness"], tint=GOLD)
+    holder = display_object(mem, row, 630, 529, WHITE)
+    slider = display_object(mem, holder, 0, -10, WHITE)
+    track = [display_object(mem, slider, 28 * n, 10, WHITE) for n in range(10)]
+    groups = []
+    for shown, count in ((False, other_level if other_level is not None else level), (True, level)):
+        group = display_object(mem, slider, 0, 10, WHITE, flags=1 if shown else 0)
+        cells = [display_object(mem, group, 28 * count - 30, 0, WHITE)]
+        cells += [display_object(mem, group, 28 * n, 0, WHITE) for n in range(count)]
+        set_children(mem, group, cells)
+        groups.append(group)
+    set_children(mem, slider, track + groups)
+    set_children(mem, holder, [slider])
+    set_children(mem, row, [label, holder])
+    if beside:
+        text_field(mem, display_object(mem, row, 1058, 525, WHITE), 0, 0, [beside])
+    return mem, sf.ScaleformText(mem, MODULE)
+
+
+_, bright_reader = brightness_row(8)
+bright = bright_reader.items()
+check("a slider of cells gives its row the level as a note",
+      [(it.text, it.note) for it in bright if it.selected] == [("Screen Brightness", "8 of 10")],
+      repr([(it.text, it.note) for it in bright if it.selected]))
+check("only the group showing is counted, not the one hidden under it",
+      [it.note for it in brightness_row(8, other_level=5)[1].items() if it.selected] == ["8 of 10"])
+check("a row that says its value in words is left alone",
+      [it.note for it in brightness_row(8, beside="ON")[1].items() if it.text == "Screen Brightness"] == [""])
+_, lower = brightness_row(5)
+_, higher = brightness_row(8)
+check("arriving says the level, and changing it says the new one",
+      sf.landed_on([], lower.items()) == ["Screen Brightness", "5 of 10"]
+      and sf.landed_on(lower.items(), higher.items()) == ["8 of 10"],
+      repr((sf.landed_on([], lower.items()), sf.landed_on(lower.items(), higher.items()))))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

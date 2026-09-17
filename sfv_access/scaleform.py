@@ -111,6 +111,19 @@ NODE_VISIBLE = 0x0001
 # every one of 6,105 texts on screen hung from a root with these bits.
 MOVIE_ROOT_FLAGS = 0x1800
 TWIPS_PER_PIXEL = 20.0
+# A slider drawn as cells, Screen Settings' Screen Brightness the first seen:
+# its row holds a track of empty cells a fixed step apart along x (ten, 28
+# pixels apart) and, laid over it, a group with one filled cell per level at
+# the same positions and a marker just short of the last. The level is the
+# filled cells and the most it can be is the track's. No text says either,
+# so the row read as its label alone (2026-09-17).
+SLIDER_MIN_CELLS = 5
+SLIDER_STEP = (10.0, 60.0)
+SLIDER_ALIGN = 0.5          # how exactly a filled cell sits on a track cell's place
+SLIDER_DEPTH = 3            # how far under the row to look for the track
+# A row found holding no slider is not looked through again for this long, so
+# a gold menu entry with nothing beside it costs one walk rather than one a read.
+SLIDER_MISS_FOR = 10.0
 STAGE_WIDTH, STAGE_HEIGHT = 1920, 1080
 
 HIGHLIGHT_TINT = (1.0, 0.89, 0.549)
@@ -2827,6 +2840,8 @@ class ScaleformText:
         self._roots: set[int] = set()
         # Pictures inside text with no words yet, by image name, for the log.
         self.unknown_pictures: set[str] = set()
+        # Rows looked through for a slider and found holding none, with when.
+        self._slider_misses: dict[int, float] = {}
         # Whether the last read was the Home screen, where flag tiles are looked
         # for in grids too small or too gappy for the usual rule.
         self.on_home_screen = False
@@ -3472,6 +3487,69 @@ class ScaleformText:
             if cards.intersection(it.chain) and only_faded(it):
                 it.tint = (it.tint[0], it.tint[1], it.tint[2], 1.0)
 
+    def _slider_level(self, root: int, depth: int = 0) -> tuple[int, int] | None:
+        """(level, most) for a slider of cells somewhere under `root`, or None."""
+        if depth > SLIDER_DEPTH:
+            return None
+        placed = []
+        for kid in self.children(root):
+            node = self._node(kid)
+            if node is not None:
+                placed.append((kid, node[0][2] / TWIPS_PER_PIXEL, node[0][5] / TWIPS_PER_PIXEL, node[2]))
+        if len(placed) > SLIDER_MIN_CELLS:
+            step = placed[1][1] - placed[0][1]
+            track = 0
+            if SLIDER_STEP[0] <= step <= SLIDER_STEP[1]:
+                while (track < len(placed) and abs(placed[track][1] - track * step) <= SLIDER_ALIGN
+                       and placed[track][2] == placed[0][2]):
+                    track += 1
+            if track >= SLIDER_MIN_CELLS:
+                levels = []
+                for kid, _x, _y, flags in placed[track:]:
+                    if not flags & NODE_VISIBLE:
+                        continue
+                    filled = set()
+                    for cell in self.children(kid):
+                        node = self._node(cell)
+                        if node is None:
+                            continue
+                        x = node[0][2] / TWIPS_PER_PIXEL
+                        at = round(x / step)
+                        if abs(x - at * step) <= SLIDER_ALIGN and 0 <= at < track:
+                            filled.add(at)
+                    if filled:
+                        levels.append(len(filled))
+                if levels:
+                    return max(levels), track
+        for kid, *_rest in placed:
+            found = self._slider_level(kid, depth + 1)
+            if found:
+                return found
+        return None
+
+    def _mark_sliders(self, out: list[TextItem]) -> None:
+        """Give a selected row whose value is a slider of cells its level as a note: "8 of 10".
+
+        Only a gold label with nothing else on its row, since a row that says
+        its value in words (Sound Settings' volumes, "BGM Volume" and "3")
+        needs no help, and only the selected one, since each look is a walk.
+        """
+        shown = [it for it in out if it.shown]
+        for it in shown:
+            if not it.highlighted or it.note or len(it.chain) < 3:
+                continue
+            if any(other is not it and abs(other.y - it.y) <= 8 and other.x > it.x for other in shown):
+                continue
+            row = it.chain[2]
+            now = time.monotonic()
+            if now - self._slider_misses.get(row, float("-inf")) < SLIDER_MISS_FOR:
+                continue
+            level = self._slider_level(row)
+            if level is None:
+                self._slider_misses[row] = now
+            else:
+                it.note = f"{level[0]} of {level[1]}"
+
     def _show_notice_title(self, every: list[TextItem]) -> None:
         """Read the title of a notice list, drawn while its own field holds alpha zero.
 
@@ -3570,6 +3648,7 @@ class ScaleformText:
             self.refresh_grids()
         self.on_home_screen = any(it.shown and it.text.strip() == HOME_PROMPT for it in out)
         self.mark_choices(out)
+        self._mark_sliders(out)
         out.sort(key=lambda it: (round(it.y), it.x))
         return out
 

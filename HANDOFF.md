@@ -1931,6 +1931,23 @@ opponent is told from a title by `fighter_names`, since an epilogue's title
 sits in the opponent's column. What Oro's chapter 2 is, with no title drawn,
 is not known. Confirmed in play by the user on 2026-09-17.
 
+**Sliders drawn as cells.** Options, Screen Settings, Screen Brightness read as
+its label alone (2026-09-17): no text gives its level, unlike Sound Settings'
+volumes. Found by dumping every display object under its row before and after
+the user pressed right three times: the row holds ten empty track cells 28
+pixels apart along x, and two groups laid over them (one showing, which one
+swaps with focus), each holding a marker just short of the last filled cell
+and one filled cell per level at the track's places, 5 before and 8 after,
+the marker moving from 110 to 194. `ScaleformText._slider_level` finds a track
+of at least `SLIDER_MIN_CELLS` evenly spaced children within `SLIDER_DEPTH`
+of the row and counts the showing group's cells on its places;
+`_mark_sliders` gives the selected label its level as a note, "8 of 10", only
+when nothing else sits on its row, and remembers rows holding no slider for
+`SLIDER_MISS_FOR`. Being a note, arriving says "Screen Brightness. 8 of 10"
+and a change says the new level alone, through `landed_on`'s renoted rule. A
+walk costs about a millisecond. Other sliders drawn this way should read the
+same without more work; none is known yet.
+
 ## Running things
 
 Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod
