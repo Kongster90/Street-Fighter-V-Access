@@ -2227,6 +2227,13 @@ check("the main menu's card is where the player's own Fighter ID is learnt",
       # A name anywhere else, such as a lounge's list of players, is not it.
       and sf.player_card([item("Konggster", 421, 65)]) is None
       and sf.player_card(online_versus) is None)
+# Arcade puts the player's Fighter ID on that row and REWARD on the CPU's side.
+arcade_versus = versus_screen(right="ABIGAIL", players=("Konggster", "REWARD"))
+check("in Arcade the word REWARD is not taken for the CPU's name",
+      sf.versus_summary(arcade_versus, me="Konggster") ==
+      "Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area."
+      and sf.versus_summary(arcade_versus) == "Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area.",
+      repr((sf.versus_summary(arcade_versus, me="Konggster"), sf.versus_summary(arcade_versus))))
 check("against the CPU, with nobody named, the far side is still the opponent",
       sf.versus_summary(versus_screen()) ==
       "Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area.",

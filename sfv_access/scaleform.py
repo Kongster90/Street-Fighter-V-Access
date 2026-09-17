@@ -1065,10 +1065,18 @@ def _versus_versions(shown: list[TextItem], fighter: TextItem) -> list[str]:
 
 
 def _versus_player(shown: list[TextItem], fighter: TextItem) -> str | None:
-    """The Fighter ID on this fighter's side, which only an online match shows."""
+    """The Fighter ID on this fighter's side, or None for the CPU's.
+
+    Arcade puts the player's own Fighter ID on that row and the word REWARD on
+    the CPU's side, which was said as the opponent's name ("Opponent, REWARD,
+    ABIGAIL") until anything the game itself has as text, or a bare number,
+    stopped counting as one.
+    """
     middle = STAGE_WIDTH / 2
+    known = game_strings()
     row = [it for it in shown if VERSUS_NAME_ROW[0] <= it.y <= VERSUS_NAME_ROW[1]
-           and (it.x < middle) == (fighter.x < middle) and it.text.strip()]
+           and (it.x < middle) == (fighter.x < middle) and it.text.strip()
+           and it.text.strip() not in known and not it.text.strip().replace(",", "").isdigit()]
     return " ".join(row[0].text.split()) if row else None
 
 
@@ -1097,11 +1105,12 @@ def versus_summary(items: list[TextItem], me: str | None = None) -> str | None:
     players = [_versus_player(shown, side) for side in sides]
     if me and me in players:
         # The player's own Fighter ID is known and one side carries it, so the
-        # other side is the opponent, whichever side the player is on.
+        # other side is the opponent, whichever side the player is on, named
+        # by their Fighter ID when they have one and the CPU has none.
         theirs = 1 - players.index(me)
         side = sides[theirs]
-        sentence = ", ".join([f"Opponent, {players[theirs]}, {side.text.strip()}"]
-                             + _versus_versions(shown, side))
+        named = [players[theirs]] if players[theirs] else []
+        sentence = ", ".join(["Opponent"] + named + [side.text.strip()] + _versus_versions(shown, side))
     elif all(players):
         sentence = ". ".join(
             ", ".join([who, side.text.strip()] + _versus_versions(shown, side))
@@ -1112,7 +1121,8 @@ def versus_summary(items: list[TextItem], me: str | None = None) -> str | None:
     known = game_strings()
     stages = [it.text.strip() for it in shown
               if len(it.chain) > 1 and it.chain[1] == panel and it.text.strip() in known
-              and it.text.strip() not in names and it.text.strip() not in VERSUS_LABELS]
+              and it.text.strip() not in names and it.text.strip() not in VERSUS_LABELS
+              and not VERSUS_NAME_ROW[0] <= it.y <= VERSUS_NAME_ROW[1]]
     if len(set(stages)) == 1:
         sentence += f". {stages[0]}"
     return sentence + "."
