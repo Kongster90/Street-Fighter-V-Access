@@ -1889,8 +1889,20 @@ showing. `_show_final_opponent` now also takes a gold BONUS STAGE under NEXT
 STAGE as a card to show; a fighter's name still counts only under FINAL
 STAGE, since with two opponents the NEXT STAGE cards show normally. Read live,
 arriving says "BONUS STAGE. PERFECT. 10000. Normal." What "Normal" stands
-for, without an amount of its own, is not known. The bonus stage itself, the
-barrels, has not been looked at.
+for, without an amount of its own, is not known. The bonus stage itself read
+already: its tips, then its barrel count.
+
+Arcade's result screens never said their scores, only the next opponent's
+cards; the user heard them with Alt A. Down the left each label has its points
+a row lower and further right, the rows slanting ("REWARD" "22140", "TIME"
+"1000", "VITALITY" "440", "STRAIGHT VICTORY" "6000", then "SCORE" "+29980"
+"158650"); after the bonus stage the first row is "x12" with its points, the
+barrels broken, drawn beside a picture. A value with no label above it
+("400" at (536, 736)) is left out. `arcade_result_summary` says "REWARD 22140.
+TIME 1000. VITALITY 440. STRAIGHT VICTORY 6000. Score plus 29980, total
+158650" or "12 barrels, 6000. Score plus 6000, total 168270", waiting for the
+total, and before the final stage FINAL STAGE follows it. It is tried under
+`on_results` and in the general chain, the bonus result having no WIN on it.
 
 The same evening Arcade's VS screen said "Opponent, REWARD, ABIGAIL": the
 online change took the word REWARD, on the CPU's side of the name row, for a

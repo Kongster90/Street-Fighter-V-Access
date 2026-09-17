@@ -1744,6 +1744,59 @@ def survival_result_summary(items: list[TextItem]) -> str | None:
     return phrase(said) if said else None
 
 
+# -------------------------------------------------------------- arcade results
+#
+# Arcade's result screen scores the fight down its left side, each label with
+# its points a row lower and further right, the rows slanting: "REWARD"
+# "22140", "TIME" "1000", "VITALITY" "440", "STRAIGHT VICTORY" "6000", then
+# "SCORE" with what the fight added ("+29980") and the run's total ("158650").
+# After a bonus stage the first row is the barrels broken, "x12", with their
+# points. Only the next opponent's cards were ever said; the user heard the
+# score by pressing Alt A on 2026-09-16. Read live from both screens.
+
+ARCADE_SCORE = "SCORE"
+ARCADE_RESULT_LEFT = 900
+ARCADE_VALUE_BELOW = (15, 85)    # how far under its label a value sits
+ARCADE_VALUE_RIGHT = 150         # and at least how far to its right
+_ARCADE_NUMBER = re.compile(r"^[+-]?[\d,]+$")
+_ARCADE_COUNT = re.compile(r"^x(\d+)$")
+_ARCADE_NOT_LABELS = {RESULT_HEADING, *RESULT_OUTCOMES, "PLAYER 1", "PLAYER 2",
+                      ARCADE_NEXT_STAGE, ARCADE_FINAL_STAGE}
+
+
+def arcade_result_summary(items: list[TextItem]) -> str | None:
+    """"REWARD 22140. TIME 1000. VITALITY 440. Score plus 29980, total 158650."
+
+    None away from the screen, and until the score and total are there, which
+    arrive last, so the sentence is said once and whole.
+    """
+    if not any(it.shown and it.text.strip() == RESULT_HEADING for it in items):
+        return None
+    left = [it for it in items if it.shown and it.x < ARCADE_RESULT_LEFT and it.text.strip()]
+    labels = sorted((it for it in left if not _ARCADE_NUMBER.fullmatch(it.text.strip())
+                     and it.text.strip() not in _ARCADE_NOT_LABELS and "\n" not in it.text.strip()),
+                    key=lambda it: it.y)
+    parts, score = [], None
+    for label in labels:
+        values = sorted((v for v in left if _ARCADE_NUMBER.fullmatch(v.text.strip())
+                         and ARCADE_VALUE_BELOW[0] <= v.y - label.y <= ARCADE_VALUE_BELOW[1]
+                         and v.x - label.x >= ARCADE_VALUE_RIGHT), key=lambda v: v.y)
+        if not values:
+            continue
+        name = " ".join(label.text.split())
+        numbers = [v.text.strip() for v in values]
+        if name == ARCADE_SCORE:
+            if len(numbers) >= 2:
+                score = f"Score {numbers[0].replace('+', 'plus ')}, total {numbers[1]}"
+            continue
+        count = _ARCADE_COUNT.fullmatch(name)
+        # The bonus stage counts barrels, as its tips say, drawn beside a picture.
+        parts.append(f"{count.group(1)} barrels, {numbers[0]}" if count else f"{name} {numbers[0]}")
+    if score is None:
+        return None
+    return phrase(parts + [score])
+
+
 # --------------------------------------------------------------- online results
 #
 # A match ends with a banner across the middle of the stage, "YOU WIN" at
@@ -2643,8 +2696,10 @@ def screen_summary(items: list[TextItem], health: str | None = None,
     """
     if on_results(items):
         summary = result_summary(items) or online_result_summary(items)
-        if summary is None and any(it.shown and it.text.strip() == ARCADE_FINAL_STAGE for it in items):
-            summary = ARCADE_FINAL_STAGE
+        if summary is None:
+            final = any(it.shown and it.text.strip() == ARCADE_FINAL_STAGE for it in items)
+            said = [s for s in (arcade_result_summary(items), ARCADE_FINAL_STAGE if final else None) if s]
+            summary = phrase(said) if said else None
         return True, summary
     tips, summary = tips_screen(items)
     if tips:
@@ -2652,7 +2707,7 @@ def screen_summary(items: list[TextItem], health: str | None = None,
     # The online result screen is tried here as well as under `on_results`,
     # since that rule wants the heading and the outcome in one movie and
     # this screen is read whether or not it is built that way.
-    summary = (match_banner(items) or online_result_summary(items)
+    summary = (match_banner(items) or online_result_summary(items) or arcade_result_summary(items)
                or versus_summary(items, me) or survival_summary(items, health)
                or survival_result_summary(items) or ending_summary(items)
                or trial_summary(items) or status_line(items)

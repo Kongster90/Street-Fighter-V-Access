@@ -2248,6 +2248,34 @@ check("against the CPU, with nobody named, the far side is still the opponent",
       "Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area.",
       repr(sf.versus_summary(versus_screen())))
 
+
+# Arcade's result screens, read live on 2026-09-16: after a fight, and after
+# the bonus stage, each row's points a line lower and further right.
+def arcade_scores(bonus=False, total=True):
+    if bonus:
+        rows = [("RESULT", 68, 7), ("x12", 265.2, 385.1), ("6000", 573.1, 424.4), ("NEXT STAGE", 240, 660.1),
+                ("SCORE", 281.7, 830.2), ("+6000", 648.3, 850.9), ("168270", 658.8, 910)]
+    else:
+        rows = [("RESULT", 68, 7), ("PLAYER 1", 259.4, 155.6), ("WIN", 271.8, 231.4),
+                ("REWARD", 110.9, 385.1), ("22140", 480.8, 424.4), ("TIME", 122, 448.1), ("1000", 492, 487.5),
+                ("VITALITY", 132.8, 509.1), ("440", 502.7, 548.5), ("STRAIGHT VICTORY", 154.7, 633.2),
+                ("NEXT STAGE", 240, 660.1), ("6000", 524.6, 672.6), ("400", 535.7, 735.6),
+                ("SCORE", 189.4, 830.2), ("+29980", 556, 850.9), ("158650", 566.5, 910)]
+    return [item(text, x, y) for text, x, y in rows if total or text != rows[-1][0]]
+
+
+check("Arcade's result screen says each score and the total",
+      sf.arcade_result_summary(arcade_scores()) ==
+      "REWARD 22140. TIME 1000. VITALITY 440. STRAIGHT VICTORY 6000. Score plus 29980, total 158650",
+      repr(sf.arcade_result_summary(arcade_scores())))
+check("after the bonus stage it says the barrels broken",
+      sf.arcade_result_summary(arcade_scores(bonus=True)) == "12 barrels, 6000. Score plus 6000, total 168270",
+      repr(sf.arcade_result_summary(arcade_scores(bonus=True))))
+check("it waits for the total, which arrives last",
+      sf.arcade_result_summary(arcade_scores(total=False)) is None)
+check("nothing of it elsewhere", sf.arcade_result_summary(on_story) is None
+      and sf.arcade_result_summary(lounge_result()) is None)
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)
