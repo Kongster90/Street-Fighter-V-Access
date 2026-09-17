@@ -1881,6 +1881,22 @@ needs the game in front, which the testers' guide says. The tools still hold
 their keys throughout. `tools/test_hotkeys.py` flips the condition and watches
 a combination nobody presses get taken and given back.
 
+**Arcade's bonus stage card.** On 2026-09-16 the result screen offering NEXT
+STAGE before a bonus stage said nothing: its card, "BONUS STAGE", "PERFECT",
+"10000", "Normal" (at (1192, 608) and along y 667), is gold and faded by alpha
+alone, exactly as the final opponent's card was, so nothing on it counted as
+showing. `_show_final_opponent` now also takes a gold BONUS STAGE under NEXT
+STAGE as a card to show; a fighter's name still counts only under FINAL
+STAGE, since with two opponents the NEXT STAGE cards show normally. Read live,
+arriving says "BONUS STAGE. PERFECT. 10000. Normal." What "Normal" stands
+for, without an amount of its own, is not known. The bonus stage itself, the
+barrels, has not been looked at.
+
+The same evening Arcade's VS screen said "Opponent, REWARD, ABIGAIL": the
+online change took the word REWARD, on the CPU's side of the name row, for a
+Fighter ID. `_versus_player` now refuses anything the game has as text and
+bare numbers, and the stage rule ignores that row.
+
 ## Running things
 
 Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod

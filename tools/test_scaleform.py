@@ -857,7 +857,7 @@ def arcade_result(marker):
     return sf.ScaleformText(mem, MODULE).items()
 
 
-def final_offer(marker="FINAL STAGE"):
+def final_offer(marker="FINAL STAGE", card_texts=(("SAGAT", 46, 40), ("REWARD", 109, 99), ("16620", 260, 99))):
     """Arcade's result screen before the final stage, as logged: SAGAT's card gold
     in the second slot, the card at alpha zero with bounds, under the container
     at alpha zero without."""
@@ -874,7 +874,7 @@ def final_offer(marker="FINAL STAGE"):
     cards = display_object(mem, panel, 1146, 412, (1.0, 1.0, 1.0, 0.0), bounds=False)
     holder = display_object(mem, cards, 0, 0, WHITE, bounds=False)
     card = display_object(mem, holder, 0, 156, (1.0, 1.0, 1.0, 0.0))
-    for text, x, y in (("SAGAT", 46, 40), ("REWARD", 109, 99), ("16620", 260, 99)):
+    for text, x, y in card_texts:
         text_field(mem, display_object(mem, card, x, y, GOLD), 0, 0, [text])
     return sf.ScaleformText(mem, MODULE).items()
 
@@ -885,6 +885,15 @@ check("before the final stage its one opponent's card counts as showing, gold",
       repr([it.text for it in final if it.selected]))
 check("a card faded out beside NEXT STAGE stays hidden",
       not any(it.text == "SAGAT" for it in final_offer("NEXT STAGE")))
+# The bonus stage's card, offered under NEXT STAGE on 2026-09-16, was faded
+# the same way and said nothing.
+bonus = final_offer("NEXT STAGE", (("BONUS STAGE", 46, 40), ("PERFECT", 109, 99), ("10000", 260, 99),
+                                   ("Normal", 466, 99)))
+check("the bonus stage's card beside NEXT STAGE counts as showing, gold",
+      [it.text for it in bonus if it.selected] == ["BONUS STAGE", "PERFECT", "10000", "Normal"],
+      repr([it.text for it in bonus if it.selected]))
+check("and arriving on it says it", sf.landed_on([], bonus) == ["BONUS STAGE", "PERFECT", "10000", "Normal"],
+      repr(sf.landed_on([], bonus)))
 def ending(caption="The young challenger Ryu stands before the Muay Thai emperor, Sagat.\r",
            more=("When all is said and done, the emperor is left with a deep wound in his chest, and within his heart.",),
            title="SFI Ryu", extra=None, caption_at=(220, 868)):

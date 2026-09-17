@@ -977,6 +977,11 @@ def result_summary(items: list[TextItem]) -> str | None:
 # in Arcade, Versus and Training alike.
 
 ARCADE_FINAL_STAGE = "FINAL STAGE"
+ARCADE_NEXT_STAGE = "NEXT STAGE"
+# The card offered before a bonus stage: "BONUS STAGE", then what a perfect and
+# a normal clear pay ("PERFECT" "10000", "Normal" ...), gold, and faded out
+# by alpha the same way the final opponent's card is.
+ARCADE_BONUS_STAGE = "BONUS STAGE"
 PATH_SELECT_PROMPT = "Please select a path."
 VERSUS_LABELS = ("V-Skill", "V-TRIGGER")
 VERSUS_WORDS = {"V-Skill": "V-Skill", "V-TRIGGER": "V-Trigger"}
@@ -3307,11 +3312,21 @@ class ScaleformText:
         text under a card holding a gold fighter's name, in the movie showing
         FINAL STAGE, and hidden by nothing but alpha, is counted as showing.
         """
-        marker = next((it for it in every if it.shown and it.text.strip() == ARCADE_FINAL_STAGE), None)
+        marker = next((it for it in every if it.shown
+                       and it.text.strip() in (ARCADE_FINAL_STAGE, ARCADE_NEXT_STAGE)), None)
         if marker is None or not marker.chain:
             return
         movie = marker.chain[-1]
         names = fighter_names()
+        final = marker.text.strip() == ARCADE_FINAL_STAGE
+
+        def anchors_a_card(it):
+            # The bonus stage's card, offered under NEXT STAGE, was silent on
+            # 2026-09-16 for the same reason the final opponent's was: gold,
+            # and faded by alpha alone. With two opponents under NEXT STAGE the
+            # cards show normally, so only a fighter under FINAL STAGE counts.
+            text = it.text.strip()
+            return text == ARCADE_BONUS_STAGE or (final and text in names)
 
         def only_faded(it):
             return (it.depth >= 2 and it.rooted and not it.hidden and it.on_stage
@@ -3319,7 +3334,7 @@ class ScaleformText:
 
         cards = set()
         for it in every:
-            if it.text.strip() in names and only_faded(it) and it.highlighted:
+            if anchors_a_card(it) and only_faded(it) and it.highlighted:
                 for obj in it.chain[1:]:
                     node = self._node(obj)
                     if node is not None and node[1][3] <= 0.01:
