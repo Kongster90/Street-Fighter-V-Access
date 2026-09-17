@@ -2264,9 +2264,9 @@ def arcade_scores(bonus=False, total=True):
     return [item(text, x, y) for text, x, y in rows if total or text != rows[-1][0]]
 
 
-check("Arcade's result screen says each score and the total",
+check("Arcade's result screen says each score and the total, leaving vitality out",
       sf.arcade_result_summary(arcade_scores()) ==
-      "REWARD 22140. TIME 1000. VITALITY 440. STRAIGHT VICTORY 6000. Score plus 29980, total 158650",
+      "REWARD 22140. TIME 1000. STRAIGHT VICTORY 6000. Score plus 29980, total 158650",
       repr(sf.arcade_result_summary(arcade_scores())))
 check("after the bonus stage it says the barrels broken",
       sf.arcade_result_summary(arcade_scores(bonus=True)) == "12 barrels, 6000. Score plus 6000, total 168270",

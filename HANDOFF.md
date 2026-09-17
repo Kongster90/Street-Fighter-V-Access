@@ -1906,8 +1906,9 @@ a row lower and further right, the rows slanting ("REWARD" "22140", "TIME"
 "158650"); after the bonus stage the first row is "x12" with its points, the
 barrels broken, drawn beside a picture. A value with no label above it
 ("400" at (536, 736)) is left out. `arcade_result_summary` says "REWARD 22140.
-TIME 1000. VITALITY 440. STRAIGHT VICTORY 6000. Score plus 29980, total
-158650" or "12 barrels, 6000. Score plus 6000, total 168270", waiting for the
+TIME 1000. STRAIGHT VICTORY 6000. Score plus 29980, total 158650" (VITALITY
+left out at the user's request, `ARCADE_UNSAID`, since it comes back in full
+for the next fight) or "12 barrels, 6000. Score plus 6000, total 168270", waiting for the
 total, and before the final stage FINAL STAGE follows it. It is tried under
 `on_results` and in the general chain, the bonus result having no WIN on it.
 

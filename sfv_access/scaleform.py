@@ -1762,6 +1762,9 @@ _ARCADE_NUMBER = re.compile(r"^[+-]?[\d,]+$")
 _ARCADE_COUNT = re.compile(r"^x(\d+)$")
 _ARCADE_NOT_LABELS = {RESULT_HEADING, *RESULT_OUTCOMES, "PLAYER 1", "PLAYER 2",
                       ARCADE_NEXT_STAGE, ARCADE_FINAL_STAGE}
+# Rows left out of the sentence at the user's request: vitality comes back in
+# full for the next fight, so its row was not worth hearing.
+ARCADE_UNSAID = ("VITALITY",)
 
 
 def arcade_result_summary(items: list[TextItem]) -> str | None:
@@ -1785,6 +1788,8 @@ def arcade_result_summary(items: list[TextItem]) -> str | None:
             continue
         name = " ".join(label.text.split())
         numbers = [v.text.strip() for v in values]
+        if name in ARCADE_UNSAID:
+            continue
         if name == ARCADE_SCORE:
             if len(numbers) >= 2:
                 score = f"Score {numbers[0].replace('+', 'plus ')}, total {numbers[1]}"
