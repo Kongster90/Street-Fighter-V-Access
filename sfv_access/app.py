@@ -479,7 +479,11 @@ class App:
                      or scaleform.survival_result(items))
             question = scaleform.prompt_message(items)
             entry = scaleform.text_entry(items)
-            if entry is not None:
+            chapter = scaleform.story_chapter(items)
+            if chapter and entry is None:
+                # A story chapter, then the fighter's profile beside it.
+                said = memory_narration.phrase([chapter] + scaleform.story_profile(items))
+            elif entry is not None:
                 # What has been typed, spelled out, since a name heard as a
                 # word does not say how it is written.
                 said = memory_narration.phrase([entry[0], scaleform.entry_value_words(entry[1])])

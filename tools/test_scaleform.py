@@ -2287,6 +2287,37 @@ heard = narrate([(0.0, final_scores + card), (0.5, final_scores + card), (1.0, f
 check("the final opponent's card keeps its REWARD after a score line that has one",
       [s for _, s in heard][-1:] and "M. BISON. REWARD. 28000" in [s for _, s in heard][-1], repr(heard))
 
+
+# Oro's Character Story, as read live on 2026-09-17: four chapters, a fight's
+# opponent drawn just above its "VS", an epilogue with a title alone, one
+# chapter with nothing but its number, and the profile on the right.
+def oro_story(selected):
+    rows = [(1, "1", 517, 155), (1, "Apprentice Alley", 580, 180), (1, "ROSE", 633, 228), (1, "VS", 581, 232),
+            (2, "2", 517, 310), (3, "3", 517, 465), (3, "Apprentice Alley", 580, 490),
+            (3, "DHALSIM", 633, 538), (3, "VS", 581, 542), (4, "4", 517, 620), (4, "Epilogue", 633, 693)]
+    out = [item("Character Story", 157, 243, GOLD)]
+    out += [item(text, x, y, GOLD if n == selected else GREY) for n, text, x, y in rows]
+    out += [item("ORO", 1197.7, 649.3), item("Height : 5'3\"", 1197.7, 739.3),
+            item("Job / Affiliation : Hermit", 1197.7, 803.3)]
+    return out
+
+
+check("a story chapter is a sentence, the opponent after versus",
+      [sf.story_chapter(oro_story(n)) for n in (1, 2, 3, 4)] == [
+          "Chapter 1, Apprentice Alley, versus ROSE", "Chapter 2", "Chapter 3, Apprentice Alley, versus DHALSIM",
+          "Chapter 4, Epilogue"],
+      repr([sf.story_chapter(oro_story(n)) for n in (1, 2, 3, 4)]))
+check("a locked chapter says so",
+      sf.story_chapter([item("1", 517, 155, GOLD), item("???", 580, 180, GOLD)]) == "Chapter 1, locked")
+moving = narrate([(0.0, oro_story(1)), (0.5, oro_story(2)), (1.0, oro_story(3)), (1.5, oro_story(4))])
+check("moving through them says each chapter's sentence",
+      [s for _, s in moving][1:] == ["Chapter 2", "Chapter 3, Apprentice Alley, versus DHALSIM", "Chapter 4, Epilogue"],
+      repr(moving))
+check("the read key's profile is the fighter and their lines",
+      sf.story_profile(oro_story(3)) == ["ORO", "Height: 5'3\"", "Job / Affiliation: Hermit"],
+      repr(sf.story_profile(oro_story(3))))
+check("no chapter elsewhere", sf.story_chapter(on_story) is None and sf.story_profile(on_story) == [])
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

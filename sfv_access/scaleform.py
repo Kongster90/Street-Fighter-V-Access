@@ -1744,6 +1744,74 @@ def survival_result_summary(items: list[TextItem]) -> str | None:
     return phrase(said) if said else None
 
 
+# --------------------------------------------------------------- character story
+#
+# Story, Character Story, then a fighter: their chapters down the middle, each
+# a number at x 517 with what is under it, and their profile on the right. A
+# chapter holds its title and, for a fight, "VS" and the opponent's name, the
+# name drawn a few pixels above "VS" ("Apprentice Alley" at (580, 490),
+# "DHALSIM" (633, 538), "VS" (581, 542)); an epilogue holds its title alone,
+# a locked chapter "???", and one chapter of Oro's held nothing but its number.
+# Read in screen order they came out as "3. Apprentice Alley. DHALSIM. VS",
+# "1. ???" and "2" (2026-09-17).
+
+STORY_CHAPTER_X = 517
+STORY_CHAPTER_TOLERANCE = 12
+STORY_CHAPTER_HEIGHT = 110     # how far under its number a chapter's texts reach
+STORY_LOCKED = "???"
+STORY_VERSUS = "VS"
+# The profile beside the chapters: the fighter's name and lines under it.
+STORY_PROFILE_X = 1197
+STORY_PROFILE_LABELS = ("Height", "Weight", "Job / Affiliation", "Likes")
+
+
+def _story_chapter_parts(items: list[TextItem]) -> tuple[TextItem, list[TextItem]] | None:
+    lit = [it for it in items if it.shown and it.selected]
+    number = next((it for it in lit if it.text.strip().isdigit()
+                   and abs(it.x - STORY_CHAPTER_X) <= STORY_CHAPTER_TOLERANCE), None)
+    if number is None:
+        return None
+    under = [it for it in lit if it is not number and it.x > number.x
+             and 0 <= it.y - number.y <= STORY_CHAPTER_HEIGHT]
+    return number, under
+
+
+def story_chapter(items: list[TextItem]) -> str | None:
+    """"Chapter 3, Apprentice Alley, versus DHALSIM" for the chapter selected, or None."""
+    found = _story_chapter_parts(items)
+    if found is None:
+        return None
+    number, under = found
+    texts = [" ".join(it.text.split()) for it in sorted(under, key=lambda it: (it.y, it.x))]
+    words = [f"Chapter {number.text.strip()}"]
+    if STORY_LOCKED in texts:
+        return ", ".join(words + ["locked"])
+    names = fighter_names()
+    opponent = next((t for t in texts if t in names), None)
+    words += [t for t in texts if t not in names and t != STORY_VERSUS]
+    if opponent:
+        words.append(f"versus {opponent}")
+    return ", ".join(words)
+
+
+def story_chapter_texts(items: list[TextItem]) -> set[str]:
+    """What the selected chapter is made of, so a move naming it can be replaced."""
+    found = _story_chapter_parts(items)
+    if found is None:
+        return set()
+    number, under = found
+    return {number.text.strip()} | {" ".join(it.text.split()) for it in under}
+
+
+def story_profile(items: list[TextItem]) -> list[str]:
+    """The fighter's profile beside their chapters, for the read key."""
+    if _story_chapter_parts(items) is None:
+        return []
+    column = sorted((it for it in items if it.shown and abs(it.x - STORY_PROFILE_X) <= STORY_CHAPTER_TOLERANCE),
+                    key=lambda it: it.y)
+    return [" ".join(it.text.replace(" : ", ": ").split()) for it in column if it.text.strip()]
+
+
 # -------------------------------------------------------------- arcade results
 #
 # Arcade's result screen scores the fight down its left side, each label with

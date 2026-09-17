@@ -1917,6 +1917,20 @@ online change took the word REWARD, on the CPU's side of the name row, for a
 Fighter ID. `_versus_player` now refuses anything the game has as text and
 bare numbers, and the stage rule ignores that row.
 
+**Character Story's chapters.** Story, Character Story, then a fighter:
+their chapters down the middle, each a number at x 517 with what sits under
+it, and their profile at x 1197 (name, Height, Weight, Job / Affiliation,
+Likes). A fight's chapter holds its title, "VS" and the opponent, the name
+drawn a few pixels above "VS"; an epilogue its title alone; a locked chapter
+"???"; and Oro's chapter 2 nothing but its number. Read in screen order they
+came out as "3. Apprentice Alley. DHALSIM. VS", "1. ???" and "2" (2026-09-17).
+`story_chapter` makes "Chapter 3, Apprentice Alley, versus DHALSIM", "Chapter
+4, Epilogue", "Chapter 1, locked" and "Chapter 2"; `Narrator.step` swaps it in
+for the pieces a move names, and Alt R gives it with `story_profile`. The
+opponent is told from a title by `fighter_names`, since an epilogue's title
+sits in the opponent's column. What Oro's chapter 2 is, with no title drawn,
+is not known.
+
 ## Running things
 
 Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod

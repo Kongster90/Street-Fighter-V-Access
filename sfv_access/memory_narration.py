@@ -258,6 +258,14 @@ class Narrator:
             self.pending = None
         self.previous = items
 
+        # A character's story chapter is said as a sentence rather than its
+        # pieces in screen order, which put "VS" after the opponent's name.
+        chapter = scaleform.story_chapter(items)
+        if chapter and parts:
+            pieces = scaleform.story_chapter_texts(items) | {"Unavailable"}
+            if any(" ".join(p.split()) in pieces for p in parts):
+                parts = [chapter] + [p for p in parts if " ".join(p.split()) not in pieces]
+
         # The result and VS screens arrive in pieces with nothing selected, and
         # saying what changed would read them out one by one. Each gets one
         # sentence instead, when complete; a menu on them reads as any menu.
