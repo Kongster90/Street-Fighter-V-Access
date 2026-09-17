@@ -1866,6 +1866,21 @@ console window): `faulthandler.enable` for a crash in native code, and
 `tools/test_watchdog.py` checks both. Still open: why that machine is blind so
 often and its empty checks so slow.
 
+**The keys are the mod's only while the game is in front.** RegisterHotKey
+takes a combination from every program, so while the mod ran, Alt D stopped
+reaching a browser's address bar and the rest did nothing anywhere else; the
+user asked on 2026-09-16 for them to work only in the game. `Hotkeys` takes
+an `active` condition, and its pump, which now waits with
+MsgWaitForMultipleObjects rather than blocking in GetMessage, asks it every
+`CHECK_MS` and registers or unregisters the lot to match. The mod passes
+`game.in_front`, which looks at the foreground window's process alone rather
+than enumerating windows. A clash with another program is found when the keys
+are first taken up, not at start, so `App._keys_taken` says it then (once for
+each different set), including the "another copy is running" case. F10 now
+needs the game in front, which the testers' guide says. The tools still hold
+their keys throughout. `tools/test_hotkeys.py` flips the condition and watches
+a combination nobody presses get taken and given back.
+
 ## Running things
 
 Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod

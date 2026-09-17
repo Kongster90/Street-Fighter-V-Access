@@ -50,8 +50,9 @@ NEWLINE = chr(10)
 # Plain Alt, at the user's request: fewer keys to press, and Windows claims some
 # Control Alt combinations for itself. Quit is F10 and the memory or screen
 # switch F9, also their choice; the watch mode and recorder stop on F10 too.
-# Every one was checked as free on this machine. Registered globally, these keys are taken from every program while
-# the mod runs, so browser and menu shortcuts such as Alt D stop working there.
+# Every one was checked as free on this machine. They are registered only
+# while the game is in front (see `hotkeys.Hotkeys`): held for as long as the
+# mod ran, they took Alt D and the rest from every other program.
 # Under Control Alt, c, e, l, n, t, space, slash, minus, equals and backslash
 # were claimed by other software.
 HOTKEYS = {
@@ -319,7 +320,10 @@ class App:
         self.with_game = with_game
         self.speech = Speaker()
         self.capture = Capture()
-        self.keys = Hotkeys()
+        # The keys are the mod's only while the game is in front, so Alt D and
+        # the rest do what they normally do in every other program.
+        self.keys = Hotkeys(active=game.in_front, on_taken=self._keys_taken)
+        self._taken_said: list[str] = []
         self.lines: list[ocr.TextItem] = []
         self.footer: str = ""
         self.cursor = -1
@@ -367,19 +371,6 @@ class App:
             "Alt K lists the keys."
         )
         print(banner)
-        failed = self.keys.failed
-        if len(failed) >= max(2, len(HOTKEYS) // 2):
-            # Hotkeys are exclusive per combination, so a second copy of this
-            # tool gets nothing. Saying so beats leaving the keys silently dead.
-            banner = (
-                "Another copy of Street Fighter 5 access is already running, "
-                "so the keys did not register. Close the other copy, then start this one again."
-            )
-            print(banner)
-        elif failed:
-            extra = "Some keys were taken by another program: " + ", ".join(failed)
-            print(extra)
-            banner += " " + extra
         self.speech.say(banner)
         self.session.note(f"=== {_dt.datetime.now():%Y-%m-%d} mod started")
         try:
@@ -897,6 +888,25 @@ class App:
                         self._hang_file.flush()
                 time.sleep(memory_narration.POLL if self.use_memory and self.session.available
                            else WATCH_INTERVAL)
+
+    def _keys_taken(self, failed: list[str]) -> None:
+        """Say which keys another program owns, once for each different set.
+
+        The keys are only taken up when the game comes to the front, so this is
+        where a clash is found out, rather than at start as it used to be.
+        """
+        if failed == self._taken_said:
+            return
+        self._taken_said = list(failed)
+        if len(failed) >= max(2, len(HOTKEYS) // 2):
+            # Hotkeys are exclusive per combination, so a second copy of this
+            # tool gets nothing. Saying so beats leaving the keys silently dead.
+            said = ("Another copy of Street Fighter 5 access is already running, "
+                    "so the keys did not register. Close the other copy, then start this one again.")
+        else:
+            said = "Some keys were taken by another program: " + ", ".join(failed)
+        print(said)
+        self.speech.say(said)
 
     def _watch_stalls(self) -> None:
         """Write where the narration loop is stuck, once for each pass that runs long.

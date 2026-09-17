@@ -34,6 +34,20 @@ class GameWindow:
         return user32.GetForegroundWindow() == self.hwnd
 
 
+def in_front() -> bool:
+    """Whether the window in front belongs to the game.
+
+    Asked several times a second by the hotkeys, so it looks at the one window
+    rather than enumerating them all as `find_window` does.
+    """
+    hwnd = user32.GetForegroundWindow()
+    if not hwnd:
+        return False
+    pid = wintypes.DWORD()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    return bool(pid.value) and _process_name(pid.value).lower() == EXE_NAME.lower()
+
+
 def _process_name(pid: int) -> str:
     h = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
     if not h:

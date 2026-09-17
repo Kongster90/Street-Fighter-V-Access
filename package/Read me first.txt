@@ -45,7 +45,7 @@ Alt T: turn story subtitles on or off. They are off to start with, since the sto
 Alt M: turn menu reading off or on.
 F10: close the mod until the next time you start the game.
 
-While the mod runs, these Alt keys are taken from other programs, so close the game when you want them back.
+These keys only work while the game is in front. Switch to any other program and they do what they normally do there, so to close the mod with F10, be in the game.
 
 
 What reads so far
@@ -70,7 +70,7 @@ Updating to a newer version
 
 When you get a newer zip, install it the same way over the top. There is no need to uninstall first.
 
-1. Close Street Fighter V. If you start the mod yourself, press F10 to close it too.
+1. If you start the mod yourself, press F10 in the game to close it, then close Street Fighter V.
 2. Extract the new zip and run Install SFV Access from it.
 3. Answer the question about starting with the game as you like. Your answer can differ from last time.
 
