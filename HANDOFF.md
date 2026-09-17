@@ -1946,7 +1946,16 @@ when nothing else sits on its row, and remembers rows holding no slider for
 `SLIDER_MISS_FOR`. Being a note, arriving says "Screen Brightness. 8 of 10"
 and a change says the new level alone, through `landed_on`'s renoted rule. A
 walk costs about a millisecond. Other sliders drawn this way should read the
-same without more work; none is known yet.
+same without more work; none is known yet. Confirmed in play by the user on
+2026-09-17.
+
+Adjust Upper and Lower HUD Position, beside it, are quiet by design: choosing
+one leaves the menu up with the entry gold, adds a button hint " : Reset
+Position" at (510, 596), which `is_button_hint` keeps unsaid, and moves a
+sample fight display (names, "Rank ---", "DOJO ID", a 9:59:59.99 timer,
+columns of fighters' names) whose position is not text. Offered on 2026-09-17:
+announcing the mode with its controls, and saying the position from the
+display data as the slider's level is read. The user declined both for now.
 
 ## Running things
 
