@@ -2120,7 +2120,28 @@ tile's and the tick another's. On this screen `_mark_picture_grids` now names
 a stage only once tile, name and tab have held for two reads running
 (`_grid_pairs`), about a tenth of a second; an unchanged tab stays marked
 meanwhile, and a new one waits to be said with its stage, since speech
-interrupts itself and the stage would cut it off.
+interrupts itself and the stage would cut it off. The user confirmed moving,
+switching and tabs in play the same day.
+
+B (the user's confirm) on some stages opens a "Setting" menu instead of
+switching them: a checklist of the stage's versions, DEFAULT and Setting 1,
+each with a green tick, both ticked by default, saying which versions "???"
+may pick. The tick box is the menu music list's (a holder whose second part
+holds three children ticked, two not), but `tick_state` wanted two other rows
+alike and this list has one; on this screen (`RANDOM_STAGE_LINE`) it asks for
+one. With only Setting 1 ticked, the name under the grid becomes the
+version's: "Estate at Noon" for Kanzuki Estate, "The Grid Alternative" for
+The Grid. `Content/Stage/DA_StageArrange` (a KWStageArrangeDataAsset) lists
+the ten stages with a Setting 1 as pairs of stage numbers, base then version:
+3/26, 4/25, 5/39, 8/44, 2/45, 16/58, 52/59, 1/60, 48/61, 10/67 (IntProperty
+tags BaseStageId and ArrangeStageId). Each stage folder's
+`DA_<code>_Personal` names its stage (TRN The Grid, S25 The Grid
+Alternative, KZK Kanzuki Estate, KZ2 Estate at Noon, NZL Forgotten Waterfall,
+NZ1 Mysterious Cove, RUS Underground Arena, RU2 Spooky Arena, SHA Shadaloo
+Base, SH4 Shadaloo Base at Night, SX2 Suzaku Castle, S17 Suzaku Castle at
+Night, ...). What turns a stage number into a folder was not found: not in
+any data asset or ini in the paks; the game has a native `LoadStageIdTable`
+and `GetStageID`. So "Setting 1" is said as the game says it.
 
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:

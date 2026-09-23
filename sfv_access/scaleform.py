@@ -508,13 +508,14 @@ def _tick_box(children, parts, skip=None):
     return None
 
 
-def tick_state(children, x_of, chain) -> bool | None:
+def tick_state(children, x_of, chain, alike_needed: int = 2) -> bool | None:
     """Whether the checklist entry whose label has this chain is ticked.
 
     None unless the label's row has a tick box to the left of the label, and
-    at least two other rows in the same list have one too, so a row that
-    merely happens to be built alike on some other screen is not read as a
-    checklist.
+    at least `alike_needed` other rows in the same list have one too, so a row
+    that merely happens to be built alike on some other screen is not read as
+    a checklist. Random Stage Settings' Setting menu has two rows, DEFAULT
+    and Setting 1, and asks for one.
     """
     if len(chain) < 4:
         return None
@@ -530,7 +531,7 @@ def tick_state(children, x_of, chain) -> bool | None:
         1 for other in children(rows)[:CHECKLIST_SAMPLE]
         if other != row and _tick_box(children, children(other)) is not None
     )
-    if alike < 2:
+    if alike < alike_needed:
         return None
     return len(children(marks)) == TICKED_PARTS
 
@@ -3516,10 +3517,14 @@ class ScaleformText:
             return None if node is None else node[0][2]
 
         kids = _remembering(self.children)
+        # Random Stage Settings' Setting menu, opened on a stage with a second
+        # version, is a checklist of two: which versions "???" may pick.
+        foot = footer(shown)
+        alike_needed = 1 if foot is not None and foot.text.strip() == RANDOM_STAGE_LINE else 2
         for it in shown:
             # A stage in Random Stage Settings has its tick from its tile already.
             if it.selected and it.ticked is None:
-                it.ticked = tick_state(kids, x_of, it.chain)
+                it.ticked = tick_state(kids, x_of, it.chain, alike_needed)
 
     def _mark_picture_grids(self, shown: list[TextItem], items: list[TextItem]) -> None:
         """Name the selected tile of a grid of pictures by the label nearest it.
