@@ -1328,9 +1328,20 @@ kick". Between some steps a "TIP" box ("TIP" at (960, 344), the tip at
 `tips_screen` reads it as heading and tip, naming buttons the same way. Each
 step done flashes "SUCCESS" at (960, 760), unsaid, the next instruction
 following at once. The user went through the whole Tutorial with it on
-2026-09-15, every instruction and tip heard, and said it all worked. Not
-done: Ken's lines during the fight at (960, 920), which Alt T does not cover;
-whether Alt T itself has been pressed in play is not known.
+2026-09-15, every instruction and tip heard, and said it all worked.
+
+General Story (2026-09-22): its scene select reads as chapters already
+("Chapter 6, The Black Moon, TIME 0:55"), but with Alt T on its scenes said
+nothing. Each line is one text at (960, 920) with no speaker, where the
+Tutorial's had one; the game's own hints "  Skip   Select Scene   Hide
+Subtitles" come and go at (1222, 1012). Every text in the logs at (960, 920)
+is spoken dialogue: these, fighters' lines before a fight in Arcade and
+Survival ("My iron body is invincible! So beware!", "Devour-our-our."), and
+Ken's in the Tutorial's fight. `subtitle` now takes a line alone there, with
+"" for the speaker, so Alt T covers all of them and they stay unsaid with it
+off. A scene's first line can come a couple of seconds late: quick reads were
+blind for 14 s as that scene opened and a full search found the line. Not yet
+heard.
 
 Known gaps. The clock sits one object further down and is not resolved.
 Screens other than Versus and Training may head their character select

@@ -12,6 +12,7 @@ Moving through CFN speaks straight away, without the short wait that was there f
 A player's Fighter Profile: on the KO Ratio and KO'd Ratio pages, the fighter and opponent you pick are read as you change them. Alt R says the match-up, such as "ZEKU versus All Characters", and the figures for it.
 A player's Fighter Profile: Win Ratio by Character no longer reads out every fighter's name and figures as you move through the pages.
 The main menu no longer reads the adverts in its banner every few seconds while you sit on an icon such as Gallery.
+Story subtitles, turned on with Alt T, now include General Story's scenes, and what fighters say before a fight in Arcade and Survival.
 
 
 17 September 2026

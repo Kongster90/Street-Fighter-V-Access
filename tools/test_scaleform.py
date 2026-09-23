@@ -1856,6 +1856,24 @@ check("with subtitles off a story scene says nothing, and the Tutorial's instruc
 check("with subtitles on each line is said with its speaker, short ones too",
       [s for _, s in spoken_scene] == ["GOUKEN. Ryu, you'll never find the answer you're seeking if you just proceed "
                                        "blindly.", "RYU. Ponder my... fist?", first_said], repr(spoken_scene))
+# General Story's scenes, as logged on 2026-09-22: each line alone at (960,
+# 920), no speaker, with the game's button hints coming and going below.
+def story_line(line):
+    return [sf.TextItem(line, 960, 920, WHITE, 4, chain=(803, 811, 821))]
+
+
+HINTS = sf.TextItem("  Skip   Select Scene   Hide Subtitles", 1222, 1012, WHITE, 4, chain=(804, 812, 821))
+black_moon = story_line("Four hours ago, the object nicknamed The Black Moon was spotted above Tokyo.")
+satellite = story_line("But of course, our family's satellite, Red Spider-Lily is constantly monitoring it.")
+general_run = [(0.0, [HINTS]), (1.0, black_moon), (1.5, black_moon), (3.0, []), (3.2, satellite),
+               (4.0, satellite + [HINTS])]
+general_on = mn.Narrator(subtitles=True)
+spoken_general = [(now, s) for now, reading in general_run if (s := general_on.step(reading, now))]
+check("General Story's lines, with no speaker, are said when subtitles are on",
+      [s for _, s in spoken_general] == ["Four hours ago, the object nicknamed The Black Moon was spotted above "
+                                         "Tokyo.", "But of course, our family's satellite, Red Spider-Lily is "
+                                         "constantly monitoring it."], repr(spoken_general))
+check("and nothing of them when subtitles are off", narrate(general_run) == [], repr(narrate(general_run)))
 check("a subtitle is not an Arcade ending's caption", sf.ending_summary(gouken) is None
       and sf.ending_summary([sf.TextItem("SFI Ryu", 160, 780, WHITE, 4, chain=(1, 5, 6, 7)),
                              sf.TextItem("The young challenger Ryu stands before the tournament's final opponent "

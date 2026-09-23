@@ -2486,20 +2486,29 @@ def tutorial_instruction(items: list[TextItem]) -> str | None:
 
 SUBTITLE_SPEAKER_AT = (160.0, 810.0)
 SUBTITLE_LINE_AT = (960.0, 914.0)
+# General Story's scenes caption a line with no speaker, a little lower. The
+# same place holds a fighter's words before a fight in Arcade and Survival ("My
+# iron body is invincible! So beware!") and Ken's during the Tutorial's fight:
+# every text logged there is something a fighter says aloud (2026-09-22).
+SUBTITLE_ALONE_AT = (960.0, 920.0)
+
+
+def _at(it: TextItem, place: tuple[float, float]) -> bool:
+    return abs(it.x - place[0]) <= TOAST_TOLERANCE and abs(it.y - place[1]) <= TOAST_TOLERANCE
 
 
 def subtitle(items: list[TextItem]) -> tuple[str, str] | None:
-    """The speaker and line of a story scene's subtitle, if one shows."""
+    """The speaker and line of a story scene's subtitle, if one shows; the speaker is "" if none is named."""
     shown = [it for it in items if it.shown and it.chain]
-    speaker = next((it for it in shown if abs(it.x - SUBTITLE_SPEAKER_AT[0]) <= TOAST_TOLERANCE
-                    and abs(it.y - SUBTITLE_SPEAKER_AT[1]) <= TOAST_TOLERANCE), None)
-    if speaker is None or len(speaker.chain) < 2:
-        return None
-    line = next((it for it in shown if abs(it.x - SUBTITLE_LINE_AT[0]) <= TOAST_TOLERANCE
-                 and abs(it.y - SUBTITLE_LINE_AT[1]) <= TOAST_TOLERANCE and speaker.chain[1] in it.chain), None)
-    if line is None:
-        return None
-    return speaker.text.strip(), " ".join(line.text.split())
+    speaker = next((it for it in shown if _at(it, SUBTITLE_SPEAKER_AT)), None)
+    if speaker is not None and len(speaker.chain) >= 2:
+        line = next((it for it in shown if _at(it, SUBTITLE_LINE_AT) and speaker.chain[1] in it.chain), None)
+        if line is not None:
+            return speaker.text.strip(), " ".join(line.text.split())
+    alone = next((it for it in shown if _at(it, SUBTITLE_ALONE_AT) and not it.selected and it.text.strip()), None)
+    if alone is not None:
+        return "", " ".join(alone.text.split())
+    return None
 
 
 def tips_screen(items: list[TextItem]) -> tuple[bool, str | None]:
