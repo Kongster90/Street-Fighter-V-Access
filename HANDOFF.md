@@ -2112,7 +2112,15 @@ other picture grids, where a heading could sit at that distance. Arriving
 says "ALL. The Grid. Ticked", moving the stage and its state, confirm
 "Ticked" or "Not ticked" alone. Confirm on The Grid opened a "Setting" popup
 (DEFAULT, Setting 1) that reads as a menu; after it the tile read "The Grid
-Alternative", so some stages have versions chosen there. Not yet heard.
+Alternative", so some stages have versions chosen there. Heard in play the
+same day, right but for one burst while moving quickly: "The Grid. Not
+ticked", "Dojo. Ticked", each stage with its neighbour's tick. The outline and
+the name under the grid change a read apart, so for a read the name was one
+tile's and the tick another's. On this screen `_mark_picture_grids` now names
+a stage only once tile, name and tab have held for two reads running
+(`_grid_pairs`), about a tenth of a second; an unchanged tab stays marked
+meanwhile, and a new one waits to be said with its stage, since speech
+interrupts itself and the stage would cut it off.
 
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:

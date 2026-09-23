@@ -3132,6 +3132,8 @@ class ScaleformText:
         # selected tile is checked each read.
         self._grids: dict[int, list[int]] = {}
         self._text_grids: set[int] = set()   # grids seen holding text, never pictures
+        # Each picture grid's cursor tile and the name beside it, at the last read.
+        self._grid_pairs: dict[int, tuple[int, str]] = {}
         self._roots: set[int] = set()
         # Pictures inside text with no words yet, by image name, for the log.
         self.unknown_pictures: set[str] = set()
@@ -3587,19 +3589,37 @@ class ScaleformText:
                 continue
             label = name_for_grid(up, shown)
             if label is not None:
-                label.chosen = True
-                label.group = grid
-                label.slot = tile
+                foot = footer(shown)
+                line = foot.text.strip() if foot is not None else ""
                 # The tab above a stage grid, switched with LB and RB, two
                 # levels further off than the stage's name. Marked too, so
                 # switching says it; a move within the grid leaves it as it was.
                 # Only the stage grids: near another grid it could be a heading.
-                foot = footer(shown)
-                line = foot.text.strip() if foot is not None else ""
+                tab = None
                 if line.startswith(STAGE_GRID_LINES):
                     tab = name_for_grid(up, [it for it in shown if it is not label], GRID_TAB_REACH)
-                    if tab is not None and len(tab.text.strip()) <= CHOICE_TEXT_LIMIT:
+                    if tab is not None and len(tab.text.strip()) > CHOICE_TEXT_LIMIT:
+                        tab = None
+                # In Random Stage Settings the name under the grid and the
+                # outline on the tiles do not move in the same read, and a
+                # stage was said with its neighbour's tick: "The Grid. Not
+                # ticked", "Dojo. Ticked" (2026-09-23). There tile, name and tab
+                # must agree for two reads running before the stage is named.
+                pair = (tile, label.text, tab.text if tab is not None else None)
+                last = self._grid_pairs.get(grid)
+                self._grid_pairs[grid] = pair
+                if line == RANDOM_STAGE_LINE and last != pair:
+                    # A tab unchanged stays marked, so it is not said again on
+                    # every move; a new one waits to be said with its stage,
+                    # which would otherwise cut it off.
+                    if tab is not None and last is not None and last[2] == tab.text:
                         tab.chosen = True
+                    continue
+                label.chosen = True
+                label.group = grid
+                label.slot = tile
+                if tab is not None:
+                    tab.chosen = True
                 if line == RANDOM_STAGE_LINE:
                     owned, included = random_stage_state(kids, appearance, tile)
                     if not owned:

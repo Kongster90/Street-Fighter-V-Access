@@ -2646,6 +2646,79 @@ check("the banner catching up with the description a moment late is still said",
       late[-1:] == [(5.3, "LOGIN")], repr(late))
 check("no banner off the main menu", sf.banner_texts(profile_matchup()) == set())
 
+
+# The same screen in memory. Moving, the outline and the name under the grid
+# change a read apart, and a stage was said with its neighbour's tick: "The
+# Grid. Not ticked", "Dojo. Ticked" (2026-09-23). A stage is named once they
+# have agreed for two reads running.
+def set_flags(mem, obj, flags):
+    data = mem.ptr(mem.ptr(obj + sf.DISPLAY_RENDER_NODE) + sf.RENDER_NODE_DATA)
+    mem.put(data + NODE_FLAG_WORD, "<H", flags)
+
+
+def set_text(mem, docview, text):
+    styled = mem.ptr(docview + sf.DOCVIEW_TEXT)
+    para = mem.ptr(mem.ptr(styled + sf.TEXT_PARAGRAPHS))
+    chars = mem.ptr(para)
+    encoded = (text + "\0").encode("utf-16-le")
+    mem.buf[chars - HEAP : chars - HEAP + len(encoded)] = encoded
+    mem.put(para + 8, "<QQ", len(text) + 1, len(text) + 1)
+
+
+def random_stage_memory():
+    mem = FakeMemory(size=0x41000)
+    root = display_object(mem, 0, 0, 0, WHITE)
+    popup = display_object(mem, root, 1018, 222, WHITE)
+    holder = display_object(mem, popup, 0, 0, WHITE)
+    grid = display_object(mem, holder, 22, 80, WHITE)
+    tiles, outlines = [], []
+    for i in range(6):
+        tile = display_object(mem, grid, 220 * (i % 3), 52 * (i // 3), WHITE)
+        outline = display_object(mem, tile, 0, 0, WHITE, flags=1 if i == 0 else 0)
+        parts = [outline, display_object(mem, tile, 0, 0, WHITE),
+                 display_object(mem, tile, 0, 0, (0.4, 0.4, 0.4, 1.0) if i == 1 else WHITE),   # Dojo, left out
+                 display_object(mem, tile, 156, 0, WHITE)]
+        badge = display_object(mem, tile, 173, 7, WHITE)
+        set_children(mem, badge, [display_object(mem, badge, 0, 0, WHITE, flags=0)])
+        parts += [badge, display_object(mem, tile, 156, 20, WHITE)]
+        set_children(mem, tile, parts)
+        tiles.append(tile)
+        outlines.append(outline)
+    set_children(mem, grid, tiles)
+    set_children(mem, holder, [grid])
+    # The name nearer the grid than the tab, as in the game (five levels
+    # against seven there, three against four here).
+    text_field(mem, display_object(mem, popup, 178, 15, WHITE), 0, 0, ["ALL   "])
+    name = text_field(mem, popup, 40, 589, ["The Grid"])
+    set_children(mem, popup, [holder])
+    foot_outer = display_object(mem, root, 0, 0, WHITE)
+    foot_inner = display_object(mem, foot_outer, 0, 0, WHITE)
+    set_children(mem, foot_outer, [foot_inner])
+    text_field(mem, foot_inner, 110, 992, [sf.RANDOM_STAGE_LINE])
+    set_children(mem, root, [popup, foot_outer])
+    return mem, outlines, name
+
+
+smem, outlines, stage_name = random_stage_memory()
+sreader = sf.ScaleformText(smem, MODULE)
+first, steady = sreader.items(), sreader.items()   # the first read finds the grid itself
+check("a stage is not named on the first read of its grid, only once it holds",
+      picked(first) == [] and picked(steady) == ["ALL   ", "The Grid"]
+      and [it.ticked for it in steady if it.text == "The Grid"] == [True],
+      repr((picked(first), picked(steady))))
+set_flags(smem, outlines[0], 0)
+set_flags(smem, outlines[1], 1)
+outline_moved = sreader.items()
+set_text(smem, stage_name, "Dojo")
+name_moved, settled = sreader.items(), sreader.items()
+check("while the outline and the name disagree the stage is not named, and the tab stays",
+      picked(outline_moved) == ["ALL   "] and picked(name_moved) == ["ALL   "]
+      and picked(settled) == ["ALL   ", "Dojo"] and [it.ticked for it in settled if it.text == "Dojo"] == [False],
+      repr((picked(outline_moved), picked(name_moved), picked(settled))))
+moved_said = narrate([(0.0, steady), (0.1, outline_moved), (0.2, name_moved), (0.3, settled)])
+check("so the move says the stage once, with its own tick",
+      moved_said == [(0.0, "ALL. The Grid. Ticked"), (0.3, "Dojo. Not ticked")], repr(moved_said))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)
