@@ -121,6 +121,20 @@ def describe(it: scaleform.TextItem) -> str:
     )
 
 
+def _only_the_description_moved(before: list, items: list) -> bool:
+    """Whether the description line is the only thing that changed, and it names an entry.
+
+    True on a menu of pictures such as CFN's, where there is nothing else to
+    wait for; false where a banner or anything else changed with it, which is
+    what settling is for.
+    """
+    foot = scaleform.footer(items)
+    if foot is None or not scaleform.entry_title(foot.text):
+        return False
+    was = {scaleform._where(it) for it in before}
+    return all(it is foot for it in items if scaleform._where(it) not in was)
+
+
 def selection_phrase(items: list[scaleform.TextItem]) -> str:
     """What is selected now, with a tick or unavailability, for the read key."""
     parts = []
@@ -249,6 +263,13 @@ class Narrator:
             self.last_key = key
             before = self.pending if self.pending is not None else self.previous
             if any(it.selected for it in items):
+                self.pending = None
+                parts = scaleform.landed_on(before, items, known)
+            elif _only_the_description_moved(before, items):
+                # CFN's entries are pictures, so its description line is the
+                # whole move and arrives in one piece. Waiting to settle, which
+                # is there for a move whose parts come a frame apart, only put
+                # half a second between the user's press and the speech.
                 self.pending = None
                 parts = scaleform.landed_on(before, items, known)
             else:

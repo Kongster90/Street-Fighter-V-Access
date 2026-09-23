@@ -2438,6 +2438,18 @@ check("a description the game pairs with nothing is said alone",
 check("what a setting is set to is never taken for an entry's name",
       not any(t.lower() in sf.TITLE_NEVER for t in sf._title_index().values() if t))
 
+
+# CFN's move is the description line alone, so it is said at once rather than
+# after the settling a move with parts arriving a frame apart needs.
+at_once = narrate([(0.0, cfn_menu(RANKING)), (0.3, cfn_menu(RANKING)), (0.4, cfn_menu(BLACKLIST))])
+check("a move that is only the description is said the moment it is read",
+      [(t, s) for t, s in at_once][-1] == (0.4, "Blacklist. " + BLACKLIST), repr(at_once))
+# The main menu's icon row moves with its banner and its description, which is
+# what settling is for: the banner can arrive a frame after the description.
+slower = narrate([(0.0, on_exit), (0.3, on_exit), (0.4, on_login), (0.5, on_login), (0.7, on_login)])
+check("a move with more than the description still settles before it is said",
+      [(t, s) for t, s in slower][-1] == (0.7, "LOGIN"), repr(slower))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

@@ -1995,6 +1995,13 @@ menu whose entries are text names them as before. 209 pairs. Not every menu
 is paired this way: Story's "View storylines that focus on each individual
 character." has no name key above it, and reads by its own text anyway.
 
+The user then heard half a second between each press and the speech: a move
+with nothing selected waits `SETTLE` for the rest of it to arrive, which is
+there for the main menu's icon row, where the banner can come a frame after
+the description. On a menu of pictures the description line is the whole
+move, so `_only_the_description_moved` (the footer is the only text that
+changed, and it names an entry) skips the wait; anything else still settles.
+
 The user then asked what "Received 500 ." meant: the coin is drawn there as
 "fm", where everywhere else it is "icon_FM", so `ICON_WORDS` had no words for
 it and `unknown_pictures` logged it. Both names are in now. One message also
