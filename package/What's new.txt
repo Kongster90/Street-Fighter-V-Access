@@ -8,7 +8,7 @@ Each test version, newest first. The version you have is in VERSION.txt, beside 
 Battle Settings, Random Stage Settings: moving through the stages says each one and whether it is ticked, meaning it can come up when you pick "???" on stage select. Confirm says the new state, stages you do not own say "Not owned", and switching tabs with the bumpers says the tab.
 Favorite Stage: switching tabs with the bumpers says the tab.
 Random Stage Settings: stages with a second version open a Setting menu with B, and its two choices, DEFAULT and Setting 1, say whether each is ticked.
-Replays: the controls are read with their buttons named in your chosen style, such as "L2, Previous Scene. L1 or R1, Change Playback Speed. triangle, Pause", when they appear, and Alt R repeats them at any point in the replay.
+Replays: the controls are read with their buttons named in your chosen style, such as "L2, Previous Scene. L1 or R1, Change Playback Speed. triangle, Pause", once as each replay begins, and Alt R gives the current ones at any point in the replay.
 CFN's timeline, opened with heavy punch in the CFN menu, reads each entry as you move: who, and what they did. Alt R adds when.
 A player's Fighter Profile: tables read each row left to right, the fighter first: "KEN. Lv. 12. EXP 750/1600".
 A player's Fighter Profile: every page in its lists is read as you move, including Character Level and Fight Money Earned, which were silent. Alt R on a page reads its figures, such as "TOTAL MATCHES: 12426". Character Level no longer reads every fighter's name at once.

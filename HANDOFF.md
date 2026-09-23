@@ -2220,8 +2220,11 @@ at any point in the replay, after anything else and not in the pause menu.
 The pictures were caught by a watcher that had to use full reads: quick
 reads without the page refresh thread missed the line. The user found Alt R
 working; the line's arrival mid-replay went unsaid, being no change of
-selection with nothing selected, so the narrator now says it whenever it
-appears or changes (`controls_seen`).
+selection with nothing selected, so the narrator said it whenever it appeared
+or changed. The user found that too much, at every resume, pause and change
+of speed, and asked for it once: now said the first time it appears in a
+replay (`controls_announced`, reset once `in_replay` is false), and Alt R
+gives the current line at any time.
 
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:

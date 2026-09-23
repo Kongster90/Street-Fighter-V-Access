@@ -234,9 +234,9 @@ class Narrator:
         self.mapping_rows: list[str] | None = None
         self.subtitle_said: tuple[str, str] | None = None
         # A replay's controls in words, as last seen while the replay lasts,
-        # and the line as it was at the last read, to tell when it appears.
+        # and whether this replay has had them said.
         self.replay_controls: str | None = None
-        self.controls_seen = None
+        self.controls_announced = False
         # CFN's timeline entry at the last read, and the one last said.
         self.timeline_seen = None
         self.timeline_said = None
@@ -317,20 +317,21 @@ class Narrator:
             parts = [message[0] if " ".join(p.split()).endswith(message[0]) else p for p in parts]
         # A replay's controls, when they appear, with the buttons named; kept
         # for the read key while the replay lasts, the line lasting five seconds.
-        # Said as the line appears or changes (playback starting, resuming,
-        # pausing, changing speed), not only when it happens to come with a
-        # move: mid-replay it came with none and went unsaid (2026-09-23).
+        # Said the first time the line appears in a replay, whether or not a
+        # move comes with it (mid-replay none did, and it went unsaid), and
+        # not again until another replay: said at every resume, pause and
+        # change of speed it was too much, the user found (2026-09-23).
         controls = scaleform.replay_controls(items)
-        appeared = controls is not None and controls != self.controls_seen
-        self.controls_seen = controls
         if controls:
             self.replay_controls = controls[1]
             parts = [p for p in (parts or []) if " ".join(p.split()) != controls[0]] or None
-            if appeared:
+            if not self.controls_announced:
+                self.controls_announced = True
                 parts = (parts or []) + [controls[1]]
                 self.said = ""
         elif not scaleform.in_replay(items):
             self.replay_controls = None
+            self.controls_announced = False
         # So does an entry in CFN's timeline: who and what, the date on the read
         # key. An entry is said whole whenever the cursor lands on another,
         # once it has held for a read, since saying what changed left out the
