@@ -1342,7 +1342,14 @@ Ken's in the Tutorial's fight. `subtitle` now takes a line alone there, with
 off. A scene's first line can come a couple of seconds late: quick reads were
 blind for 14 s as that scene opened and a full search found the line.
 Confirmed in play by the user the same evening, a scene's lines said one
-after another as they came (spoken-log.txt from 22:14).
+after another as they came (spoken-log.txt from 22:14). Later that evening
+the game froze on answering Yes to "You are about to end the cutscene and
+return to Select Scene" (22:22:58), the fourth time that night the prompt was
+answered: from then on no text showed anywhere, for the 149 s until the user
+closed the game. The user took it for NVDA crashing first, but NVDA's own log
+(%TEMP%\nvda-old.log) shows no freeze or error then and a normal exit when
+they restarted it at 22:24:55; the silence was the game's. The mod did not
+crash either. If the game freezes there again, it is the game.
 
 Known gaps. The clock sits one object further down and is not resolved.
 Screens other than Versus and Training may head their character select
