@@ -960,7 +960,14 @@ Tickets! Press Alt R for more information. Close". Checked live, not yet
 heard. On the main menu the
 banner advert was said every fifteen seconds while idle on it in an earlier
 session ("Aug 31, 2026 - Sep 30, 2026. UPGRADE KIT AVAILABLE NOW", 13:45:31
-to 13:46:36 on 2026-09-14); not yet looked into.
+to 13:46:36 on 2026-09-14), and every five on 2026-09-22 while the user sat
+on Gallery: the banner keeps the cursor's mark ("+" in the log) as it names
+the icon, then goes back to its adverts about thirty seconds later, and each
+advert was a new selection. A move changes the description line with the
+banner, an advert does not, so `Narrator.step` drops a sentence made only of
+`banner_texts` once the description has stood `BANNER_CATCHUP` (1 s).
+Replaying that evening's log said LOGIN, EXIT, LOGIN, GALLERY and none of
+the adverts. Not yet heard.
 
 **Reattaching after the game restarts picked the launcher.** On 2026-09-14
 the user quit the game with the mod running and launched it again; memory

@@ -29,6 +29,9 @@ LOG_INTERVAL = 0.25
 
 POLL = 0.03            # a quick read takes forty to seventy thousandths of a second
 SETTLE = 0.2           # how long a move with nothing selected waits to settle
+# The main menu's banner can take an icon's name a moment after the description
+# line changes; later than this, with the description unchanged, it is an advert.
+BANNER_CATCHUP = 1.0
 GROUP_MEMORY = 1.0     # how long a prompt counts as open once its panel is gone
 # How long a summary screen's sentence must hold still before it is said. The
 # VS screen's stage name arrived a read after the rest, and the sentence was
@@ -232,6 +235,10 @@ class Narrator:
         self.mapping_prompt: str | None = None
         self.mapping_rows: list[str] | None = None
         self.subtitle_said: tuple[str, str] | None = None
+        # The description line, and when it last changed, so an advert in the
+        # main menu's banner can be told from a move.
+        self.footer_text: str | None = None
+        self.footer_changed_at = 0.0
         self.said = ""
 
     def health_words(self) -> str | None:
@@ -278,6 +285,18 @@ class Narrator:
             parts = scaleform.landed_on(self.pending, items, known)
             self.pending = None
         self.previous = items
+
+        # The main menu's banner rotating through adverts is not a move: a move
+        # changes the description line too, and the banner catches up with it
+        # within a moment, where an advert comes with the description as it was.
+        foot = scaleform.footer(items)
+        foot_text = foot.text if foot else None
+        if foot_text != self.footer_text:
+            self.footer_text, self.footer_changed_at = foot_text, now
+        if parts and now - self.footer_changed_at > BANNER_CATCHUP:
+            banner = scaleform.banner_texts(items)
+            if banner and all(" ".join(p.split()) in banner for p in parts):
+                parts = None
 
         # A message says what it says; when it arrived is on the read key.
         message = scaleform.message_log_entry(items)

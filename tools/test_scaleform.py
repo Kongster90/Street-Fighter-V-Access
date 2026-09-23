@@ -2523,6 +2523,37 @@ check("a fighter beside their figures is not a prompt's answer",
 check("built the same way beside words, it still is",
       picked(stats_row("Yes", ["No"])) == ["Yes"], repr(picked(stats_row("Yes", ["No"]))))
 
+
+# The main menu's banner keeps the cursor's mark as it names the icon you are
+# on, then rotates through adverts every five seconds with the description line
+# unchanged. Each advert was said as a move while the user sat on Gallery
+# (2026-09-22).
+def banner_menu(banner, description, date=None):
+    out = [item(t, 442, y, GREY) for t, y in (("ARCADE", 219), ("STORY", 339), ("VERSUS", 459),
+                                              ("BATTLE SETTINGS", 819))]
+    shown = [item(banner, 799, 452)] + ([item(date, 799, 191)] if date else [])
+    for it in shown:
+        it.chosen = True
+    return out + shown + [item(description, 110, 992)]
+
+
+GALLERY_LINE = "View the illustrations and songs that have been unlocked in other modes here."
+LOGIN_LINE = "Log into server. You can use network functions by logging in."
+adverts = narrate([
+    (0.0, banner_menu("GALLERY", GALLERY_LINE)),
+    (30.0, banner_menu("Nostalgia Collection", GALLERY_LINE)),
+    (35.0, banner_menu("Fighting Chance", GALLERY_LINE, date="Aug 31, 2026 - Sep 30, 2026")),
+    (40.0, banner_menu("UPGRADE KIT AVAILABLE NOW", GALLERY_LINE)),
+    (41.0, banner_menu("LOGIN", LOGIN_LINE)),
+])
+check("the banner's adverts are not moves, and a move beside them still is",
+      adverts == [(0.0, "GALLERY"), (41.0, "LOGIN")], repr(adverts))
+late = narrate([(0.0, banner_menu("GALLERY", GALLERY_LINE)), (5.0, banner_menu("GALLERY", LOGIN_LINE)),
+                (5.3, banner_menu("LOGIN", LOGIN_LINE))])
+check("the banner catching up with the description a moment late is still said",
+      late[-1:] == [(5.3, "LOGIN")], repr(late))
+check("no banner off the main menu", sf.banner_texts(profile_matchup()) == set())
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

@@ -277,6 +277,27 @@ def selection_key(items: list[TextItem]):
     )
 
 
+# The main menu's banner, the picture in the middle, names the mode or icon the
+# cursor is on at (799, 452), and between moves rotates through adverts
+# ("Nostalgia Collection", "Fighting Chance", "UPGRADE KIT AVAILABLE NOW"), some
+# with a date line sliding in along y 191. The cursor's mark stays on the
+# banner as its text changes, so each advert read as a move: one every five
+# seconds while the user sat on Gallery (2026-09-22). A move changes the
+# description line too, and an advert does not; see `Narrator.step`.
+MAIN_MENU_ENTRIES = ("ARCADE", "STORY", "VERSUS", "BATTLE SETTINGS")
+BANNER_ROWS = (191.0, 452.0)
+BANNER_ROW_TOLERANCE = 2.0
+
+
+def banner_texts(items: list[TextItem]) -> set[str]:
+    """What the main menu's banner says while marked as the selection, or nothing off that menu."""
+    shown = [it for it in items if it.shown]
+    if not set(MAIN_MENU_ENTRIES) <= {it.text.strip() for it in shown}:
+        return set()
+    return {" ".join(it.text.split()) for it in shown if it.chosen and not it.highlighted
+            and any(abs(it.y - row) <= BANNER_ROW_TOLERANCE for row in BANNER_ROWS)}
+
+
 def _where(it: TextItem):
     # The tile counts as well as the text: two locked stages side by side are
     # both named "???", and moving between them is still a move.
