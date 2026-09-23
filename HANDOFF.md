@@ -2224,7 +2224,8 @@ selection with nothing selected, so the narrator said it whenever it appeared
 or changed. The user found that too much, at every resume, pause and change
 of speed, and asked for it once: now said the first time it appears in a
 replay (`controls_announced`, reset once `in_replay` is false), and Alt R
-gives the current line at any time.
+gives the current line at any time. Confirmed in play by the user the same
+day.
 
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:
