@@ -308,6 +308,10 @@ class Narrator:
         message = scaleform.message_log_entry(items)
         if message and parts:
             parts = [message[0] if " ".join(p.split()).endswith(message[0]) else p for p in parts]
+        # So does an entry in CFN's timeline: who and what, the date on the read key.
+        timeline = scaleform.timeline_entry(items)
+        if timeline and parts:
+            parts = [p for p in parts if p.strip() != timeline[0]] or None
 
         # A character's story chapter is said as a sentence rather than its
         # pieces in screen order, which put "VS" after the opponent's name.

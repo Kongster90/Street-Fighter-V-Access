@@ -483,9 +483,13 @@ class App:
             message = scaleform.message_log_entry(items)
             matchup = scaleform.matchup_details(items)
             profile_page = scaleform.profile_page_details(items)
+            timeline = scaleform.timeline_entry(items)
             if message and entry is None:
                 # What the message says, then when it arrived.
                 said = memory_narration.phrase([message[0], message[1]])
+            elif timeline and entry is None:
+                # A CFN timeline entry: who and what, then when.
+                said = memory_narration.phrase([timeline[1], timeline[2]])
             elif matchup and entry is None:
                 # A Fighter Profile's match-up, then the figures for it.
                 said = memory_narration.phrase(matchup)

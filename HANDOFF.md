@@ -2181,6 +2181,19 @@ Estate's Setting 1 was left unticked, which would pick out its number; or
 the user unticks DEFAULT on each of the ten and the name under the grid
 gives each version's name.
 
+**CFN's timeline.** Heavy punch in the CFN menu opens a list of what followed
+players have done, each entry a date, the player and what happened, one under
+another at x 1662 ("Sep 17, 2026, 7:14:31 AM", "jamestoh", "Lost to
+Ryosei0308... [Rank Match 1-2]"), a " Move Cursor" hint, no description line.
+Nothing was said (2026-09-23). Every entry, seven parts, has its frame and
+background switched on, but with alpha 0 except on the cursor's entry (which
+also sits 33 pixels left and at full alpha where the rest are at 0.65, the
+bottom ones 0.3). `highlighted_row` now counts a part at or under
+`PART_SHOWN_ALPHA` as off; replayed over every recorded list (4,993 of them)
+it decides exactly as before. `timeline_entry` gives who and what for a move
+and the date, as `_spoken_date` says it, on Alt R: "jamestoh. Is online!",
+then "September 22, 2026, 9:38 PM". Not yet heard.
+
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:
 Favorites, Replays, Pending CFN Friend Requests, Blacklist, Rival Search,

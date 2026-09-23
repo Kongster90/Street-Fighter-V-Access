@@ -581,6 +581,7 @@ def tick_state(children, x_of, chain, alike_needed: int = 2) -> bool | None:
 
 GRID_MIN_TILES = 4
 SHORT_LIST_ROWS = 2   # a list's highlight bar is read from this many rows, strictly below four
+PART_SHOWN_ALPHA = 0.01   # a row's part at or under this alpha counts as off
 # The pause menu's Command List, recognised by its note, and its move rows:
 # sixteen parts in play, each part a background and a holder.
 COMMAND_LIST_NOTE = "All commands assume the character is facing right."
@@ -728,7 +729,10 @@ def highlighted_row(children, appearance, rows) -> int | None:
             seen = appearance(row_parts[index])
             if seen is None:
                 break
-            shown.append(bool(seen[1] & NODE_VISIBLE))
+            # A part switched on but wholly transparent is not shown: CFN's
+            # timeline draws every entry's frame and background, fully
+            # transparent but on the cursor's (2026-09-23).
+            shown.append(bool(seen[1] & NODE_VISIBLE) and seen[0][3] > PART_SHOWN_ALPHA)
         else:
             looks.append(shown)
             continue
@@ -2023,6 +2027,26 @@ def message_log_entry(items: list[TextItem]) -> tuple[str, str] | None:
     if found is None:
         return None
     return " ".join(found.group(2).split()), _spoken_date(found.group(1).strip())
+
+
+# CFN's timeline (heavy punch in the CFN menu): what the players you follow
+# have done, each entry a date, the player and what happened, one under
+# another. Every entry has a frame and a background; they are wholly
+# transparent but on the entry the cursor is on, which `highlighted_row` now
+# counts, and nothing was said before (2026-09-23). Moving says who and what;
+# Alt R adds when, as the Message Log does.
+TIMELINE_DATE = re.compile(r"^[A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d\d:\d\d [AP]M$")
+
+
+def timeline_entry(items: list[TextItem]) -> tuple[str, str, str] | None:
+    """(the date as drawn, who and what, the date as said) for the timeline entry the cursor is on."""
+    lit = [it for it in items if it.shown and it.selected and it.row]
+    for it in lit:
+        if TIMELINE_DATE.match(it.text.strip()):
+            rest = [o for o in left_to_right_rows([o for o in lit if o.row == it.row]) if o is not it]
+            if rest:
+                return it.text.strip(), phrase([" ".join(o.text.split()) for o in rest]), _spoken_date(it.text.strip())
+    return None
 
 
 # --------------------------------------------------------------- character story

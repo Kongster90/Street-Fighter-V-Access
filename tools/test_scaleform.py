@@ -2678,6 +2678,40 @@ check("a table's row is said as drawn, the fighter first",
       sf.landed_on(on_ryu, on_ken) == ["KEN", "Lv. 12", "EXP 750/1600"], repr(sf.landed_on(on_ryu, on_ken)))
 check("and the read key says it the same way",
       mn.selection_phrase(on_ken) == "Character Level. KEN. Lv. 12. EXP 750/1600", repr(mn.selection_phrase(on_ken)))
+# CFN's timeline, as read live on 2026-09-23: every entry has a frame and a
+# background switched on, wholly transparent but on the cursor's entry.
+def timeline_rows(cursor, count=6):
+    tree = {}
+    def node(obj, kids=(), alpha=1.0):
+        tree[obj] = {"kids": list(kids), "cx": (1, 1, 1, alpha), "flags": 1}
+    rows = []
+    for i in range(count):
+        row = 5000 + i * 10
+        parts = [row + p for p in range(1, 8)]
+        for p, part in enumerate(parts):
+            node(part, alpha=1.0 if p > 1 or i == cursor else 0.0)
+        node(row, parts)
+        rows.append(row)
+    return (lambda o: tree.get(o, {}).get("kids", []),
+            lambda o: (tree[o]["cx"], tree[o]["flags"]) if o in tree else None, rows)
+
+
+tkids, tlook, trows = timeline_rows(cursor=3)
+check("a part switched on but wholly transparent counts as off",
+      sf.highlighted_row(tkids, tlook, trows) == trows[3])
+entry_lit = [sf.TextItem("Sep 22, 2026, 9:38:13 PM", 1668, 240, WHITE, 7, chosen=True, row=91),
+             sf.TextItem("jamestoh", 1668, 264, WHITE, 7, chosen=True, row=91),
+             sf.TextItem("Is online!", 1668, 288, WHITE, 7, chosen=True, row=91)]
+next_lit = [sf.TextItem("Sep 17, 2026, 7:14:31 AM", 1668, 316, WHITE, 7, chosen=True, row=92),
+            sf.TextItem("jamestoh", 1668, 340, WHITE, 7, chosen=True, row=92),
+            sf.TextItem("Lost to Ryosei0308... [Rank Match 1-2]", 1668, 364, WHITE, 7, chosen=True, row=92)]
+check("a timeline entry is who and what, and when for the read key",
+      sf.timeline_entry(next_lit) == ("Sep 17, 2026, 7:14:31 AM", "jamestoh. Lost to Ryosei0308... [Rank Match 1-2]",
+                                      "September 17, 2026, 7:14 AM"), repr(sf.timeline_entry(next_lit)))
+moving_timeline = narrate([(0.0, entry_lit), (0.5, next_lit)])
+check("moving through the timeline says who and what, not when",
+      moving_timeline == [(0.0, "jamestoh. Is online!"), (0.5, "jamestoh. Lost to Ryosei0308... [Rank Match 1-2]")],
+      repr(moving_timeline))
 stacked = [sf.TextItem("SCREW PILE DRIVER", 448, 290, WHITE, 9, chosen=True, row=90),
            sf.TextItem("full circle plus punch", 447, 333, WHITE, 9, chosen=True, row=90)]
 check("a move's name over its command stays first, a pixel further across or not",
