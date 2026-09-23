@@ -2097,7 +2097,13 @@ level, experience bar) is parts of different sizes too, one of them shown
 alone, in every row. The rows must now be built alike in the parts they share
 (the page list's are all two children each). The user found it working in
 play the same day: each page named as the cursor reaches it, and moving
-through Character Level's rows says each ("EXP 750/1600. Lv. 12. KEN"). Character
+through Character Level's rows says each ("EXP 750/1600. Lv. 12. KEN"). At
+the user's request a row lit by its highlight bar is now said as drawn, left
+to right, "KEN. Lv. 12. EXP 750/1600": `_mark_highlighted_rows` notes the row
+on each text (`TextItem.row`), and `left_to_right_rows` orders them in
+`landed_on` and `selection_phrase`; texts within `ROW_SAME_COLUMN` across
+keep top to bottom, as a Command List move's name over its command. Not yet
+heard. Character
 Level lists each fighter beside "Lv. 20" and "EXP 1781/3700" ("Lv. ---",
 "EXP ---/---" with no data), which the prompt rule took for answers beside a
 chosen one; `_label_or_figure` now counts any text with a digit or "---".

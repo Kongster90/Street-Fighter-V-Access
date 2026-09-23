@@ -141,9 +141,7 @@ def _only_the_description_moved(before: list, items: list) -> bool:
 def selection_phrase(items: list[scaleform.TextItem]) -> str:
     """What is selected now, with a tick or unavailability, for the read key."""
     parts = []
-    for it in items:
-        if not it.selected:
-            continue
+    for it in scaleform.left_to_right_rows([it for it in items if it.selected]):
         parts.append(it.text)
         if it.note:
             parts.append(it.note)

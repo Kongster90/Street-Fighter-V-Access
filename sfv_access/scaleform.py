@@ -51,6 +51,7 @@ that never shows on the main menu is hidden by the container above it.
 from __future__ import annotations
 
 import ctypes
+import functools
 import json
 import math
 import re
@@ -209,6 +210,7 @@ class TextItem:
     ticked: bool | None = None   # a checklist entry's box, when it has one
     rooted: bool = True      # the chain ends at a movie's root, not a subtree cut loose from one
     note: str = ""           # said after the text in place of a tick or unavailability: "Already purchased"
+    row: int = 0             # the list row whose highlight bar marked this text, when one did
 
     @property
     def highlighted(self) -> bool:
@@ -330,6 +332,34 @@ def phrase(texts: list[str]) -> str:
     return out
 
 
+ROW_SAME_COLUMN = 20   # texts in a lit row this close across are one above the other
+
+
+def left_to_right_rows(items: list[TextItem]) -> list[TextItem]:
+    """`items` in order, but a list row's texts together and left to right.
+
+    A table row lit by its highlight bar was read top to bottom, which in a
+    Fighter Profile's tables put the fighter last: "EXP 750/1600. Lv. 12.
+    KEN". The user asked for the row as drawn: "KEN. Lv. 12. EXP 750/1600"
+    (2026-09-23). Texts one above the other in a row stay top to bottom, as a
+    Command List move's name over its command.
+    """
+    def across(a, b):
+        if abs(a.x - b.x) <= ROW_SAME_COLUMN:
+            return (a.y > b.y) - (a.y < b.y)
+        return -1 if a.x < b.x else 1
+
+    out, placed = [], set()
+    for it in items:
+        if id(it) in placed:
+            continue
+        same = (sorted((o for o in items if o.row and o.row == it.row), key=functools.cmp_to_key(across))
+                if it.row else [it])
+        out += same
+        placed.update(id(o) for o in same)
+    return out
+
+
 def _unique(texts: list[str]) -> list[str]:
     """Each text once, in order. Some screens draw a title in three layers."""
     seen = set()
@@ -409,7 +439,7 @@ def landed_on(
         donor = next((i.text for i in after if i is not it and i.note != old_notes.get(i.text)
                       and old_notes.get(i.text) == it.note), None)
         return [f"{it.note}, moved from {donor}" if donor and it.note != BUTTON_NONE else it.note]
-    fresh = [it for it in lit if _where(it) not in was_lit]
+    fresh = left_to_right_rows([it for it in lit if _where(it) not in was_lit])
     if fresh:
         old_groups = {it.group for it in before if it.chosen} | set(recent_groups)
         new_groups = {it.group for it in fresh if it.chosen and it.group not in old_groups}
@@ -3571,6 +3601,7 @@ class ScaleformText:
             for it in shown:
                 if row in it.chain:
                     it.chosen = True
+                    it.row = row
 
     def _mark_single_move(self, shown: list[TextItem], groups) -> None:
         """The only move in a Command List section, which nothing else can mark.

@@ -2662,6 +2662,27 @@ check("a table's rows are read left to right, the fighter first",
       repr(sf.profile_page_details(by_character)))
 check("nothing of it off the profile", sf.profile_page_details(on_story) == [])
 
+
+# Moving through Character Level's rows, each lit by its highlight bar: the
+# experience drawn highest, the level below it, the name lowest and leftmost.
+def level_row(name, level, exp, row, y):
+    return [sf.TextItem(f"EXP {exp}", 961.6, y - 23, WHITE, 9, chosen=True, row=row),
+            sf.TextItem(f"Lv. {level}", 860.6, y - 10, WHITE, 9, chosen=True, row=row),
+            sf.TextItem(name, 643.6, y, WHITE, 9, chosen=True, row=row)]
+
+
+page_entry = [sf.TextItem("Character Level", 319.6, 355.3, WHITE, 9, chosen=True, row=77)]
+on_ryu = page_entry + level_row("RYU", 20, "1781/3700", 81, 376)
+on_ken = page_entry + level_row("KEN", 12, "750/1600", 82, 442)
+check("a table's row is said as drawn, the fighter first",
+      sf.landed_on(on_ryu, on_ken) == ["KEN", "Lv. 12", "EXP 750/1600"], repr(sf.landed_on(on_ryu, on_ken)))
+check("and the read key says it the same way",
+      mn.selection_phrase(on_ken) == "Character Level. KEN. Lv. 12. EXP 750/1600", repr(mn.selection_phrase(on_ken)))
+stacked = [sf.TextItem("SCREW PILE DRIVER", 448, 290, WHITE, 9, chosen=True, row=90),
+           sf.TextItem("full circle plus punch", 447, 333, WHITE, 9, chosen=True, row=90)]
+check("a move's name over its command stays first, a pixel further across or not",
+      [it.text for it in sf.left_to_right_rows(stacked)] == ["SCREW PILE DRIVER", "full circle plus punch"])
+
 # A fighter's row on Character Level, as read live on 2026-09-23: six parts of
 # different kinds (name, level, experience bar), one of them shown alone, which
 # the rule for mixed lists took for a highlighted row in every fighter's row.
