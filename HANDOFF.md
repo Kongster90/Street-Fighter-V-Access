@@ -2077,6 +2077,30 @@ swapped out (scaleform-log 21:09:27). Its group at every level has either a
 text over `CHOICE_TEXT_LIMIT` or a slot of many texts, so which rule marks it
 is not known; a watcher wrapping each rule failed to catch it at 50 ms.
 
+**Random Stage Settings (Battle Settings).** A popup like Favorite Stage's:
+a tab at (1196, 237) ("ALL", "SFV Main Stages", switched with LB and RB), a
+grid of stage pictures, and the stage's name at (1058, 811), five levels from
+the grid where the tab is seven. Nothing was said (2026-09-23). Each tile has
+six parts: the cursor's outline (shown on its tile alone), an empty holder,
+the picture, and three badge places, the fifth holding a shopping cart for a
+stage not owned. A stage left out of random selection has its picture dimmed
+to 0.4 and confirm switches it; Dojo is dimmed, and confirm there gives the
+toast "Your selection is currently unavailable." A watcher logging tile
+states with a screenshot per change while the user moved and switched Ring
+of Destiny off and on settled all of this. `selected_tile` wants one tile
+drawn differently and several are, so `_mark_picture_grids` falls back to
+`highlighted_row`, the one part shown on one tile alone; replayed over every
+recorded grid it agrees wherever `selected_tile` decides and decides nowhere
+else. On this screen (its description line, `RANDOM_STAGE_LINE`) the stage's
+name gets `ticked` from `random_stage_state`, or the note "Not owned", and
+`_mark_ticks` no longer overwrites a tick already set. On both stage grids
+(`STAGE_GRID_LINES`) the tab is marked too, so switching says it; not on
+other picture grids, where a heading could sit at that distance. Arriving
+says "ALL. The Grid. Ticked", moving the stage and its state, confirm
+"Ticked" or "Not ticked" alone. Confirm on The Grid opened a "Setting" popup
+(DEFAULT, Setting 1) that reads as a menu; after it the tile read "The Grid
+Alternative", so some stages have versions chosen there. Not yet heard.
+
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:
 Favorites, Replays, Pending CFN Friend Requests, Blacklist, Rival Search,

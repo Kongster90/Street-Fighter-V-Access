@@ -448,6 +448,59 @@ skids = lambda o: scrolled.get(o, {}).get("kids", [])
 slook = lambda o: (scrolled[o]["cx"], scrolled[o]["flags"]) if o in scrolled else None
 check("a grid that scrolled to new tiles is read from its tiles as they are now",
       sf.selected_tile(skids, slook, sf.grid_tiles(skids, 900)) == 5040)
+
+# Random Stage Settings, as logged on 2026-09-23: tiles of six parts, the
+# cursor's outline shown on its tile alone, a stage left out dimmed to 0.4,
+# and a stage not owned carrying a shopping cart in its fifth part.
+def random_stages(cursor, dimmed=(), carts=()):
+    tree = {}
+    def node(obj, kids=(), cx=(1, 1, 1, 1), flags=1):
+        tree[obj] = {"kids": list(kids), "cx": cx, "flags": flags}
+    tiles = []
+    for i in range(6):
+        tile = 2000 + i * 20
+        parts = [tile + p for p in range(1, 7)]
+        node(parts[0], flags=1 if i == cursor else 0)                         # outline
+        node(parts[2], cx=(0.4, 0.4, 0.4, 1) if i in dimmed else (1, 1, 1, 1))  # picture
+        badge = [tile + 10, tile + 11] if i in carts else [tile + 10]
+        node(tile + 10, flags=0)                                              # the empty shape every tile has
+        if i in carts:
+            node(tile + 11, [tile + 12]); node(tile + 12)                     # the cart
+        node(parts[4], badge)
+        for p in (parts[1], parts[3], parts[5]):
+            node(p)
+        node(tile, parts)
+        tiles.append(tile)
+    return (lambda o: tree.get(o, {}).get("kids", []),
+            lambda o: (tree[o]["cx"], tree[o]["flags"]) if o in tree else None, tiles)
+
+
+rkids, rlook, rtiles = random_stages(cursor=2, dimmed={1, 2, 4}, carts={4})
+check("with stages dimmed, the brighter-tile rule cannot tell the cursor",
+      sf.selected_tile(rkids, rlook, rtiles) is None)
+check("the outline shown on one tile alone marks it",
+      sf.highlighted_row(rkids, rlook, rtiles) == rtiles[2])
+check("a stage is in the random pool, left out, or not owned",
+      [sf.random_stage_state(rkids, rlook, t) for t in (rtiles[0], rtiles[1], rtiles[4])]
+      == [(True, True), (True, False), (False, False)])
+check("the tab above a stage grid is found two levels past the stage's name",
+      getattr(sf.name_for_grid(up, [texts[1]], sf.GRID_TAB_REACH), "text", None) == "ALL"
+      and sf.name_for_grid(up, [texts[1]]) is None)
+on = [sf.TextItem("ALL", 1196, 237, WHITE, 5, chosen=True),
+      sf.TextItem("Ring of Destiny", 1058, 811, WHITE, 5, chosen=True, slot=2040, ticked=True)]
+off = [on[0], sf.TextItem("Ring of Destiny", 1058, 811, WHITE, 5, chosen=True, slot=2040, ticked=False)]
+cart = [on[0], sf.TextItem("Metro City Bay Area", 1058, 811, WHITE, 5, chosen=True, slot=2080, note="Not owned")]
+main = [sf.TextItem("SFV Main Stages", 1196, 237, WHITE, 5, chosen=True),
+        sf.TextItem("The Grid Alternative", 1058, 811, WHITE, 5, chosen=True, slot=2000, ticked=True)]
+check("arriving says the tab, the stage and whether it is in",
+      sf.landed_on([], on) == ["ALL", "Ring of Destiny", "Ticked"], repr(sf.landed_on([], on)))
+check("switching it off says so alone",
+      sf.landed_on(on, off) == ["Not ticked"], repr(sf.landed_on(on, off)))
+check("moving to a stage not owned says so",
+      sf.landed_on(on, cart) == ["Metro City Bay Area", "Not owned"], repr(sf.landed_on(on, cart)))
+check("switching tabs says the tab, then the stage",
+      sf.landed_on(on, main) == ["SFV Main Stages", "The Grid Alternative", "Ticked"], repr(sf.landed_on(on, main)))
+
 locked_a = [sf.TextItem("???", 1058, 811, WHITE, 5, chosen=True, slot=1000)]
 locked_b = [sf.TextItem("???", 1058, 811, WHITE, 5, chosen=True, slot=1010)]
 check("moving between two locked stages of the same name is still a move",

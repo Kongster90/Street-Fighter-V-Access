@@ -549,6 +549,42 @@ GRID_SEARCH_LIMIT = 6000
 # narration went silent.
 GRID_WALK_SECONDS = 0.25
 GRID_NAME_REACH = 6
+GRID_TAB_REACH = 7    # the stage grids' tab, "ALL" or "SFV Main Stages", two levels past the stage's name
+
+# Battle Settings, Random Stage Settings: a stage grid like Favorite Stage's,
+# each tile its cursor outline, its picture, and places for badges, where a
+# stage not owned carries a shopping cart as a picture in the fifth part. A
+# stage left out of random selection has its picture dimmed to 0.4, and
+# confirm switches it; Dojo is dimmed and confirm there says "Your selection
+# is currently unavailable". Worked out from the tile states logged while the
+# user moved and switched Ring of Destiny off and on, against screenshots
+# (2026-09-23). Said as the music list's are: "Ticked", "Not ticked".
+RANDOM_STAGE_LINE = 'Adjust which stages can be picked when choosing "???" during stage selection.'
+RANDOM_STAGE_PICTURE_PART = 2
+RANDOM_STAGE_BADGE_PART = 4
+RANDOM_STAGE_DIMMED = 0.5
+RANDOM_STAGE_NOT_OWNED = "Not owned"
+# The description lines of the two stage grids, Favorite Stage's and this one.
+STAGE_GRID_LINES = ("Choose a favorite stage.", RANDOM_STAGE_LINE)
+
+
+def random_stage_state(children, appearance, tile) -> tuple[bool, bool]:
+    """(owned, included in random selection) for a Random Stage Settings tile."""
+    parts = children(tile)
+
+    def holds_picture(obj):
+        seen = appearance(obj)
+        return seen is not None and seen[1] & NODE_VISIBLE and children(obj)
+
+    # Every tile's badge place holds an empty hidden shape; the cart is a
+    # second child, shown, with the loaded picture inside it.
+    owned = not (len(parts) > RANDOM_STAGE_BADGE_PART
+                 and any(holds_picture(k) for k in children(parts[RANDOM_STAGE_BADGE_PART])))
+    if len(parts) <= RANDOM_STAGE_PICTURE_PART:
+        return owned, True
+    seen = appearance(parts[RANDOM_STAGE_PICTURE_PART])
+    included = seen is None or seen[0][0] > RANDOM_STAGE_DIMMED
+    return owned, included
 
 
 def _remembering(children):
@@ -736,7 +772,8 @@ def tile_country(ptr, read, tile: int) -> str | None:
     return code if code == COUNTRY_OTHER or code in country_names() else None
 
 
-def name_for_grid(grid_and_parents: list[int], items: list[TextItem]) -> TextItem | None:
+def name_for_grid(grid_and_parents: list[int], items: list[TextItem],
+                  reach: int = GRID_NAME_REACH) -> TextItem | None:
     """The shown text nearest a grid in the display tree, within reach."""
     best = None
     for it in items:
@@ -745,7 +782,7 @@ def name_for_grid(grid_and_parents: list[int], items: list[TextItem]) -> TextIte
         for level, obj in enumerate(it.chain):
             if obj in grid_and_parents:
                 distance = level + grid_and_parents.index(obj)
-                if distance <= GRID_NAME_REACH and (best is None or distance < best[0]):
+                if distance <= reach and (best is None or distance < best[0]):
                     best = (distance, it)
                 break
     return best[1] if best else None
@@ -3464,7 +3501,8 @@ class ScaleformText:
 
         kids = _remembering(self.children)
         for it in shown:
-            if it.selected:
+            # A stage in Random Stage Settings has its tick from its tile already.
+            if it.selected and it.ticked is None:
                 it.ticked = tick_state(kids, x_of, it.chain)
 
     def _mark_picture_grids(self, shown: list[TextItem], items: list[TextItem]) -> None:
@@ -3500,6 +3538,13 @@ class ScaleformText:
             if tile is None and self.on_home_screen:
                 tile = self._flag_under_cursor(kids, tiles)
             if tile is None:
+                # Random Stage Settings dims every stage left out, so more
+                # than one tile is drawn differently; the outline, a part
+                # shown on the cursor's tile alone, still marks it. In every
+                # recording this agrees with the rule above wherever that
+                # decides, and decides nowhere else.
+                tile = highlighted_row(kids, appearance, tiles)
+            if tile is None:
                 continue
             up = [grid]
             while len(up) < MAX_DEPTH:
@@ -3531,6 +3576,22 @@ class ScaleformText:
                 label.chosen = True
                 label.group = grid
                 label.slot = tile
+                # The tab above a stage grid, switched with LB and RB, two
+                # levels further off than the stage's name. Marked too, so
+                # switching says it; a move within the grid leaves it as it was.
+                # Only the stage grids: near another grid it could be a heading.
+                foot = footer(shown)
+                line = foot.text.strip() if foot is not None else ""
+                if line.startswith(STAGE_GRID_LINES):
+                    tab = name_for_grid(up, [it for it in shown if it is not label], GRID_TAB_REACH)
+                    if tab is not None and len(tab.text.strip()) <= CHOICE_TEXT_LIMIT:
+                        tab.chosen = True
+                if line == RANDOM_STAGE_LINE:
+                    owned, included = random_stage_state(kids, appearance, tile)
+                    if not owned:
+                        label.note = RANDOM_STAGE_NOT_OWNED
+                    else:
+                        label.ticked = included
 
     def _tiles_of(self, kids, obj: int) -> list[int]:
         """A grid's tiles by the usual rule, or on the Home screen its flag tiles however few."""

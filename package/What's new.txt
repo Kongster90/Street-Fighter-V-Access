@@ -3,6 +3,12 @@ What's new in Street Fighter V Access
 Each test version, newest first. The version you have is in VERSION.txt, beside this file.
 
 
+23 September 2026
+
+Battle Settings, Random Stage Settings: moving through the stages says each one and whether it is ticked, meaning it can come up when you pick "???" on stage select. Confirm says the new state, stages you do not own say "Not owned", and switching tabs with the bumpers says the tab.
+Favorite Stage: switching tabs with the bumpers says the tab.
+
+
 22 September 2026
 
 The Message Log reads. Moving through it says what each message says, and Alt R adds when it arrived.
