@@ -2901,6 +2901,50 @@ moved_said = narrate([(0.0, steady), (0.1, outline_moved), (0.2, name_moved), (0
 check("so the move says the stage once, with its own tick",
       moved_said == [(0.0, "ALL. The Grid. Ticked"), (0.3, "Dojo. Not ticked")], repr(moved_said))
 
+
+# A replay's controls, as read live on 2026-09-23: the left trigger before
+# "Previous Scene", both bumpers side by side before "Change Playback Speed",
+# Y before "Pause", shown for five seconds as playback starts or resumes.
+rmem = FakeMemory()
+rroot = display_object(rmem, 0, 0, 0, WHITE)
+picture_field(rmem, rroot, 510, 902, [("picture", "button_lt"), ("text", " Previous Scene   "),
+                                      ("picture", "button_lb"), ("picture", "button_rb"),
+                                      ("text", " Change Playback Speed   "), ("picture", "button_y"), ("text", " Pause")])
+replay_items = sf.ScaleformText(rmem, MODULE).items()
+controls_line = next((it for it in replay_items if "Playback" in it.text), None)
+check("a hint's buttons are kept with the words after each",
+      controls_line is not None and controls_line.buttons ==
+      ((10, "Previous Scene"), (8, ""), (9, "Change Playback Speed"), (5, "Pause")),
+      repr(controls_line.buttons if controls_line else None))
+real_style = sf.buttons.style
+try:
+    sf.buttons.style = lambda: "playstation"
+    playstation = sf.replay_controls(replay_items)
+    appearing = narrate([(0.0, []), (1.0, replay_items), (1.5, replay_items)])
+    sf.buttons.style = lambda: "xbox"
+    xbox = sf.replay_controls(replay_items)
+finally:
+    sf.buttons.style = real_style
+check("as the controls appear, the buttons are said with them",
+      [s for _, s in appearing] == ["L2, Previous Scene. L1 or R1, Change Playback Speed. triangle, Pause"],
+      repr(appearing))
+check("a replay's controls name each button in the chosen style, side by side as either",
+      playstation and playstation[1] == "L2, Previous Scene. L1 or R1, Change Playback Speed. triangle, Pause"
+      and xbox[1] == "left trigger, Previous Scene. left bumper or right bumper, Change Playback Speed. Y, Pause",
+      repr((playstation, xbox)))
+check("the line as it is drawn is what a move would have said",
+      playstation and playstation[0] == "Previous Scene Change Playback Speed Pause", repr(playstation))
+check("no replay controls elsewhere", sf.replay_controls(on_story) is None)
+version = sf.TextItem("Ver. 07.002", 960, 174, (1, 1, 1, 0.8), 4, chain=(1, 2))
+kept = mn.Narrator()
+kept.step(replay_items + [version], 0.0)
+kept.step([version], 6.0)
+still = kept.replay_controls
+kept.step(on_story, 7.0)
+check("the controls are kept while the replay lasts and let go after it",
+      still is not None and "Change Playback Speed" in still and kept.replay_controls is None
+      and sf.in_replay([version]) and not sf.in_replay(on_story), repr((still, kept.replay_controls)))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

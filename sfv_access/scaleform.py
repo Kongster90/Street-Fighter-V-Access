@@ -211,6 +211,7 @@ class TextItem:
     rooted: bool = True      # the chain ends at a movie's root, not a subtree cut loose from one
     note: str = ""           # said after the text in place of a tick or unavailability: "Already purchased"
     row: int = 0             # the list row whose highlight bar marked this text, when one did
+    buttons: tuple = ()      # controller buttons drawn in it: (pad key number, the words after it)
 
     @property
     def highlighted(self) -> bool:
@@ -2052,6 +2053,49 @@ def timeline_entry(items: list[TextItem]) -> tuple[str, str, str, frozenset] | N
     return None
 
 
+# A replay (CFN, Replays) draws its controls along the foot of the screen as
+# button pictures, each before what it does: "<picture> Previous Scene
+# <picture> Change Playback Speed <picture> Pause". The pictures were silent,
+# as in every controller hint, so the line said what the buttons do and not
+# which buttons (2026-09-23). Now said with each button named in the chosen
+# style (Alt B), when it appears and on Alt R.
+REPLAY_CONTROLS_MARK = "Playback"
+# The version a replay was recorded in, "Ver. 07.002", drawn at the top for the
+# whole replay and its pause menu, where the controls last five seconds: what
+# lets Alt R give the controls last seen at any point in the replay.
+REPLAY_VERSION = re.compile(r"^Ver\. \d")
+REPLAY_VERSION_AT = (960.0, 174.0)
+
+
+def in_replay(items: list[TextItem]) -> bool:
+    return any(it.shown and _at(it, REPLAY_VERSION_AT) and REPLAY_VERSION.match(it.text.strip()) for it in items)
+
+
+def button_hint_words(it: TextItem) -> str:
+    """"L2, Previous Scene. L1 or R1, Change Playback Speed. triangle, Pause" for a hint's buttons.
+
+    Buttons drawn side by side share the words after the last of them: the
+    replay's speed is changed with either bumper, one each way.
+    """
+    said, waiting = [], []
+    for number, label in it.buttons:
+        waiting.append(buttons.name(number))
+        if label:
+            said.append(f"{' or '.join(waiting)}, {label}")
+            waiting = []
+    if waiting:
+        said.append(" or ".join(waiting))
+    return phrase(said)
+
+
+def replay_controls(items: list[TextItem]) -> tuple[str, str] | None:
+    """(the line as drawn, its buttons in words) while a replay's controls show."""
+    for it in items:
+        if it.shown and it.buttons and any(REPLAY_CONTROLS_MARK in label for _number, label in it.buttons):
+            return " ".join(it.text.split()), button_hint_words(it)
+    return None
+
+
 # --------------------------------------------------------------- character story
 #
 # Story, Character Story, then a fighter: their chapters down the middle, each
@@ -3289,6 +3333,9 @@ class ScaleformText:
         self._text_grids: set[int] = set()   # grids seen holding text, never pictures
         # Each picture grid's cursor tile and the name beside it, at the last read.
         self._grid_pairs: dict[int, tuple[int, str]] = {}
+        # Controller buttons drawn in a text, by DocView: (pad key number, the words after it).
+        self.hint_buttons: dict[int, tuple[tuple[int, str], ...]] = {}
+        self._pads: list[tuple[int, str]] = []
         self._roots: set[int] = set()
         # Pictures inside text with no words yet, by image name, for the log.
         self.unknown_pictures: set[str] = set()
@@ -3384,6 +3431,7 @@ class ScaleformText:
         if count is None or count > MAX_PARAGRAPHS or (count and not data):
             return None
         parts = []
+        self._pads = []
         for i in range(count):
             para = self.pm.ptr(data + i * 8)
             if not para:
@@ -3402,6 +3450,10 @@ class ScaleformText:
             if runs and 1 < run_count <= min(size + 1, MAX_RUNS):
                 text = self._with_pictures(text, runs, run_count)
             parts.append(text.rstrip("\0"))
+        if self._pads:
+            self.hint_buttons[docview] = tuple(self._pads)
+        else:
+            self.hint_buttons.pop(docview, None)
         # Scaleform ends a paragraph with a carriage return.
         return "\n".join(p.rstrip("\r") for p in parts)
 
@@ -3426,6 +3478,7 @@ class ScaleformText:
             return text
         pieces: list[tuple[str, str]] = []
         found = icons = False
+        pads: list[tuple[int, int]] = []   # a controller button's picture: where, and which
         for i in range(count):
             start, length, fmt = struct.unpack_from("<QQQ", raw, i * RUN_STRIDE)
             if start >= len(text) or not length:
@@ -3436,6 +3489,8 @@ class ScaleformText:
             if name is None:
                 pieces.append(("text", chunk))
                 continue
+            if name in PAD_PICTURES:
+                pads.append((start, PAD_PICTURES[name]))
             if name in ICON_WORDS:
                 icons = True
                 pieces.append(("text", f" {ICON_WORDS[name]} {chunk[1:]}"))
@@ -3462,6 +3517,13 @@ class ScaleformText:
             pieces.append(("picture", name))
             if chunk[1:]:
                 pieces.append(("text", chunk[1:]))
+        # Each controller button's picture with the words after it, up to the
+        # next: a hint such as the replay's "<L1> Previous Scene <R1> Change
+        # Playback Speed <Options> Pause", for `button_hint_words`.
+        for k, (at, number) in enumerate(pads):
+            end = pads[k + 1][0] if k + 1 < len(pads) else len(text)
+            label = " ".join(text[at + 1:end].replace("\0", "").split()).lstrip(": ").strip()
+            self._pads.append((number, label))
         if found:
             text = describe_inputs(pieces)
         elif icons:
@@ -4172,7 +4234,7 @@ class ScaleformText:
             raw = self.pm.read(dv + DOCVIEW_SIZE, 8)
             box = tuple(v / TWIPS_PER_PIXEL for v in struct.unpack("<2f", raw)) if raw else (0.0, 0.0)
             every.append(TextItem(text, x, y, tint, len(chain), dv, chain, hidden=hidden, box=box,
-                                  rooted=rooted))
+                                  rooted=rooted, buttons=self.hint_buttons.get(dv, ())))
         if not any(it.shown for it in every):
             self._show_hidden_stage_select(every)
         self._show_final_opponent(every)

@@ -233,6 +233,8 @@ class Narrator:
         self.mapping_prompt: str | None = None
         self.mapping_rows: list[str] | None = None
         self.subtitle_said: tuple[str, str] | None = None
+        # A replay's controls in words, as last seen while the replay lasts.
+        self.replay_controls: str | None = None
         # CFN's timeline entry at the last read, and the one last said.
         self.timeline_seen = None
         self.timeline_said = None
@@ -311,6 +313,15 @@ class Narrator:
         message = scaleform.message_log_entry(items)
         if message and parts:
             parts = [message[0] if " ".join(p.split()).endswith(message[0]) else p for p in parts]
+        # A replay's controls, when they appear, with the buttons named; kept
+        # for the read key while the replay lasts, the line lasting five seconds.
+        controls = scaleform.replay_controls(items)
+        if controls:
+            self.replay_controls = controls[1]
+        elif not scaleform.in_replay(items):
+            self.replay_controls = None
+        if controls and parts:
+            parts = [controls[1] if " ".join(p.split()) == controls[0] else p for p in parts]
         # So does an entry in CFN's timeline: who and what, the date on the read
         # key. An entry is said whole whenever the cursor lands on another,
         # once it has held for a read, since saying what changed left out the

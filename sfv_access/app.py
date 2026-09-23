@@ -539,6 +539,13 @@ class App:
             if not said and attack is not None:
                 # In Training with nothing selected: the last attack in full.
                 said = memory_narration.phrase(scaleform.attack_details(attack))
+            controls = scaleform.replay_controls(items)
+            words = controls[1] if controls else self.narrator.replay_controls
+            if words and scaleform.in_replay(items) and not any(it.shown and it.highlighted for it in items):
+                # In a replay: its controls, each button named, after anything
+                # else; as last seen, the line showing for five seconds only.
+                # Not in its pause menu, where they would only be in the way.
+                said = memory_narration.phrase([said, words]) if said else words
             if said:
                 self.lines, self.footer = items, foot.text if foot else ""
                 self.cursor = next((i for i, it in enumerate(items) if it.selected), 0)

@@ -2201,6 +2201,25 @@ now says the entry whole whenever it is another, once it has held for a read
 anything else said. Confirmed in play by the user the same day, every entry
 said whole, repeats included.
 
+**Replay controls.** A replay (CFN, Replays) shows its controls at (510, 902)
+for five seconds as playback starts or resumes, as button pictures each
+before what it does: button_lt "Previous Scene", button_lb and button_rb side
+by side "Change Playback Speed", button_y "Pause"; with the speed changed,
+"Return to Normal Playback" is added; paused, "1 Frame Forward" and "Resume".
+Controller pictures are silent everywhere (`SILENT_PICTURES`), so the line
+said what the buttons do and not which (2026-09-23). `_with_pictures` now
+notes each pad picture with the words after it (`TextItem.buttons`, by
+DocView in `hint_buttons`), leaving the text as it was so button hints keep
+their leading space and stay unsaid on moves elsewhere. `replay_controls`
+recognises the line by "Playback" in a label; `button_hint_words` names each
+button in the Alt B style, buttons side by side joined by "or": "L2, Previous
+Scene. L1 or R1, Change Playback Speed. triangle, Pause". The narrator says
+that in place of the line as drawn and keeps it while "Ver. 07.002" (the
+replay's recorded version, (960, 174), `in_replay`) shows, so Alt R gives it
+at any point in the replay, after anything else and not in the pause menu.
+The pictures were caught by a watcher that had to use full reads: quick
+reads without the page refresh thread missed the line. Not yet heard.
+
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:
 Favorites, Replays, Pending CFN Friend Requests, Blacklist, Rival Search,
