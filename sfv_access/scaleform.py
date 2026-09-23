@@ -1332,7 +1332,12 @@ STANCE_WORDS = (
 
 # Pictures standing for a currency, said after the amount that follows them:
 # the Current Missions notice draws "Reward: <Fight Money picture>50".
-ICON_WORDS = {"icon_FM": "Fight Money"}
+# The Message Log draws the same coin as "fm" where elsewhere it is
+# "icon_FM", so a message read as "Received 500 ." (2026-09-22).
+ICON_WORDS = {"icon_FM": "Fight Money", "fm": "Fight Money"}
+# What the game writes after an amount it has already drawn the picture for,
+# "500FM", which is dropped rather than said as "500 Fight MoneyFM".
+ICON_ABBREVIATIONS = {"Fight Money": "FM"}
 # Pictures that need no words: each sits beside words saying the same, as the
 # EXP picture before "100 EXP" and a gem's before its name, or is a controller
 # button's picture beside the hint it belongs to. Left as the game's spaces and
@@ -1343,10 +1348,17 @@ SILENT_PICTURE_PREFIXES = ("icon_EXbattle",)
 
 
 def _icon_amounts(text: str) -> str:
-    """"Reward:  Fight Money 50" as "Reward: 50 Fight Money"."""
-    for words in ICON_WORDS.values():
-        text = re.sub(rf" *{re.escape(words)} *([\d,]+)", rf" \1 {words}", text)
-    return text
+    """"Reward:  Fight Money 50" as "Reward: 50 Fight Money".
+
+    An abbreviation the game writes straight after the amount is dropped,
+    having just been said in full, and a space left in front of a full stop,
+    where the picture was, is closed up.
+    """
+    for words in sorted(set(ICON_WORDS.values())):
+        short = ICON_ABBREVIATIONS.get(words)
+        after = rf"(?:{re.escape(short)})?" if short else ""
+        text = re.sub(rf" *{re.escape(words)} *([\d,]+)" + after, rf" \1 {words}", text)
+    return re.sub(r"\s+([.,!?])", r"\1", text)
 
 
 def input_words(name: str) -> str | None:

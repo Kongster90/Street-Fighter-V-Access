@@ -2404,6 +2404,17 @@ check("moving says what each message says, without the date",
 check("no messages elsewhere", sf.message_log_rows(on_story) == []
       and sf.message_log_entry(on_story) is None)
 
+
+# The coin the Message Log draws, named "fm" there and "icon_FM" elsewhere,
+# with the game's own "FM" written after the amount in one message.
+check("an amount with the coin after it keeps its words and loses the space before the stop",
+      sf._icon_amounts("Received 500  Fight Money .") == "Received 500 Fight Money.",
+      repr(sf._icon_amounts("Received 500  Fight Money .")))
+check("the coin before an amount moves after it, and the game's own FM is not said twice",
+      sf._icon_amounts("Reward:  Fight Money 500FM") == "Reward: 500 Fight Money",
+      repr(sf._icon_amounts("Reward:  Fight Money 500FM")))
+check("both names for the coin have words", set(sf.ICON_WORDS) >= {"icon_FM", "fm"})
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

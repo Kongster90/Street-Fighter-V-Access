@@ -1979,6 +1979,14 @@ row, refusing when every row is alike, as while the list arrives;
 Moving says the message alone and Alt R adds the date. Not looked at yet: the
 tab above the list, opening a message, and everything under CFN.
 
+The user then asked what "Received 500 ." meant: the coin is drawn there as
+"fm", where everywhere else it is "icon_FM", so `ICON_WORDS` had no words for
+it and `unknown_pictures` logged it. Both names are in now. One message also
+read "Reward: 500 Fight MoneyFM", the game writing its own abbreviation after
+an amount it has already drawn the picture for, so `_icon_amounts` drops an
+`ICON_ABBREVIATIONS` one and closes up the space a picture leaves before a
+full stop.
+
 ## Running things
 
 Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod
