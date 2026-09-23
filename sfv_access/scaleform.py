@@ -291,6 +291,15 @@ def selection_key(items: list[TextItem]):
 MAIN_MENU_ENTRIES = ("ARCADE", "STORY", "VERSUS", "CHALLENGES", "TRAINING", "BATTLE SETTINGS", "CFN", "SHOP")
 BANNER_ROWS = (191.0, 452.0)
 BANNER_ROW_TOLERANCE = 2.0
+# With the cursor on the banner itself each advert brings a description line
+# of its own ("Begin the game mode displayed in the Information section.", "In
+# a mysterious palace run by Rose, Menat awaits..."), so the description moves
+# with it. Coming back from the shop leaves the cursor there, and the adverts
+# were read again (2026-09-23). What the banner showed before tells them apart:
+# the name of a mode or icon means the cursor has just come, an advert that it
+# is only rotating.
+MAIN_MENU_NAMES = frozenset(MAIN_MENU_ENTRIES + (
+    "BATTLE LOUNGE", "RANKED MATCH", "CASUAL MATCH", "OPTIONS", "GALLERY", "MESSAGE LOG", "LOGIN", "EXIT"))
 
 
 def banner_texts(items: list[TextItem]) -> set[str]:

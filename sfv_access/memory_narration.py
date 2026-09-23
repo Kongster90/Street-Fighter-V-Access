@@ -265,6 +265,8 @@ class Narrator:
                 self.groups_seen_at = now
 
         parts = None
+        # What the main menu's banner showed a read ago; see the adverts below.
+        was_banner = scaleform.banner_texts(self.previous)
         key = scaleform.selection_key(items)
         if key != self.last_key:
             self.last_key = key
@@ -289,14 +291,20 @@ class Narrator:
         # The main menu's banner rotating through adverts is not a move: a move
         # changes the description line too, and the banner catches up with it
         # within a moment, where an advert comes with the description as it was.
+        # With the cursor on the banner itself each advert changes the
+        # description too; there an advert following an advert is no move.
         foot = scaleform.footer(items)
         foot_text = foot.text if foot else None
         if foot_text != self.footer_text:
             self.footer_text, self.footer_changed_at = foot_text, now
-        if parts and now - self.footer_changed_at > BANNER_CATCHUP:
+        if parts:
             banner = scaleform.banner_texts(items)
             if banner and all(" ".join(p.split()) in banner for p in parts):
-                parts = None
+                settled = now - self.footer_changed_at > BANNER_CATCHUP
+                rotating = (bool(was_banner) and not was_banner & scaleform.MAIN_MENU_NAMES
+                            and not banner & scaleform.MAIN_MENU_NAMES)
+                if settled or rotating:
+                    parts = None
 
         # A message says what it says; when it arrived is on the read key.
         message = scaleform.message_log_entry(items)

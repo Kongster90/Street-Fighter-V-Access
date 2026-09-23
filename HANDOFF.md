@@ -971,7 +971,15 @@ the adverts. The next day the adverts were read again with the cursor on
 Battle Settings: the mode the cursor is on leaves its place in the list for
 the banner, and once the banner went back to adverts its name was nowhere,
 so the main menu went unrecognised. `banner_texts` now wants all but one of
-eight modes (`MAIN_MENU_ENTRIES`).
+eight modes (`MAIN_MENU_ENTRIES`). Then they were read after coming back from
+the shop, which leaves the cursor on the banner itself: there each advert
+brings its own description line ("Begin the game mode displayed in the
+Information section.", "In a mysterious palace run by Rose, Menat awaits..."),
+so the description moved with it. `Narrator.step` now also drops an advert
+that follows an advert, what the banner showed a read ago holding no mode's
+or icon's name (`MAIN_MENU_NAMES`) and what it shows now none either. Arriving
+on the banner still says the advert showing, and Alt R the current one.
+Replaying the log of both says every move and no rotation.
 
 **Reattaching after the game restarts picked the launcher.** On 2026-09-14
 the user quit the game with the mod running and launched it again; memory

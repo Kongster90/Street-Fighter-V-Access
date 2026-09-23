@@ -2631,6 +2631,17 @@ on_mode = narrate([
 ])
 check("the adverts are not moves with the cursor on a mode, whose name leaves the list",
       on_mode == [(0.0, "BATTLE SETTINGS")], repr(on_mode))
+SHOP_LINE = "Go to the purchase screen for content displayed in the Information section."
+MODE_LINE = "Begin the game mode displayed in the Information section."
+on_banner = narrate([
+    (0.0, [item("Fighting Chance", 157, 507, GOLD), item("Choose a category.", 110, 992)]),
+    (1.0, banner_menu("UPGRADE KIT AVAILABLE NOW", SHOP_LINE)),
+    (6.0, banner_menu("Nostalgia Collection", MODE_LINE)),
+    (11.0, banner_menu("Fighting Chance", SHOP_LINE, date="Aug 31, 2026 - Sep 30, 2026")),
+    (12.0, banner_menu("ARCADE", "A single player mode.", on="ARCADE")),
+])
+check("on the banner itself, the advert arrived on is said and the rest are not",
+      [s for _, s in on_banner][1:] == ["UPGRADE KIT AVAILABLE NOW", "ARCADE"], repr(on_banner))
 check("the banner catching up with the description a moment late is still said",
       late[-1:] == [(5.3, "LOGIN")], repr(late))
 check("no banner off the main menu", sf.banner_texts(profile_matchup()) == set())
