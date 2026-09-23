@@ -1358,6 +1358,8 @@ def _icon_amounts(text: str) -> str:
         short = ICON_ABBREVIATIONS.get(words)
         after = rf"(?:{re.escape(short)})?" if short else ""
         text = re.sub(rf" *{re.escape(words)} *([\d,]+)" + after, rf" \1 {words}", text)
+    # The picture itself left a space behind, which doubles the one beside it.
+    text = re.sub(r"[ \t]{2,}", " ", text)
     return re.sub(r"\s+([.,!?])", r"\1", text)
 
 
