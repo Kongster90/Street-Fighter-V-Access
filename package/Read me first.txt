@@ -20,6 +20,8 @@ Installing
 3. It puts a Street Fighter V Access shortcut on your desktop, then asks whether the mod should start with the game. Type yes or no and press Enter.
 4. If you answer yes and Steam is open, it asks you to press Enter, closes Steam for a moment, and opens it again.
 
+Why Steam has to close: to start the mod with the game, the installer adds it to Street Fighter V's launch options, which live in Steam's own settings file. Steam keeps its settings in memory while it runs and writes them back when it closes, so a change made while Steam is open would be written over. Closing Steam first lets the change stay. Nothing else in Steam is touched, and a download in progress carries on when Steam opens again. Steam only closes when the launch options need changing: when you answer yes, or when you answer no after answering yes on an earlier install, to take them back out. Otherwise, or if Steam is already closed, it is left alone.
+
 That is all. The mod is installed in your programs folder, so you can delete the zip and the extracted folder afterwards.
 
 Answer yes if you want the mod to start by itself every time you play. It is one less thing to do. On some computers the game then cannot log into its server and shows an error code, and if that happens to you, run the installer again and answer no.
@@ -58,7 +60,11 @@ The Story tutorial's instructions and tips.
 The shop, notices and missions after logging in, and Extra Battle.
 Survival: the supplements and battle items between stages, how each fight went with the health you carry on with, and the result at the end of a run.
 Online: the VS screen, who won as each match ends, the result screen and Battle Lounge chat.
-Story: Character Story's chapters and each fighter's profile, and subtitles with Alt T.
+Story: Character Story's chapters and each fighter's profile, General Story's scenes, and subtitles with Alt T.
+Battle Settings, including Random Stage Settings, where each stage says whether it is ticked.
+CFN: its menu, the timeline, Pending CFN Friend Requests, and a player's Fighter Profile, each page with its figures on Alt R.
+Replays: the controls with each button named, once as a replay begins and on Alt R.
+The Message Log.
 
 Not yet: the fights themselves. There are no sounds for health or distance yet.
 
@@ -92,4 +98,4 @@ Mention the version, which is in VERSION.txt in the same folder as this file.
 
 Uninstalling
 
-Open %LOCALAPPDATA%\Programs\SFV Access and run Uninstall SFV Access. It removes the desktop shortcut, and takes the mod out of Steam if it was starting with the game, closing Steam for a moment the same way. Then you can delete that folder.
+Open %LOCALAPPDATA%\Programs\SFV Access and run Uninstall SFV Access. It removes the desktop shortcut, and takes the mod out of Steam if it was starting with the game, closing Steam for a moment the same way and for the same reason. Then you can delete that folder.
