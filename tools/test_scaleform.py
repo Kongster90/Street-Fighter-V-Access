@@ -2921,6 +2921,10 @@ try:
     sf.buttons.style = lambda: "playstation"
     playstation = sf.replay_controls(replay_items)
     appearing = narrate([(0.0, []), (1.0, replay_items), (1.5, replay_items)])
+    # Mid-replay: nothing selected before or after, only the line coming and going.
+    hud = [sf.TextItem("Ver. 07.002", 960, 174, (1, 1, 1, 0.8), 4, chain=(1, 2))]
+    mid_replay = narrate([(0.0, hud), (0.5, hud), (1.0, hud + replay_items), (1.5, hud + replay_items),
+                          (6.0, hud), (9.0, hud + replay_items)])
     sf.buttons.style = lambda: "xbox"
     xbox = sf.replay_controls(replay_items)
 finally:
@@ -2928,6 +2932,8 @@ finally:
 check("as the controls appear, the buttons are said with them",
       [s for _, s in appearing] == ["L2, Previous Scene. L1 or R1, Change Playback Speed. triangle, Pause"],
       repr(appearing))
+check("mid-replay, with nothing selected, the controls are said each time they appear, once",
+      [t for t, s in mid_replay if "Playback" in s] == [1.0, 9.0], repr(mid_replay))
 check("a replay's controls name each button in the chosen style, side by side as either",
       playstation and playstation[1] == "L2, Previous Scene. L1 or R1, Change Playback Speed. triangle, Pause"
       and xbox[1] == "left trigger, Previous Scene. left bumper or right bumper, Change Playback Speed. Y, Pause",

@@ -2218,7 +2218,10 @@ that in place of the line as drawn and keeps it while "Ver. 07.002" (the
 replay's recorded version, (960, 174), `in_replay`) shows, so Alt R gives it
 at any point in the replay, after anything else and not in the pause menu.
 The pictures were caught by a watcher that had to use full reads: quick
-reads without the page refresh thread missed the line. Not yet heard.
+reads without the page refresh thread missed the line. The user found Alt R
+working; the line's arrival mid-replay went unsaid, being no change of
+selection with nothing selected, so the narrator now says it whenever it
+appears or changes (`controls_seen`).
 
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:
