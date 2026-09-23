@@ -2001,6 +2001,8 @@ there for the main menu's icon row, where the banner can come a frame after
 the description. On a menu of pictures the description line is the whole
 move, so `_only_the_description_moved` (the footer is the only text that
 changed, and it names an entry) skips the wait; anything else still settles.
+Both the naming and the promptness were confirmed in play by the user on
+2026-09-22.
 
 The user then asked what "Received 500 ." meant: the coin is drawn there as
 "fm", where everywhere else it is "icon_FM", so `ICON_WORDS` had no words for
