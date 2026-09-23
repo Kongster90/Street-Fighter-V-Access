@@ -143,6 +143,13 @@ LONE_BUTTON_NESTING = 2
 # size as most of the others', which a heading above a list of entries is not.
 BRIGHT_GROUP_MIN = 3
 BRIGHTNESS_MARGIN = 0.3
+# A Fighter Profile's lists draw the row the cursor is on in black over a lit
+# bar and every other row in white. A label counts as black at or under
+# DARK_LABEL in each of red, green and blue, the others as light at or over
+# LIGHT_LABEL, and either only while at least half opaque.
+DARK_LABEL = 0.05
+LIGHT_LABEL = 0.5
+OPAQUE_LABEL = 0.5
 
 # Layout placeholders the game leaves in its templates, such as the run of
 # lower-case w inside every prompt and the capital Ws on the Training loading
@@ -1953,6 +1960,79 @@ def story_profile(items: list[TextItem]) -> list[str]:
     return [" ".join(it.text.replace(" : ", ": ").split()) for it in column if it.text.strip()]
 
 
+# ------------------------------------------------------------- fighter profile
+#
+# A player's Fighter Profile (CFN, then View Fighter Profile) lists its pages
+# down the left. On the KO Ratio and KO'd Ratio pages, choosing one moves the
+# cursor to a match-up picked on two rows, the fighter at (855, 359) and the
+# opponent at (855, 408), "All Characters" until one is picked, each changed
+# with left and right. The row the cursor is on is drawn in black
+# (`_mark_dark_label`). Beside them in the same panel a column of labels, each
+# with its figure under it ("Normal Attack" "0" ... "Other" "0"), "---" while
+# it loads or where there is none, and "ROUND K.O." beside the column, the
+# chart's title. Moving says the name; Alt R gives the match-up and figures.
+# Read live on 2026-09-22.
+
+MATCHUP_ANY = "All Characters"
+MATCHUP_NO_DATA = "---"
+MATCHUP_REACH = 4        # how far up the two rows' texts meet
+PROFILE_COLUMN = 20      # texts this close along x share a column
+PROFILE_VALUE_BELOW = 40  # and a figure sits this close under its label
+
+
+def _matchup_rows(items: list[TextItem]) -> tuple[TextItem, TextItem, int] | None:
+    """The fighter's and opponent's rows, top first, and the panel holding them."""
+    names = fighter_names() | {MATCHUP_ANY}
+    rows = [it for it in items if it.shown and it.text.strip() in names and it.chain]
+    picked = next((it for it in rows if it.chosen and max(it.tint[:3]) <= DARK_LABEL), None)
+    if picked is None:
+        return None
+    for level in range(1, min(MATCHUP_REACH, len(picked.chain) - 1) + 1):
+        others = [it for it in rows if it is not picked and picked.chain[level] in it.chain]
+        if len(others) == 1:
+            top, bottom = sorted((picked, others[0]), key=lambda it: it.y)
+            return top, bottom, picked.chain[level + 1]
+        if others:
+            return None
+    return None
+
+
+def _is_figure(text: str) -> bool:
+    return text == MATCHUP_NO_DATA or any(c.isdigit() for c in text)
+
+
+def matchup_details(items: list[TextItem]) -> list[str]:
+    """"ZEKU versus All Characters", then each figure on the page, for the read key."""
+    found = _matchup_rows(items)
+    if found is None:
+        return []
+    top, bottom, panel = found
+    texts = [it for it in items if it.shown and panel in it.chain and it is not top
+             and it is not bottom and it.text.strip()]
+    columns: list[list[TextItem]] = []
+    for it in sorted(texts, key=lambda it: it.x):
+        if columns and it.x - columns[-1][0].x <= PROFILE_COLUMN:
+            columns[-1].append(it)
+        else:
+            columns.append([it])
+    said = [f"{top.text.strip()} versus {bottom.text.strip()}"]
+    for column in columns:
+        column.sort(key=lambda it: it.y)
+        at = 0
+        while at < len(column):
+            label = " ".join(column[at].text.split())
+            below = column[at + 1] if at + 1 < len(column) else None
+            if (below is not None and not _is_figure(label) and _is_figure(below.text.strip())
+                    and below.y - column[at].y <= PROFILE_VALUE_BELOW):
+                figure = below.text.strip()
+                said.append(f"{label} {'no data' if figure == MATCHUP_NO_DATA else figure}")
+                at += 2
+            else:
+                said.append(label)
+                at += 1
+    return said
+
+
 # -------------------------------------------------------------- arcade results
 #
 # Arcade's result screen scores the fight down its left side, each label with
@@ -3263,6 +3343,7 @@ class ScaleformText:
             if self._mark_by_layers(container, slots):
                 continue
             self._mark_by_brightness(container, slots)
+            self._mark_dark_label(container, slots)
         self._mark_highlighted_rows(shown, groups)
         self._mark_single_move(shown, groups)
         self._mark_picture_grids(shown, items)
@@ -3533,6 +3614,31 @@ class ScaleformText:
             return
         top.chosen = True
         top.group = container
+
+    def _mark_dark_label(self, container: int, slots) -> None:
+        """A list that draws the row the cursor is on in black and the rest in white.
+
+        A Fighter Profile's KO and KO'd ratio pages pair two rows, the fighter
+        and "All Characters" or an opponent, and nothing else marks the row
+        the cursor is on: no gold, and the parts that differ between the rows
+        include the arrows, which hide at the end of a row's choices as well.
+        Only the label's colour is certain. In 2,934 recorded screens and
+        every log, the testers' too, no black text showed anywhere else.
+
+        Not recorded as a group, as the highlight bar rule is not: this is a
+        list, and the text around it is no question to be read out.
+        """
+        labels = [held[0][0] for held in slots.values()]
+        if any(it.highlighted for it in labels):
+            return
+        def opaque(it):
+            return it.tint[3] >= OPAQUE_LABEL
+        dark = [it for it in labels if opaque(it) and max(it.tint[:3]) <= DARK_LABEL]
+        if len(dark) != 1:
+            return
+        if not all(opaque(it) and min(it.tint[:3]) >= LIGHT_LABEL for it in labels if it is not dark[0]):
+            return
+        dark[0].chosen = True
 
     def _hidden_ancestors(self, chain: tuple[int, ...]) -> list[int]:
         """The objects above a field whose render node has its visible bit clear."""

@@ -2450,6 +2450,57 @@ slower = narrate([(0.0, on_exit), (0.3, on_exit), (0.4, on_login), (0.5, on_logi
 check("a move with more than the description still settles before it is said",
       [(t, s) for t, s in slower][-1] == (0.7, "LOGIN"), repr(slower))
 
+
+# A Fighter Profile's KO'd Ratio page, as read live on 2026-09-22: the
+# match-up on two rows, the one the cursor is on drawn black and the other
+# white, and beside them in the same panel the chart's title and a column of
+# labels, each with its figure under it.
+BLACK = (0.0, 0.0, 0.0, 1.0)
+
+
+def profile_matchup(fighter="ZEKU", opponent="All Characters", cursor=0, figure="0"):
+    mem = FakeMemory(size=0x21000)
+    root = display_object(mem, 0, 0, 0, WHITE)
+    panel = display_object(mem, root, 0, 0, WHITE)
+    picker = display_object(mem, panel, 636, 348, WHITE)
+    for n, name in enumerate((fighter, opponent)):
+        row = display_object(mem, picker, 204, 6 + 49 * n, WHITE)
+        holder = display_object(mem, row, 15, 5, BLACK if n == cursor else WHITE)
+        text_field(mem, holder, 0, 0, [name])
+    text_field(mem, display_object(mem, panel, 780, 651, WHITE), 0, 0, ["ROUND K.O."])
+    for n, label in enumerate(("Normal Attack", "Unique Attack", "Other")):
+        stat = display_object(mem, panel, 1112, 455 + 60 * n, WHITE)
+        text_field(mem, stat, 0, 0, [label])
+        text_field(mem, stat, 0, 20, [figure])
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+def picked(items):
+    return [it.text for it in items if it.selected]
+
+
+check("the match-up row drawn black is the one the cursor is on",
+      picked(profile_matchup()) == ["ZEKU"] and picked(profile_matchup(cursor=1)) == ["All Characters"],
+      repr((picked(profile_matchup()), picked(profile_matchup(cursor=1)))))
+check("with neither row black, as while the list beside has the cursor, nothing is",
+      picked(profile_matchup(cursor=None)) == [], repr(picked(profile_matchup(cursor=None))))
+check("changing the fighter says the new one alone",
+      sf.landed_on(profile_matchup(), profile_matchup("SAKURA")) == ["SAKURA"],
+      repr(sf.landed_on(profile_matchup(), profile_matchup("SAKURA"))))
+check("going down to the opponent's row says it, and changing it the new one",
+      sf.landed_on(profile_matchup(), profile_matchup(cursor=1)) == ["All Characters"]
+      and sf.landed_on(profile_matchup(cursor=1), profile_matchup(opponent="RYU", cursor=1)) == ["RYU"],
+      repr(sf.landed_on(profile_matchup(), profile_matchup(cursor=1))))
+check("the read key says the match-up, then each figure after its label",
+      sf.matchup_details(profile_matchup(opponent="RYU", cursor=1)) ==
+      ["ZEKU versus RYU", "ROUND K.O.", "Normal Attack 0", "Unique Attack 0", "Other 0"],
+      repr(sf.matchup_details(profile_matchup(opponent="RYU", cursor=1))))
+check("a figure still loading, or missing, is no data",
+      sf.matchup_details(profile_matchup(figure="---"))[2] == "Normal Attack no data",
+      repr(sf.matchup_details(profile_matchup(figure="---"))))
+check("no match-up elsewhere, or while the cursor is on the list beside it",
+      sf.matchup_details(on_story) == [] and sf.matchup_details(profile_matchup(cursor=None)) == [])
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

@@ -2012,6 +2012,29 @@ an amount it has already drawn the picture for, so `_icon_amounts` drops an
 `ICON_ABBREVIATIONS` one and closes up the space a picture leaves before a
 full stop.
 
+**A Fighter Profile's match-up.** Pending CFN Friend Requests, a player,
+View Fighter Profile: the profile's pages down the left ("Win Ratio", "Win
+Ratio by Character", "KO Ratio", "KO'd Ratio", each over Overall, Ranked,
+Casual and Battle Lounge entries) read already, the selected one drawn black
+on a lit bar and marked by the highlight bar rule. Choosing a KO or KO'd
+Ratio page moves the cursor to a match-up picked on two rows, the fighter
+(855, 359) over the opponent (855, 408), "All Characters" until one is
+picked, and that was silent (2026-09-22). The row the cursor is on is drawn
+black and the other white; its highlight bar part shows too, but so do the
+arrows, and the left arrow hides on "All Characters" alone, so on that row
+two parts differ, pointing at different rows, and the short-list rule could
+not decide (a watcher logging the rows' parts while the user moved showed
+it). `grid_tiles` also missed the two rows, their container's children
+tying on part counts. `_mark_dark_label` takes the one black label in a
+group of white ones; no black text shows in any recording or log, the
+testers' included. Moving says the name alone; Alt R gives
+`matchup_details`, "ZEKU versus RYU. ROUND K.O. Normal Attack 0 ...", each
+label with the figure under it, "---" as no data. Only while the cursor is
+in the picker, since that is where the rows are marked. Not yet heard. Also
+seen: the player's name at the top, (642, 119), was said once each time a
+page was chosen, a mark lasting one read while the page changes; not yet
+explained.
+
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:
 Favorites, Replays, Pending CFN Friend Requests, Blacklist, Rival Search,
