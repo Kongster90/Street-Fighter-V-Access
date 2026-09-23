@@ -2198,7 +2198,8 @@ a row were one player's, the event when it was the same event, and all of it
 when only the date differed (spoken-log.txt from 14:56:21). `Narrator.step`
 now says the entry whole whenever it is another, once it has held for a read
 (`timeline_seen`, `timeline_said`), and drops the entry's own texts from
-anything else said.
+anything else said. Confirmed in play by the user the same day, every entry
+said whole, repeats included.
 
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:
