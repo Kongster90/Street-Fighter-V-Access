@@ -482,12 +482,16 @@ class App:
             chapter = scaleform.story_chapter(items)
             message = scaleform.message_log_entry(items)
             matchup = scaleform.matchup_details(items)
+            profile_page = scaleform.profile_page_details(items)
             if message and entry is None:
                 # What the message says, then when it arrived.
                 said = memory_narration.phrase([message[0], message[1]])
             elif matchup and entry is None:
                 # A Fighter Profile's match-up, then the figures for it.
                 said = memory_narration.phrase(matchup)
+            elif profile_page and entry is None:
+                # Any other Fighter Profile page: its name, then its figures.
+                said = memory_narration.phrase(profile_page)
             elif chapter and entry is None:
                 # A story chapter, then the fighter's profile beside it.
                 said = memory_narration.phrase([chapter] + scaleform.story_profile(items))

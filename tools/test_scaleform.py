@@ -2595,6 +2595,74 @@ check("a fighter beside their figures is not a prompt's answer",
       repr(picked(stats_row("RYU", ["WINS: ", "MATCH: ", "42.86%", "378"]))))
 check("built the same way beside words, it still is",
       picked(stats_row("Yes", ["No"])) == ["Yes"], repr(picked(stats_row("Yes", ["No"]))))
+check("nor beside a level and its experience, as on Character Level",
+      picked(stats_row("RYU", ["Lv. 20", "EXP 1781/3700"])) == []
+      and picked(stats_row("RYU", ["Lv. ---", "EXP ---/---"])) == [],
+      repr(picked(stats_row("RYU", ["Lv. ---", "EXP ---/---"]))))
+
+
+# A Fighter Profile's list of pages: entries under a heading have three parts,
+# entries that are headings themselves four, and the highlight bar, the second
+# part, shows on the cursor's row alone. The cursor on "Fight Money Earned", a
+# four-part row, was never found (2026-09-23).
+def profile_pages(cursor, widths=(1, 4, 3, 3, 4, 3, 4)):
+    tree = {}
+    def node(obj, kids=(), flags=1):
+        tree[obj] = {"kids": list(kids), "cx": (1, 1, 1, 1), "flags": flags}
+    rows = []
+    for i, width in enumerate(widths):
+        row = 3000 + i * 10
+        parts = [row + p for p in range(1, width + 1)]
+        for p, part in enumerate(parts):
+            node(part, flags=0 if p == 1 and i != cursor else 1)
+        node(row, parts)
+        rows.append(row)
+    node(2999, rows)
+    return (lambda o: tree.get(o, {}).get("kids", []),
+            lambda o: (tree[o]["cx"], tree[o]["flags"]) if o in tree else None, rows)
+
+
+pkids, plook, prows = profile_pages(cursor=6)
+check("the usual-size rows alone cannot find the cursor on a heading entry",
+      sf.highlighted_row(pkids, plook, sf.grid_tiles(pkids, 2999, minimum=2)) is None)
+check("comparing the parts every row has finds it",
+      sf.highlighted_mixed_row(pkids, plook, 2999) == prows[6])
+qkids, qlook, qrows = profile_pages(cursor=3)
+check("and a cursor on an ordinary entry the same way",
+      sf.highlighted_mixed_row(qkids, qlook, 2999) == qrows[3])
+def profile_page(figures, entry="Overall (Cumulative)"):
+    """A Fighter Profile page as logged on 2026-09-23: the list of pages on the
+    left, the player's panel and the page's figures in one panel on the right."""
+    movie, common, right, player, pages, tab = 900, 901, 902, 903, 904, 905
+    out = [sf.TextItem("Steam ID:76561198173997646", 643, 160, WHITE, 5, chain=(910, player, right, common, movie)),
+           sf.TextItem("Player Level", 649, 243, WHITE, 5, chain=(911, player, right, common, movie)),
+           sf.TextItem("Discipline", 319, 165, WHITE, 4, chain=(912, tab, common, movie)),
+           sf.TextItem(entry, 320, 321, WHITE, 5, chain=(913, 914, pages, common, movie), chosen=True)]
+    out += [sf.TextItem(text, x, y, WHITE, 5, chain=(920 + i, 960 + i // 2, right, common, movie))
+            for i, (text, x, y) in enumerate(figures)]
+    return out
+
+
+win_ratio = profile_page([("TOTAL MATCHES: ", 958.6, 391.1), ("12426", 959.6, 412.1),
+                          ("STRAIGHT WINS: ", 1122.7, 564.0), ("2957", 1122.7, 585.0),
+                          ("WIN RATE", 780.6, 596.0), ("49.39%", 780.6, 628.0),
+                          ("WINS: ", 1122.7, 632.0), ("3180", 1122.7, 653.0),
+                          ("LOSSES:", 1122.8, 700.0), ("6289", 1122.8, 721.0)])
+check("a profile page's figures are read with their labels, top to bottom",
+      sf.profile_page_details(win_ratio) == ["Overall (Cumulative)", "TOTAL MATCHES: 12426", "STRAIGHT WINS: 2957",
+                                             "WIN RATE 49.39%", "WINS: 3180", "LOSSES: 6289"],
+      repr(sf.profile_page_details(win_ratio)))
+by_character = profile_page([("WINS: ", 878.6, 350.1), ("MATCH: ", 1100.7, 350.1), ("42.86%", 878.6, 374.1),
+                             ("378", 1100.7, 374.1), ("RYU", 643.6, 376.1),
+                             ("WINS: ", 878.6, 416.1), ("MATCH: ", 1100.7, 416.1), ("0.00%", 878.6, 440.1),
+                             ("0", 1100.7, 440.1), ("KEN", 643.6, 442.1)], entry="Overall (Cumulative)")
+check("a table's rows are read left to right, the fighter first",
+      sf.profile_page_details(by_character)[1:] == ["RYU", "WINS: 42.86%", "MATCH: 378",
+                                                    "KEN", "WINS: 0.00%", "MATCH: 0"],
+      repr(sf.profile_page_details(by_character)))
+check("nothing of it off the profile", sf.profile_page_details(on_story) == [])
+check("a list of rows all one size is left to the usual rule",
+      sf.highlighted_mixed_row(*profile_pages(cursor=2, widths=(3, 3, 3, 3, 3))[:2], 2999) is None)
 
 
 # The main menu's banner keeps the cursor's mark as it names the icon you are

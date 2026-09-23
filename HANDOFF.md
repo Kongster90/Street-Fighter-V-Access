@@ -2084,6 +2084,26 @@ refuses when another label in the group is a figure or ends with a colon
 marks are Yes and No, 6 parts against 2, beside words. Nothing on that page
 marks a row yet, and whether the cursor ever goes into the list is unknown.
 
+The profile's pages (2026-09-23). Its tabs (Profile, Discipline and more,
+the tab's name at (319, 165)) each list their pages on the left, entries
+under a heading at x 350 (three parts a row) and entries that are headings
+themselves at x 320 ("Character Level", "Fight Money Earned", four parts);
+the highlight bar, the second part, shows on the cursor's row. `grid_tiles`
+keeps only the usual size, so the cursor on a heading entry went unsaid;
+`highlighted_mixed_row` compares the parts every row has, only when the
+one-size rows found nothing, and in every recording it never fires. Character
+Level lists each fighter beside "Lv. 20" and "EXP 1781/3700" ("Lv. ---",
+"EXP ---/---" with no data), which the prompt rule took for answers beside a
+chosen one; `_label_or_figure` now counts any text with a digit or "---".
+Alt R on any page but the match-up gives `profile_page_details`: the page's
+name, then the right-hand panel's texts outside the player's panel (the one
+holding Steam ID and Player Level), each label with the figure under it, rows
+left to right: "Fight Money Earned. Total Fight Money Earned 378830 Fight
+Money". Not yet heard. Moving through a table page's rows (Fight Money Earned
+by Character, Battle Count by Character Match-Up) says a row's texts in
+screen order, "20000 Fight Money. 7.00%. RYU", "0. 0.00%. VS RYU", the name
+last; not changed yet.
+
 Also seen: the player's name at the top, (642, 119), was said once each time
 a page was chosen, a mark lasting one read while the page's figures are
 swapped out (scaleform-log 21:09:27). Its group at every level has either a

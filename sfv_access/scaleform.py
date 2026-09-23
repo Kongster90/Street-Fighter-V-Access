@@ -714,6 +714,30 @@ def highlighted_row(children, appearance, rows) -> int | None:
     return None
 
 
+def highlighted_mixed_row(children, appearance, container) -> int | None:
+    """The row whose highlight bar is on, in a list whose rows differ in size.
+
+    A Fighter Profile's list of pages mixes entries under a heading, three
+    parts each, with entries that are headings themselves ("Character Level",
+    "Fight Money Earned"), four parts; `grid_tiles` keeps only the usual size,
+    so the cursor on a heading entry was never found and moving there said
+    nothing (2026-09-23). The parts every row has are compared instead, only
+    once the rows of one size have been tried, and only for a long list.
+    """
+    rows = [k for k in children(container) if len(children(k)) >= 2]
+    widths = {len(children(k)) for k in rows}
+    if len(rows) < GRID_MIN_TILES or len(widths) < 2:
+        return None
+    width = min(widths)
+    members = set(rows)
+
+    def trimmed(obj):
+        kids = children(obj)
+        return kids[:width] if obj in members else kids
+
+    return highlighted_row(trimmed, appearance, rows)
+
+
 # The Home screen, reached with a Fighter ID and Home change ticket, is a grid of
 # flags with no names: an "All" tab above forty tiles of three parts, the one
 # the cursor is on outlined, so the picture grid rule named the tab. Each tile's
@@ -2075,9 +2099,12 @@ def _is_figure(text: str) -> bool:
 
 
 def _label_or_figure(text: str) -> bool:
-    """A label naming a figure ("WINS: ") or a figure ("42.86%", "378", "---"), never a prompt's answer."""
+    """A label naming a figure ("WINS: "), a figure ("42.86%", "378", "---") or one with its
+    label ("Lv. 20", "EXP ---/---"), never a prompt's answer. Character Level lists each
+    fighter beside the last two, and every name was read as a prompt's answer (2026-09-23)."""
     text = text.strip()
-    return text.endswith(":") or (text != "" and not any(c.isalpha() for c in text))
+    return (text.endswith(":") or MATCHUP_NO_DATA in text or any(c.isdigit() for c in text)
+            or (text != "" and not any(c.isalpha() for c in text)))
 
 
 def matchup_details(items: list[TextItem]) -> list[str]:
@@ -2109,6 +2136,70 @@ def matchup_details(items: list[TextItem]) -> list[str]:
             else:
                 said.append(label)
                 at += 1
+    return said
+
+
+# The profile's other pages (Win Ratio, Battle Count, Character Level, Fight
+# Money Earned and the rest) show their figures right of the list of pages,
+# in one panel with the player's (Steam ID, Player Level, League Points), the
+# player's in a panel of its own inside it: whatever else is in the right-hand
+# panel is the page. Alt R reads it: each label with the figure under it
+# ("TOTAL MATCHES: 12426"), rows of a table left to right ("RYU. WINS: 42.86%.
+# MATCH: 378"). Read live on 2026-09-23, where moving to a page said its name
+# and nothing gave its figures.
+
+PROFILE_MARK = "Steam ID:"
+PROFILE_PANEL_MARK = "Player Level"
+PROFILE_ROW_GAP = 30     # texts in one row of a table sit this close in y
+
+
+def profile_page_details(items: list[TextItem]) -> list[str]:
+    """The profile page chosen in the list, then its figures, for the read key."""
+    shown = [it for it in items if it.shown and it.chain]
+    steam = next((it for it in shown if it.text.strip().startswith(PROFILE_MARK)), None)
+    if steam is None:
+        return []
+    movie = steam.chain[-1]
+    chosen = [it for it in shown if it.chosen and not it.highlighted and it.chain[-1] == movie]
+    if not chosen:
+        return []
+    entry = min(chosen, key=lambda it: it.x)   # the list of pages is the leftmost column
+    common = next((c for c in entry.chain if c in steam.chain), None)
+    if common is None or common not in steam.chain[1:]:
+        return []
+    # The right-hand panel: the branch of the list's and the player's common
+    # ancestor that holds the player's panel. The player's panel: what holds
+    # both the Steam ID and the Player Level.
+    right = steam.chain[steam.chain.index(common) - 1]
+    level = next((it for it in shown if it.text.strip() == PROFILE_PANEL_MARK and right in it.chain), None)
+    player = next((c for c in steam.chain[1:] if level is not None and c in level.chain), steam.chain[1])
+    page = [it for it in shown if right in it.chain and player not in it.chain and it.text.strip()]
+    if not page:
+        return [" ".join(entry.text.split())]
+    # A label with its figure under it in one column, as `matchup_details`.
+    used, pieces = set(), []
+    for it in sorted(page, key=lambda it: (it.y, it.x)):
+        if id(it) in used:
+            continue
+        label = " ".join(it.text.split())
+        below = next((o for o in sorted(page, key=lambda o: o.y) if id(o) not in used and o is not it
+                      and abs(o.x - it.x) <= PROFILE_COLUMN and 0 < o.y - it.y <= PROFILE_VALUE_BELOW), None)
+        used.add(id(it))
+        if below is not None and not _is_figure(label) and _is_figure(below.text.strip()):
+            used.add(id(below))
+            figure = " ".join(below.text.split())
+            label = f"{label} {'no data' if figure == MATCHUP_NO_DATA else figure}"
+        pieces.append((it.y, it.x, label))
+    # Rows of a table, top to bottom, each left to right.
+    rows: list[list[tuple[float, float, str]]] = []
+    for piece in sorted(pieces):
+        if rows and piece[0] - rows[-1][0][0] <= PROFILE_ROW_GAP:
+            rows[-1].append(piece)
+        else:
+            rows.append([piece])
+    said = [" ".join(entry.text.split())]
+    for row in rows:
+        said += [text for _y, _x, text in sorted(row, key=lambda p: p[1])]
     return said
 
 
@@ -3467,6 +3558,8 @@ class ScaleformText:
             if any(it.highlighted for held in slots.values() for it, _level in held):
                 continue
             row = highlighted_row(kids, appearance, grid_tiles(kids, container, minimum=SHORT_LIST_ROWS))
+            if row is None:
+                row = highlighted_mixed_row(kids, appearance, container)
             if row is None:
                 continue
             for it in shown:
