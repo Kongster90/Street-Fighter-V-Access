@@ -2706,12 +2706,41 @@ next_lit = [sf.TextItem("Sep 17, 2026, 7:14:31 AM", 1668, 316, WHITE, 7, chosen=
             sf.TextItem("jamestoh", 1668, 340, WHITE, 7, chosen=True, row=92),
             sf.TextItem("Lost to Ryosei0308... [Rank Match 1-2]", 1668, 364, WHITE, 7, chosen=True, row=92)]
 check("a timeline entry is who and what, and when for the read key",
-      sf.timeline_entry(next_lit) == ("Sep 17, 2026, 7:14:31 AM", "jamestoh. Lost to Ryosei0308... [Rank Match 1-2]",
-                                      "September 17, 2026, 7:14 AM"), repr(sf.timeline_entry(next_lit)))
-moving_timeline = narrate([(0.0, entry_lit), (0.5, next_lit)])
-check("moving through the timeline says who and what, not when",
-      moving_timeline == [(0.0, "jamestoh. Is online!"), (0.5, "jamestoh. Lost to Ryosei0308... [Rank Match 1-2]")],
+      sf.timeline_entry(next_lit)[:3] == ("Sep 17, 2026, 7:14:31 AM", "jamestoh. Lost to Ryosei0308... [Rank Match 1-2]",
+                                          "September 17, 2026, 7:14 AM"), repr(sf.timeline_entry(next_lit)))
+moving_timeline = narrate([(0.0, entry_lit), (0.05, entry_lit), (0.5, next_lit), (0.55, next_lit)])
+check("moving through the timeline says who and what, not when, once the entry holds",
+      moving_timeline == [(0.05, "jamestoh. Is online!"), (0.55, "jamestoh. Lost to Ryosei0308... [Rank Match 1-2]")],
       repr(moving_timeline))
+
+
+def timeline_at(date, who, what):
+    """The cursor's entry: the list scrolls under it, so its place stays put."""
+    return [sf.TextItem(date, 1668, 240, WHITE, 7, chosen=True, row=93),
+            sf.TextItem(who, 1668, 264, WHITE, 7, chosen=True, row=93),
+            sf.TextItem(what, 1668, 288, WHITE, 7, chosen=True, row=93)]
+
+
+BATTLE = "Started [Battle Lounge] Battle with Konggster"
+FRIENDS = "And you are now CFN friends!"
+same_player = narrate([(0.0, timeline_at("Sep 16, 2026, 1:02:19 AM", "jamestoh", "Is online!")),
+                       (0.05, timeline_at("Sep 16, 2026, 1:02:19 AM", "jamestoh", "Is online!")),
+                       (0.5, timeline_at("Sep 16, 2026, 1:01:19 AM", "jamestoh", BATTLE)),
+                       (0.55, timeline_at("Sep 16, 2026, 1:01:19 AM", "jamestoh", BATTLE)),
+                       (1.0, timeline_at("Sep 16, 2026, 12:57:05 AM", "jamestoh", BATTLE)),
+                       (1.05, timeline_at("Sep 16, 2026, 12:57:05 AM", "jamestoh", BATTLE)),
+                       (1.5, timeline_at("Sep 15, 2026, 9:00:00 PM", "Take-A-Nappa", BATTLE)),
+                       (1.55, timeline_at("Sep 15, 2026, 9:00:00 PM", "Take-A-Nappa", BATTLE))])
+check("each entry is said whole: the same player, the same event, even only another date",
+      [s for _, s in same_player] == ["jamestoh. Is online!", f"jamestoh. {BATTLE}", f"jamestoh. {BATTLE}",
+                                      f"Take-A-Nappa. {BATTLE}"], repr(same_player))
+half_way = narrate([(0.0, timeline_at("Sep 16, 2026, 1:02:19 AM", "N0tso55", FRIENDS)),
+                    (0.05, timeline_at("Sep 16, 2026, 1:02:19 AM", "N0tso55", FRIENDS)),
+                    (0.5, timeline_at("Sep 15, 2026, 8:00:00 PM", "N0tso55", FRIENDS)),
+                    (0.55, timeline_at("Sep 15, 2026, 8:00:00 PM", "bettyd0ts", FRIENDS)),
+                    (0.6, timeline_at("Sep 15, 2026, 8:00:00 PM", "bettyd0ts", FRIENDS))])
+check("an entry caught half way through changing is not said",
+      [s for _, s in half_way] == [f"N0tso55. {FRIENDS}", f"bettyd0ts. {FRIENDS}"], repr(half_way))
 stacked = [sf.TextItem("SCREW PILE DRIVER", 448, 290, WHITE, 9, chosen=True, row=90),
            sf.TextItem("full circle plus punch", 447, 333, WHITE, 9, chosen=True, row=90)]
 check("a move's name over its command stays first, a pixel further across or not",

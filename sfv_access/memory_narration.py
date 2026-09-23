@@ -233,6 +233,9 @@ class Narrator:
         self.mapping_prompt: str | None = None
         self.mapping_rows: list[str] | None = None
         self.subtitle_said: tuple[str, str] | None = None
+        # CFN's timeline entry at the last read, and the one last said.
+        self.timeline_seen = None
+        self.timeline_said = None
         # The description line, and when it last changed, so an advert in the
         # main menu's banner can be told from a move.
         self.footer_text: str | None = None
@@ -308,10 +311,23 @@ class Narrator:
         message = scaleform.message_log_entry(items)
         if message and parts:
             parts = [message[0] if " ".join(p.split()).endswith(message[0]) else p for p in parts]
-        # So does an entry in CFN's timeline: who and what, the date on the read key.
+        # So does an entry in CFN's timeline: who and what, the date on the read
+        # key. An entry is said whole whenever the cursor lands on another,
+        # once it has held for a read, since saying what changed left out the
+        # player when two entries in a row were the same player's, the event
+        # when it was the same event, and everything when only the date
+        # differed (2026-09-23).
         timeline = scaleform.timeline_entry(items)
-        if timeline and parts:
-            parts = [p for p in parts if p.strip() != timeline[0]] or None
+        seen, self.timeline_seen = self.timeline_seen, timeline
+        if timeline is None:
+            self.timeline_said = None
+        else:
+            known = timeline[3] | (seen[3] if seen else frozenset())
+            parts = [p for p in (parts or []) if " ".join(p.split()) not in known] or None
+            if timeline == seen and timeline != self.timeline_said:
+                self.timeline_said = timeline
+                parts = [timeline[1]] + (parts or [])
+                self.said = ""
 
         # A character's story chapter is said as a sentence rather than its
         # pieces in screen order, which put "VS" after the opponent's name.

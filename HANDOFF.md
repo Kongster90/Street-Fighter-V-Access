@@ -2192,7 +2192,13 @@ bottom ones 0.3). `highlighted_row` now counts a part at or under
 `PART_SHOWN_ALPHA` as off; replayed over every recorded list (4,993 of them)
 it decides exactly as before. `timeline_entry` gives who and what for a move
 and the date, as `_spoken_date` says it, on Alt R: "jamestoh. Is online!",
-then "September 22, 2026, 9:38 PM". Not yet heard.
+then "September 22, 2026, 9:38 PM". In play the list scrolls under a cursor
+that stays put, so saying what changed dropped the player when two entries in
+a row were one player's, the event when it was the same event, and all of it
+when only the date differed (spoken-log.txt from 14:56:21). `Narrator.step`
+now says the entry whole whenever it is another, once it has held for a read
+(`timeline_seen`, `timeline_said`), and drops the entry's own texts from
+anything else said.
 
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:

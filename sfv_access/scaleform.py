@@ -2038,14 +2038,17 @@ def message_log_entry(items: list[TextItem]) -> tuple[str, str] | None:
 TIMELINE_DATE = re.compile(r"^[A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d\d:\d\d [AP]M$")
 
 
-def timeline_entry(items: list[TextItem]) -> tuple[str, str, str] | None:
-    """(the date as drawn, who and what, the date as said) for the timeline entry the cursor is on."""
+def timeline_entry(items: list[TextItem]) -> tuple[str, str, str, frozenset] | None:
+    """(the date as drawn, who and what, the date as said, the entry's texts) for the
+    timeline entry the cursor is on."""
     lit = [it for it in items if it.shown and it.selected and it.row]
     for it in lit:
         if TIMELINE_DATE.match(it.text.strip()):
             rest = [o for o in left_to_right_rows([o for o in lit if o.row == it.row]) if o is not it]
             if rest:
-                return it.text.strip(), phrase([" ".join(o.text.split()) for o in rest]), _spoken_date(it.text.strip())
+                texts = frozenset(" ".join(o.text.split()) for o in rest) | {it.text.strip()}
+                return (it.text.strip(), phrase([" ".join(o.text.split()) for o in rest]),
+                        _spoken_date(it.text.strip()), texts)
     return None
 
 
