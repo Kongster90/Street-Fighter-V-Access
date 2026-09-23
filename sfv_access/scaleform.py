@@ -284,7 +284,11 @@ def selection_key(items: list[TextItem]):
 # banner as its text changes, so each advert read as a move: one every five
 # seconds while the user sat on Gallery (2026-09-22). A move changes the
 # description line too, and an advert does not; see `Narrator.step`.
-MAIN_MENU_ENTRIES = ("ARCADE", "STORY", "VERSUS", "BATTLE SETTINGS")
+# The mode the cursor is on leaves its place in the list for the banner, and
+# once the banner goes back to its adverts its name is nowhere on screen: with
+# the cursor on Battle Settings every advert was read (2026-09-23). So one of
+# these may be missing.
+MAIN_MENU_ENTRIES = ("ARCADE", "STORY", "VERSUS", "CHALLENGES", "TRAINING", "BATTLE SETTINGS", "CFN", "SHOP")
 BANNER_ROWS = (191.0, 452.0)
 BANNER_ROW_TOLERANCE = 2.0
 
@@ -292,7 +296,8 @@ BANNER_ROW_TOLERANCE = 2.0
 def banner_texts(items: list[TextItem]) -> set[str]:
     """What the main menu's banner says while marked as the selection, or nothing off that menu."""
     shown = [it for it in items if it.shown]
-    if not set(MAIN_MENU_ENTRIES) <= {it.text.strip() for it in shown}:
+    present = set(MAIN_MENU_ENTRIES) & {it.text.strip() for it in shown}
+    if len(present) < len(MAIN_MENU_ENTRIES) - 1:
         return set()
     return {" ".join(it.text.split()) for it in shown if it.chosen and not it.highlighted
             and any(abs(it.y - row) <= BANNER_ROW_TOLERANCE for row in BANNER_ROWS)}

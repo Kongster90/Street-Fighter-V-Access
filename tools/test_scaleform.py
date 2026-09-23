@@ -2599,9 +2599,11 @@ check("built the same way beside words, it still is",
 # on, then rotates through adverts every five seconds with the description line
 # unchanged. Each advert was said as a move while the user sat on Gallery
 # (2026-09-22).
-def banner_menu(banner, description, date=None):
-    out = [item(t, 442, y, GREY) for t, y in (("ARCADE", 219), ("STORY", 339), ("VERSUS", 459),
-                                              ("BATTLE SETTINGS", 819))]
+def banner_menu(banner, description, date=None, on=None):
+    entries = (("ARCADE", 442, 219), ("STORY", 442, 339), ("VERSUS", 442, 459), ("CHALLENGES", 442, 579),
+               ("TRAINING", 442, 699), ("BATTLE SETTINGS", 442, 819), ("CFN", 909, 586), ("SHOP", 922, 819))
+    # The mode the cursor is on is drawn in the banner, not in its place.
+    out = [item(t, x, y, GREY) for t, x, y in entries if t != on]
     shown = [item(banner, 799, 452)] + ([item(date, 799, 191)] if date else [])
     for it in shown:
         it.chosen = True
@@ -2621,6 +2623,14 @@ check("the banner's adverts are not moves, and a move beside them still is",
       adverts == [(0.0, "GALLERY"), (41.0, "LOGIN")], repr(adverts))
 late = narrate([(0.0, banner_menu("GALLERY", GALLERY_LINE)), (5.0, banner_menu("GALLERY", LOGIN_LINE)),
                 (5.3, banner_menu("LOGIN", LOGIN_LINE))])
+SETTINGS_LINE = "You can change your Title, controller settings, and the default cursor position."
+on_mode = narrate([
+    (0.0, banner_menu("BATTLE SETTINGS", SETTINGS_LINE, on="BATTLE SETTINGS")),
+    (30.0, banner_menu("UPGRADE KIT AVAILABLE NOW", SETTINGS_LINE, on="BATTLE SETTINGS")),
+    (35.0, banner_menu("Nostalgia Collection", SETTINGS_LINE, on="BATTLE SETTINGS")),
+])
+check("the adverts are not moves with the cursor on a mode, whose name leaves the list",
+      on_mode == [(0.0, "BATTLE SETTINGS")], repr(on_mode))
 check("the banner catching up with the description a moment late is still said",
       late[-1:] == [(5.3, "LOGIN")], repr(late))
 check("no banner off the main menu", sf.banner_texts(profile_matchup()) == set())

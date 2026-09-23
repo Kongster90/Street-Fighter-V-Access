@@ -967,7 +967,11 @@ advert was a new selection. A move changes the description line with the
 banner, an advert does not, so `Narrator.step` drops a sentence made only of
 `banner_texts` once the description has stood `BANNER_CATCHUP` (1 s).
 Replaying that evening's log said LOGIN, EXIT, LOGIN, GALLERY and none of
-the adverts. Not yet heard.
+the adverts. The next day the adverts were read again with the cursor on
+Battle Settings: the mode the cursor is on leaves its place in the list for
+the banner, and once the banner went back to adverts its name was nowhere,
+so the main menu went unrecognised. `banner_texts` now wants all but one of
+eight modes (`MAIN_MENU_ENTRIES`).
 
 **Reattaching after the game restarts picked the launcher.** On 2026-09-14
 the user quit the game with the mod running and launched it again; memory
