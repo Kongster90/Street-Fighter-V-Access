@@ -2091,7 +2091,11 @@ themselves at x 320 ("Character Level", "Fight Money Earned", four parts);
 the highlight bar, the second part, shows on the cursor's row. `grid_tiles`
 keeps only the usual size, so the cursor on a heading entry went unsaid;
 `highlighted_mixed_row` compares the parts every row has, only when the
-one-size rows found nothing, and in every recording it never fires. Character
+one-size rows found nothing, and in every recording it never fires. Its first
+version read every fighter out on each page change: a table's row (name,
+level, experience bar) is parts of different sizes too, one of them shown
+alone, in every row. The rows must now be built alike in the parts they share
+(the page list's are all two children each). Character
 Level lists each fighter beside "Lv. 20" and "EXP 1781/3700" ("Lv. ---",
 "EXP ---/---" with no data), which the prompt rule took for answers beside a
 chosen one; `_label_or_figure` now counts any text with a digit or "---".

@@ -722,13 +722,19 @@ def highlighted_mixed_row(children, appearance, container) -> int | None:
     "Fight Money Earned"), four parts; `grid_tiles` keeps only the usual size,
     so the cursor on a heading entry was never found and moving there said
     nothing (2026-09-23). The parts every row has are compared instead, only
-    once the rows of one size have been tried, and only for a long list.
+    once the rows of one size have been tried, only for a long list, and only
+    when those parts are built alike in every row: a table's row (a fighter's
+    name, level and experience) is parts of different kinds, and taking it
+    for a list read every fighter out on every move.
     """
     rows = [k for k in children(container) if len(children(k)) >= 2]
     widths = {len(children(k)) for k in rows}
     if len(rows) < GRID_MIN_TILES or len(widths) < 2:
         return None
     width = min(widths)
+    shapes = {tuple(len(children(part)) for part in children(k)[:width]) for k in rows}
+    if len(shapes) != 1:
+        return None
     members = set(rows)
 
     def trimmed(obj):

@@ -2661,6 +2661,34 @@ check("a table's rows are read left to right, the fighter first",
                                                     "KEN", "WINS: 0.00%", "MATCH: 0"],
       repr(sf.profile_page_details(by_character)))
 check("nothing of it off the profile", sf.profile_page_details(on_story) == [])
+
+# A fighter's row on Character Level, as read live on 2026-09-23: six parts of
+# different kinds (name, level, experience bar), one of them shown alone, which
+# the rule for mixed lists took for a highlighted row in every fighter's row.
+def fighter_row():
+    tree = {}
+    def node(obj, kids=(), flags=1):
+        tree[obj] = {"kids": list(kids), "cx": (1, 1, 1, 1), "flags": flags}
+    parts, next_id = [], [4000]
+    for kinds, shown_first in (([0, 1], 1), ([0, 3], 0), ([2, 2, 2], 0), ([0, 4], 0), ([0, 1], 0), ([0, 1], 0)):
+        part = next_id[0]; next_id[0] += 100
+        inner = []
+        for j, n in enumerate(kinds):
+            obj = part + 1 + j * 10
+            node(obj, [obj + 1 + k for k in range(n)], flags=1 if (j or shown_first) else 0)
+            for k in range(n):
+                node(obj + 1 + k)
+            inner.append(obj)
+        node(part, inner)
+        parts.append(part)
+    node(3999, parts)
+    return (lambda o: tree.get(o, {}).get("kids", []),
+            lambda o: (tree[o]["cx"], tree[o]["flags"]) if o in tree else None)
+
+
+fkids, flook = fighter_row()
+check("a fighter's row of different parts is not a list whose cursor it holds",
+      sf.highlighted_mixed_row(fkids, flook, 3999) is None)
 check("a list of rows all one size is left to the usual rule",
       sf.highlighted_mixed_row(*profile_pages(cursor=2, widths=(3, 3, 3, 3, 3))[:2], 2999) is None)
 
