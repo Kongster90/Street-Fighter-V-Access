@@ -2030,10 +2030,26 @@ group of white ones; no black text shows in any recording or log, the
 testers' included. Moving says the name alone; Alt R gives
 `matchup_details`, "ZEKU versus RYU. ROUND K.O. Normal Attack 0 ...", each
 label with the figure under it, "---" as no data. Only while the cursor is
-in the picker, since that is where the rows are marked. Not yet heard. Also
-seen: the player's name at the top, (642, 119), was said once each time a
-page was chosen, a mark lasting one read while the page changes; not yet
-explained.
+in the picker, since that is where the rows are marked. Said in the user's
+next run the same evening, names on both rows (spoken-log.txt from 21:08:33);
+they have not yet said whether it is right, nor tried Alt R.
+
+Win Ratio by Character lists fighters, each row the name at x 644 beside
+"WINS: " and "MATCH: " with a percentage and a count under them. The name's
+holder has a part more (3 against 2) and the name sits a layer deeper, the
+shape of a prompt's chosen answer, so `_mark_by_layers` marked every name
+and gave each row a group, which the narrator took for prompts opening:
+"WINS: MATCH: 42.86%. 378. ... RYU. KEN. CHUN-LI ..." on every move. It now
+refuses when another label in the group is a figure or ends with a colon
+(`_label_or_figure`); replayed over every recording, the only prompts it
+marks are Yes and No, 6 parts against 2, beside words. Nothing on that page
+marks a row yet, and whether the cursor ever goes into the list is unknown.
+
+Also seen: the player's name at the top, (642, 119), was said once each time
+a page was chosen, a mark lasting one read while the page's figures are
+swapped out (scaleform-log 21:09:27). Its group at every level has either a
+text over `CHOICE_TEXT_LIMIT` or a slot of many texts, so which rule marks it
+is not known; a watcher wrapping each rule failed to catch it at 50 ms.
 
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:

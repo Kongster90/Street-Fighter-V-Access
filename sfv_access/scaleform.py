@@ -2001,6 +2001,12 @@ def _is_figure(text: str) -> bool:
     return text == MATCHUP_NO_DATA or any(c.isdigit() for c in text)
 
 
+def _label_or_figure(text: str) -> bool:
+    """A label naming a figure ("WINS: ") or a figure ("42.86%", "378", "---"), never a prompt's answer."""
+    text = text.strip()
+    return text.endswith(":") or (text != "" and not any(c.isalpha() for c in text))
+
+
 def matchup_details(items: list[TextItem]) -> list[str]:
     """"ZEKU versus All Characters", then each figure on the page, for the read key."""
     found = _matchup_rows(items)
@@ -3543,7 +3549,14 @@ class ScaleformText:
                         len(chain), 0, chain, chosen=True, group=up[0], slot=tile)
 
     def _mark_by_layers(self, container: int, slots) -> bool:
-        """A prompt's buttons: the selected one has its outline and fill as extra children."""
+        """A prompt's buttons: the selected one has its outline and fill as extra children.
+
+        Not a row of figures. A Fighter Profile's Win Ratio by Character lists
+        each fighter beside "WINS: ", "MATCH: " and their numbers, the name a
+        layer deeper and with a part more, and every row's name was taken for
+        a prompt's chosen answer and the numbers read out as its question
+        (2026-09-22). A prompt's other answers are words.
+        """
         layers = {slot: self.pm.u32(slot + DISPLAY_CHILD_COUNT) or 0 for slot in slots}
         most = max(layers.values())
         if list(layers.values()).count(most) != 1:
@@ -3551,6 +3564,8 @@ class ScaleformText:
         winner = next(slot for slot, n in layers.items() if n == most)
         (item, nesting), = slots[winner]
         if not all(nesting > held[0][1] for slot, held in slots.items() if slot != winner):
+            return False
+        if any(_label_or_figure(held[0][0].text) for slot, held in slots.items() if slot != winner):
             return False
         item.chosen = True
         item.group = container

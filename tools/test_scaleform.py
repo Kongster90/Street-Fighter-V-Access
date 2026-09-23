@@ -2501,6 +2501,28 @@ check("a figure still loading, or missing, is no data",
 check("no match-up elsewhere, or while the cursor is on the list beside it",
       sf.matchup_details(on_story) == [] and sf.matchup_details(profile_matchup(cursor=None)) == [])
 
+
+# Win Ratio by Character: each fighter's row holds the name a layer deeper and
+# with a part more than "WINS: ", "MATCH: " and their figures beside it, the
+# shape of a prompt's chosen answer, and every name was said (2026-09-22).
+def stats_row(name, beside):
+    mem = FakeMemory(size=0x21000)
+    root = display_object(mem, 0, 0, 0, WHITE)
+    row = display_object(mem, root, 600, 350, WHITE)
+    holder = display_object(mem, row, 43, 26, WHITE, children=3)
+    text_field(mem, display_object(mem, holder, 0, 0, WHITE), 0, 0, [name])
+    for n, text in enumerate(beside):
+        text_field(mem, display_object(mem, row, 278 + 222 * (n % 2), 24 * (n // 2), WHITE, children=2),
+                   0, 0, [text])
+    return sf.ScaleformText(mem, MODULE).items()
+
+
+check("a fighter beside their figures is not a prompt's answer",
+      picked(stats_row("RYU", ["WINS: ", "MATCH: ", "42.86%", "378"])) == [],
+      repr(picked(stats_row("RYU", ["WINS: ", "MATCH: ", "42.86%", "378"]))))
+check("built the same way beside words, it still is",
+      picked(stats_row("Yes", ["No"])) == ["Yes"], repr(picked(stats_row("Yes", ["No"]))))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

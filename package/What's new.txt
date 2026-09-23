@@ -10,6 +10,7 @@ Messages about Fight Money say so. One read "Received 500 ." before, the coin be
 CFN's menu names each entry, such as "Blacklist" or "Rival Search", before saying what it does. Its entries are pictures with no text of their own, so only the description was read before.
 Moving through CFN speaks straight away, without the short wait that was there for menus whose parts arrive a moment apart.
 A player's Fighter Profile: on the KO Ratio and KO'd Ratio pages, the fighter and opponent you pick are read as you change them. Alt R says the match-up, such as "ZEKU versus All Characters", and the figures for it.
+A player's Fighter Profile: Win Ratio by Character no longer reads out every fighter's name and figures as you move through the pages.
 
 
 17 September 2026
