@@ -1340,8 +1340,9 @@ Survival ("My iron body is invincible! So beware!", "Devour-our-our."), and
 Ken's in the Tutorial's fight. `subtitle` now takes a line alone there, with
 "" for the speaker, so Alt T covers all of them and they stay unsaid with it
 off. A scene's first line can come a couple of seconds late: quick reads were
-blind for 14 s as that scene opened and a full search found the line. Not yet
-heard.
+blind for 14 s as that scene opened and a full search found the line.
+Confirmed in play by the user the same evening, a scene's lines said one
+after another as they came (spoken-log.txt from 22:14).
 
 Known gaps. The clock sits one object further down and is not resolved.
 Screens other than Versus and Training may head their character select
