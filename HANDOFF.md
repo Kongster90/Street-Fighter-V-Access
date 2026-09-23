@@ -2012,6 +2012,14 @@ an amount it has already drawn the picture for, so `_icon_amounts` drops an
 `ICON_ABBREVIATIONS` one and closes up the space a picture leaves before a
 full stop.
 
+**Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
+The tabs themselves now read, but nothing under them has been looked at:
+Favorites, Replays, Pending CFN Friend Requests, Blacklist, Rival Search,
+Replay Search, Ranking and Tournament. Expect more screens whose entries
+carry no text, as the menu itself did, and lists whose cursor is marked by
+structure rather than colour, as the Message Log's is. Also still open there:
+the tab above the message list, and opening a message.
+
 ## Running things
 
 Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod
