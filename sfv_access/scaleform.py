@@ -416,7 +416,10 @@ def landed_on(
         return _unique(named)
     was = footer(before)
     if foot and (was is None or was.text != foot.text):
-        return [foot.text]
+        # CFN's entries are pictures, so its description line is all that
+        # changes as the cursor moves; the game's own text says whose it is.
+        title = entry_title(foot.text)
+        return [title, foot.text] if title else [foot.text]
     return []
 
 
@@ -1002,16 +1005,25 @@ VERSION_NUMERALS = {"I": 1, "II": 2, "III": 3}
 VERSION_SELECT_HEADING = "VERSION SELECT"
 STRINGS_FILE = Path(__file__).resolve().parent.parent / "strings.json"
 _game_strings: frozenset[str] | None = None
+_game_strings_by_key: dict[str, str] | None = None
+
+
+def _game_strings_map() -> dict[str, str]:
+    """The game's localisation table, each key against its text."""
+    global _game_strings_by_key
+    if _game_strings_by_key is None:
+        try:
+            _game_strings_by_key = json.loads(STRINGS_FILE.read_text(encoding="utf-8"))["strings"]
+        except (OSError, ValueError, KeyError, AttributeError):
+            _game_strings_by_key = {}
+    return _game_strings_by_key
 
 
 def game_strings() -> frozenset[str]:
     """Every string the game can display, from its own localisation table."""
     global _game_strings
     if _game_strings is None:
-        try:
-            _game_strings = frozenset(json.loads(STRINGS_FILE.read_text(encoding="utf-8"))["strings"].values())
-        except (OSError, ValueError, KeyError, AttributeError):
-            _game_strings = frozenset()
+        _game_strings = frozenset(_game_strings_map().values())
     return _game_strings
 
 
@@ -1769,6 +1781,58 @@ def survival_result(items: list[TextItem], brief: bool = False) -> list[str]:
 def survival_result_summary(items: list[TextItem]) -> str | None:
     said = survival_result(items, brief=True)
     return phrase(said) if said else None
+
+
+# ------------------------------------------------------- naming a picture entry
+#
+# CFN's menu is pictures: its entries carry no text at all, and the only thing
+# that changes as the cursor moves is the description line, so the mod read
+# out what an entry does without ever saying which entry it was (2026-09-22).
+# The game's own text holds both, one after the other: "Blacklist" at
+# KW/ID_SYS_CFN_Menu_1006 and "View and manage blacklisted players..." at
+# _1007, and the same pairing runs through the CFN menu, Favorites, Replays,
+# Rival Search, Ranking and Tournament. So a description can be turned back
+# into the name of the entry it belongs to.
+
+TITLE_MAX = 40            # longer than this is prose, not a name
+# What a setting is set to is never the name of an entry, however the keys
+# happen to fall: "OFF" sat above a description of sponsored content.
+TITLE_NEVER = {"on", "off", "yes", "no", "auto", "none", "all", "default"}
+_NUMBERED_KEY = re.compile(r"^(.*?)(\d+)$")
+_description_titles: dict[str, str] | None = None
+
+
+def _title_index() -> dict[str, str]:
+    """Each description in the game's text against the name it sits under."""
+    global _description_titles
+    if _description_titles is None:
+        _description_titles = {}
+        strings = _game_strings_map()
+        for key, value in strings.items():
+            found = _NUMBERED_KEY.match(key)
+            if found is None or not value.strip():
+                continue
+            stem, number = found.group(1), found.group(2)
+            title = (strings.get(f"{stem}{int(number) - 1:0{len(number)}d}") or "").strip()
+            description = " ".join(value.split())
+            # A name is short, one line and not a sentence; what it names is a
+            # sentence, and longer than the name itself.
+            if not (title and len(title) <= TITLE_MAX and "\n" not in title and not title.endswith(".")):
+                continue
+            if title.lower() in TITLE_NEVER or not any(c.isalpha() for c in title):
+                continue
+            if not description.endswith(".") or len(description) <= len(title):
+                continue
+            title = " ".join(title.split())
+            # Two names claiming one description is a pairing not to be
+            # trusted, so it is dropped rather than guessed between.
+            _description_titles[description] = title if _description_titles.get(description, title) == title else ""
+    return _description_titles
+
+
+def entry_title(description: str) -> str | None:
+    """The name of the entry a description line belongs to, or None."""
+    return _title_index().get(" ".join(description.split())) or None
 
 
 # ------------------------------------------------------------------ message log

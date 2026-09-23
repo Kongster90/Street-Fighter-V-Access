@@ -1977,7 +1977,23 @@ said nothing but its description line. `mark_message_log` marks the deeper
 row, refusing when every row is alike, as while the list arrives;
 `message_log_entry` gives what it says and `_spoken_date` of when it arrived.
 Moving says the message alone and Alt R adds the date. Not looked at yet: the
-tab above the list, opening a message, and everything under CFN.
+tab above the list, and opening a message.
+
+**CFN's menu is pictures.** Moving through it, the only text that changes is
+the description line, so the mod said what an entry does without ever naming
+it (2026-09-22). The game's own text holds both, the name immediately above
+the description: "Blacklist" at KW/ID_SYS_CFN_Menu_1006 and its description
+at _1007, and so on through Favorites, Replays, Pending CFN Friend Requests,
+Rival Search, Replay Search, Ranking and Tournament. `_title_index` pairs
+every description in the table with the name above it, taking a name that is
+short, one line, not a sentence and not what a setting is set to
+(`TITLE_NEVER`, after "OFF" claimed a description about sponsored content),
+and a description that is a sentence longer than its name; a description two
+names claim is dropped. `landed_on` uses it only where it falls back to the
+description line, which is reached only when nothing at all is selected, so a
+menu whose entries are text names them as before. 209 pairs. Not every menu
+is paired this way: Story's "View storylines that focus on each individual
+character." has no name key above it, and reads by its own text anyway.
 
 The user then asked what "Received 500 ." meant: the coin is drawn there as
 "fm", where everywhere else it is "icon_FM", so `ICON_WORDS` had no words for

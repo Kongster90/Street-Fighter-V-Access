@@ -2415,6 +2415,29 @@ check("the coin before an amount moves after it, and the game's own FM is not sa
       repr(sf._icon_amounts("Reward:  Fight Money 500FM")))
 check("both names for the coin have words", set(sf.ICON_WORDS) >= {"icon_FM", "fm"})
 
+
+# CFN's entries are pictures: nothing on the screen names them, and only the
+# description line changes as the cursor moves. The game's own text holds the
+# name just above the description it belongs to.
+def cfn_menu(description):
+    return [item("Konggster", 1379, 53), item("Fight Request OFF", 845, 947), item(description, 110, 992)]
+
+
+BLACKLIST = "View and manage blacklisted players. You can blacklist players via the Fighter Profile."
+RANKING = "View League Point rankings."
+check("a description names its entry from the game's own text",
+      sf.entry_title(BLACKLIST) == "Blacklist" and sf.entry_title(RANKING) == "Ranking",
+      repr((sf.entry_title(BLACKLIST), sf.entry_title(RANKING))))
+check("moving in CFN says the entry, then what it does",
+      sf.landed_on(cfn_menu(RANKING), cfn_menu(BLACKLIST)) == ["Blacklist", BLACKLIST],
+      repr(sf.landed_on(cfn_menu(RANKING), cfn_menu(BLACKLIST))))
+check("a description the game pairs with nothing is said alone",
+      sf.entry_title("Something the game never wrote.") is None
+      and sf.landed_on(cfn_menu("A."), cfn_menu("Something the game never wrote.")) ==
+      ["Something the game never wrote."])
+check("what a setting is set to is never taken for an entry's name",
+      not any(t.lower() in sf.TITLE_NEVER for t in sf._title_index().values() if t))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)
