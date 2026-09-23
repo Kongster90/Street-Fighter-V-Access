@@ -480,7 +480,11 @@ class App:
             question = scaleform.prompt_message(items)
             entry = scaleform.text_entry(items)
             chapter = scaleform.story_chapter(items)
-            if chapter and entry is None:
+            message = scaleform.message_log_entry(items)
+            if message and entry is None:
+                # What the message says, then when it arrived.
+                said = memory_narration.phrase([message[0], message[1]])
+            elif chapter and entry is None:
                 # A story chapter, then the fighter's profile beside it.
                 said = memory_narration.phrase([chapter] + scaleform.story_profile(items))
             elif entry is not None:

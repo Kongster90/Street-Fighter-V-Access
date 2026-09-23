@@ -2363,6 +2363,47 @@ check("arriving says the level, and changing it says the new one",
       and sf.landed_on(lower.items(), higher.items()) == ["8 of 10"],
       repr((sf.landed_on([], lower.items()), sf.landed_on(lower.items(), higher.items()))))
 
+
+# The Message Log, as read live on 2026-09-22: every row a text of two lines
+# in the same column, nothing gold, and the row the cursor is on marked only
+# by sitting one step deeper in the tree than the rest.
+MESSAGES = [("[Sep 18, 2026, 10:22:58 PM]", "You received 2 Fortune Ticket(s)."),
+            ("[Sep 16, 2026, 11:57:48 PM]", "[Special Artwork: BENGUS] has been added to the Gallery."),
+            ("[Sep 16, 2026, 11:57:48 PM]", "[SFV G] has been added to the Gallery."),
+            ("[Sep 16, 2026, 1:46:58 AM]", "F.A.N.G: Reached Lv.19.")]
+
+
+def message_log(cursor=2, deeper=True):
+    out = [item("All", 694, 175), item("Past Notices, News, and the tutorial can be viewed once again.", 110, 992)]
+    for n, (when, what) in enumerate(MESSAGES):
+        text = f"{when}\n{what}"
+        # The chain stands in for the tree: the row the cursor is on has one
+        # more object above its text than the others do.
+        chain = (100 + n, 50, 40, 30) if n != cursor or not deeper else (100 + n, 60, 50, 40, 30)
+        out.append(sf.TextItem(text, 316, 236 + 73 * n, WHITE, len(chain), chain=chain))
+    # A real read marks the rows as it builds them; here it is done by hand.
+    sf.mark_message_log(out)
+    return out
+
+
+check("the message the cursor is on is the one sitting deeper",
+      [" ".join(it.text.split()) for it in message_log() if it.selected] ==
+      ["[Sep 16, 2026, 11:57:48 PM] [SFV G] has been added to the Gallery."],
+      repr([it.text for it in message_log() if it.selected]))
+check("with every row alike, nothing is marked rather than guessed",
+      not any(it.selected for it in message_log(deeper=False)))
+check("the entry is what it says and when it arrived",
+      sf.message_log_entry(message_log()) ==
+      ("[SFV G] has been added to the Gallery.", "September 16, 2026, 11:57 PM"),
+      repr(sf.message_log_entry(message_log())))
+heard = narrate([(0.0, message_log(0)), (0.5, message_log(1)), (1.0, message_log(2))])
+check("moving says what each message says, without the date",
+      [s for _, s in heard] == ["You received 2 Fortune Ticket(s).",
+                                "[Special Artwork: BENGUS] has been added to the Gallery.",
+                                "[SFV G] has been added to the Gallery."], repr(heard))
+check("no messages elsewhere", sf.message_log_rows(on_story) == []
+      and sf.message_log_entry(on_story) is None)
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

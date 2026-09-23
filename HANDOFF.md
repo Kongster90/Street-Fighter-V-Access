@@ -1965,6 +1965,20 @@ you hear..."), never commit messages. Add an entry, headed with the day
 today has none. Entries written after the fact for the zips of 15 and 16
 September came from `git log` between the builds.
 
+**The Message Log.** Asked for on 2026-09-22 with CFN. Every message is one
+text of two lines in the column at x 316, "[Sep 16, 2026, 11:57:48 PM]" and
+then what it says, newest first, under a tab ("All") with the description
+line at the foot. Nothing on it is gold and no layer switches on: the row the
+cursor is on is marked only by its text sitting inside an extra container,
+one step deeper in the tree than every other row's, found by dumping each
+row's objects before and after the user moved down two (the reused row
+objects make the diff noisy; the depth is the clean signal). So the screen
+said nothing but its description line. `mark_message_log` marks the deeper
+row, refusing when every row is alike, as while the list arrives;
+`message_log_entry` gives what it says and `_spoken_date` of when it arrived.
+Moving says the message alone and Alt R adds the date. Not looked at yet: the
+tab above the list, opening a message, and everything under CFN.
+
 ## Running things
 
 Setup from a clean clone is in `SETUP.md`. Since 2026-09-15 the user's mod

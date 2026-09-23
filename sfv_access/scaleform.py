@@ -1757,6 +1757,56 @@ def survival_result_summary(items: list[TextItem]) -> str | None:
     return phrase(said) if said else None
 
 
+# ------------------------------------------------------------------ message log
+#
+# The Message Log lists what the game has told the player, newest first, each
+# row a single text of two lines: "[Sep 16, 2026, 11:57:48 PM]" and then the
+# message. Nothing on it is gold and no layer switches on, and the row the
+# cursor is on is marked only by its text sitting inside an extra container,
+# one step deeper in the tree than every other row's. So nothing counted as
+# selected and the screen said nothing but its description line (2026-09-22).
+# Moving says the message; Alt R adds when it arrived.
+
+MESSAGE_LOG_COLUMN = (300, 340)
+MESSAGE_LOG_MIN_ROWS = 3
+_MESSAGE_ENTRY = re.compile(r"^\[([^\]]+)\]\s*(.*)$", re.S)
+
+
+def message_log_rows(items: list[TextItem]) -> list[TextItem]:
+    """The messages listed, newest first, or nothing off that screen."""
+    rows = [it for it in items
+            if it.shown and MESSAGE_LOG_COLUMN[0] <= it.x <= MESSAGE_LOG_COLUMN[1]
+            and _MESSAGE_ENTRY.match(it.text.strip())]
+    return sorted(rows, key=lambda it: it.y) if len(rows) >= MESSAGE_LOG_MIN_ROWS else []
+
+
+def mark_message_log(items: list[TextItem]) -> None:
+    """Mark the message the cursor is on, which sits one step deeper than the rest."""
+    rows = message_log_rows(items)
+    if not rows:
+        return
+    depths = [len(it.chain) for it in rows]
+    deepest = max(depths)
+    # One row deeper than its neighbours is the cursor; all alike is a list
+    # arriving or leaving, where marking anything would be a guess.
+    if depths.count(deepest) != 1 or deepest - 1 not in depths:
+        return
+    for it in rows:
+        if len(it.chain) == deepest:
+            it.chosen = True
+
+
+def message_log_entry(items: list[TextItem]) -> tuple[str, str] | None:
+    """(what it says, when it arrived) for the message the cursor is on."""
+    row = next((it for it in message_log_rows(items) if it.selected), None)
+    if row is None:
+        return None
+    found = _MESSAGE_ENTRY.match(row.text.strip())
+    if found is None:
+        return None
+    return " ".join(found.group(2).split()), _spoken_date(found.group(1).strip())
+
+
 # --------------------------------------------------------------- character story
 #
 # Story, Character Story, then a fighter: their chapters down the middle, each
@@ -3648,6 +3698,7 @@ class ScaleformText:
             self.refresh_grids()
         self.on_home_screen = any(it.shown and it.text.strip() == HOME_PROMPT for it in out)
         self.mark_choices(out)
+        mark_message_log(out)
         self._mark_sliders(out)
         out.sort(key=lambda it: (round(it.y), it.x))
         return out

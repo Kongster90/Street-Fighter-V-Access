@@ -258,6 +258,11 @@ class Narrator:
             self.pending = None
         self.previous = items
 
+        # A message says what it says; when it arrived is on the read key.
+        message = scaleform.message_log_entry(items)
+        if message and parts:
+            parts = [message[0] if " ".join(p.split()).endswith(message[0]) else p for p in parts]
+
         # A character's story chapter is said as a sentence rather than its
         # pieces in screen order, which put "VS" after the opponent's name.
         chapter = scaleform.story_chapter(items)
