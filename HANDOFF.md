@@ -2141,7 +2141,13 @@ NZ1 Mysterious Cove, RUS Underground Arena, RU2 Spooky Arena, SHA Shadaloo
 Base, SH4 Shadaloo Base at Night, SX2 Suzaku Castle, S17 Suzaku Castle at
 Night, ...). What turns a stage number into a folder was not found: not in
 any data asset or ini in the paks; the game has a native `LoadStageIdTable`
-and `GetStageID`. So "Setting 1" is said as the game says it.
+and `GetStageID`. So "Setting 1" is said as the game says it. The user chose
+to leave it so (2026-09-23). If it comes back: the profile's
+`KWUserProfileDetails.RandomStageSelectSetting` (a struct `live` does not
+read yet) probably holds these settings by stage number, and Kanzuki
+Estate's Setting 1 was left unticked, which would pick out its number; or
+the user unticks DEFAULT on each of the ten and the name under the grid
+gives each version's name.
 
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:
