@@ -22,7 +22,7 @@ Installing
 
 Why Steam has to close: to start the mod with the game, the installer adds it to Street Fighter V's launch options, which live in Steam's own settings file. Steam keeps its settings in memory while it runs and writes them back when it closes, so a change made while Steam is open would be written over. Closing Steam first lets the change stay. Nothing else in Steam is touched, and a download in progress carries on when Steam opens again. Steam only closes when the launch options need changing: when you answer yes, or when you answer no after answering yes on an earlier install, to take them back out. Otherwise, or if Steam is already closed, it is left alone.
 
-That is all. The mod is installed in your programs folder, so you can delete the zip and the extracted folder afterwards.
+That is all. The mod is installed in your programs folder. Once the installer closes, it clears out the extracted folder, leaving only Install SFV Access, Uninstall SFV Access, this file, What's new.txt and VERSION.txt, so the only copy of the mod is the installed one. Both batch files still work from there. You can delete the zip, and the extracted folder too if you like.
 
 Answer yes if you want the mod to start by itself every time you play. It is one less thing to do. On some computers the game then cannot log into its server and shows an error code, and if that happens to you, run the installer again and answer no.
 
@@ -98,4 +98,4 @@ Mention the version, which is in VERSION.txt in the same folder as this file.
 
 Uninstalling
 
-Open %LOCALAPPDATA%\Programs\SFV Access and run Uninstall SFV Access. It removes the desktop shortcut, and takes the mod out of Steam if it was starting with the game, closing Steam for a moment the same way and for the same reason. Then you can delete that folder.
+Run Uninstall SFV Access, either from the extracted folder or from %LOCALAPPDATA%\Programs\SFV Access. Both do the same thing. It removes the desktop shortcut, and takes the mod out of Steam if it was starting with the game, closing Steam for a moment the same way and for the same reason. Then you can delete %LOCALAPPDATA%\Programs\SFV Access, and the extracted folder if you kept it.

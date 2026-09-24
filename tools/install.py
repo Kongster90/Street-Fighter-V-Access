@@ -18,16 +18,24 @@ Run again from a newer package, it updates the installed copy and keeps the
 player's own files: settings, the game's text and the logs. Answering the
 question differently the second time changes the launch options to match, so
 either answer can be undone by running it again.
+
+Once it closes, the extracted folder is emptied of what the installed copy
+now has, leaving the two batch files and the text files, so there is one copy
+of the mod and not a second one beside it that settings and logs never reach.
+The batch files run the installed copy's Python when the folder has none of
+its own.
 """
 
 from __future__ import annotations
 
+import ctypes
 import os
 import shutil
 import subprocess
 import sys
 import time
 import winreg
+from ctypes import wintypes
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
@@ -39,6 +47,10 @@ from tools import steam_launch_options as slo  # noqa: E402
 TARGET = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Programs" / "SFV Access"
 # The player's own files in an installed copy, kept when it is updated.
 KEEP = {"settings.json", "strings.json", "pak_key.txt", "snapshots"}
+# What the extracted folder keeps once the mod is installed.
+LEFT_BEHIND = {"Install SFV Access.bat", "Uninstall SFV Access.bat", "Read me first.txt", "What's new.txt",
+               "VERSION.txt"}
+TIDY_TRIES = 10
 STEAM_CLOSE_WAIT = 90
 START_SCRIPT = "Start SFV Access.bat"
 SHORTCUT = "Street Fighter V Access.lnk"
@@ -88,6 +100,61 @@ def copy_package(source: Path, target: Path) -> None:
             shutil.copytree(item, target / item.name, ignore=shutil.ignore_patterns("__pycache__"))
         else:
             shutil.copy2(item, target / item.name)
+
+
+def tidy_later(folder: Path) -> None:
+    """Have the installed copy empty folder once this installer has closed.
+
+    This installer runs on the Python in folder, which Windows will not let
+    go of while it runs, so the installed copy's pythonw does it, with no
+    window, after waiting for this process to exit.
+    """
+    try:
+        subprocess.Popen(
+            [str(TARGET / "python" / "pythonw.exe"), str(TARGET / "tools" / "install.py"),
+             "--tidy", str(folder), str(os.getpid())],
+            cwd=TARGET, creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+    except OSError:
+        pass
+
+
+def wait_for_exit(pid: int) -> None:
+    kernel32 = ctypes.WinDLL("kernel32")
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    handle = kernel32.OpenProcess(0x00100000, False, pid)   # SYNCHRONIZE
+    if handle:
+        kernel32.WaitForSingleObject(handle, 0xFFFFFFFF)     # INFINITE
+        kernel32.CloseHandle(handle)
+
+
+def tidy(folder: Path, pid: int) -> None:
+    """Remove from folder what this installed copy also has, once process pid exits.
+
+    Run from the installed copy, so HERE is that copy. The player's own files
+    stay, and so does anything the installed copy lacks, so nothing is lost.
+    Files can stay locked a moment after their process exits, or while a virus
+    scanner looks at them, so it tries again for a few seconds.
+    """
+    wait_for_exit(pid)
+    if folder.resolve() == HERE.resolve():
+        return
+    for _ in range(TIDY_TRIES):
+        left = [item for item in folder.iterdir()
+                if item.name not in LEFT_BEHIND and item.name not in KEEP and (HERE / item.name).exists()]
+        if not left:
+            return
+        for item in left:
+            if item.is_dir():
+                shutil.rmtree(item, ignore_errors=True)
+            else:
+                try:
+                    item.unlink()
+                except OSError:
+                    pass
+        time.sleep(1)
 
 
 def unblock(folder: Path) -> None:
@@ -211,7 +278,10 @@ def main() -> int:
     if HERE.resolve() != TARGET.resolve():
         say(f"Copying the mod to {TARGET}. This takes a few seconds.")
         copy_package(HERE, TARGET)
-    unblock(TARGET)
+        unblock(TARGET)
+        tidy_later(HERE)
+    else:
+        unblock(TARGET)
 
     link = make_shortcut(TARGET / START_SCRIPT)
     say()
@@ -272,4 +342,7 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--tidy"]:
+        tidy(Path(sys.argv[2]), int(sys.argv[3]))
+        sys.exit(0)
     sys.exit(main())

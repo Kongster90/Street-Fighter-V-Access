@@ -3,6 +3,11 @@ What's new in Street Fighter V Access
 Each test version, newest first. The version you have is in VERSION.txt, beside this file.
 
 
+24 September 2026
+
+Once the installer closes, it clears out the folder you extracted, leaving only Install SFV Access, Uninstall SFV Access, Read me first.txt, What's new.txt and VERSION.txt. The rest is already in the installed copy, so there is now one copy of the mod, not two. Both batch files still work from the extracted folder. Install asks again whether to start with the game, and Uninstall removes the installed mod.
+
+
 23 September 2026
 
 Battle Settings, Random Stage Settings: moving through the stages says each one and whether it is ticked, meaning it can come up when you pick "???" on stage select. Confirm says the new state, stages you do not own say "Not owned", and switching tabs with the bumpers says the tab.

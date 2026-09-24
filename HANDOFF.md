@@ -1839,6 +1839,27 @@ testing, the user's launch options point at the installed copy in
 `.venv\Scripts\python.exe tools\steam_launch_options.py --apply` (Steam
 closed) and delete that folder.
 
+**The extracted folder is cleared after installing.** On 2026-09-24 the user
+asked why the mod had two copies of Python. On their own machine that is the
+`.venv` launcher starting the real interpreter (see Running things). For
+testers, though, the extracted folder kept a whole second copy of the mod
+beside the installed one, which is confusing. Now, after copying,
+`install.tidy_later` starts the installed copy's pythonw with
+`install.py --tidy <folder> <pid>`, detached. It waits for the installer's
+process to exit, because Windows holds the Python the installer runs on. Then
+it removes from the extracted folder whatever the installed copy also has,
+leaving `LEFT_BEHIND`: both batch files, Read me first.txt, What's new.txt
+and VERSION.txt. The player's own files (`KEEP`) are never removed. Both
+batch files now use the installed copy's Python when the folder has none of
+its own. Install prefers the folder's own Python, so a new zip installs over
+the old copy. Uninstall prefers the installed copy's. Tested with the built
+zip extracted to a scratch folder: the packaged Python ran `install.main`
+with Steam, the game and the shortcut stubbed and the target in scratch,
+from a hidden console. The folder was down to the five files five seconds
+after the window closed, and the tidy process had exited. Both batch files
+then reached a scratch installed copy through a stand-in `LOCALAPPDATA`, and
+with nothing installed, each said so.
+
 **The VS screen online names both sides.** It used to call the far side the
 opponent, which is right against the CPU and wrong online: the user played a
 friend from the second player side on 2026-09-15 and heard their own fighter,
