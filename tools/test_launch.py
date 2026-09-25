@@ -131,6 +131,8 @@ check("another game's launch options are untouched",
       "StardewModdingAPI.exe\\\" %command%" in applied)
 check("applying twice changes nothing", slo.with_launch_options(applied, slo.OURS) == applied)
 check("recognised as ours", slo.is_ours(slo.launch_options(applied)))
+check("ours from before -E and -s are still ours, so reinstalling replaces them",
+      slo.is_ours(f'"{slo.PYTHONW}" "{slo.LAUNCHER}" %command%'))
 check("Stardew's are not ours", not slo.is_ours('"G:\\Steam\\StardewModdingAPI.exe" %command%'))
 check("removing restores the file exactly", slo.without_launch_options(applied) == SAMPLE)
 replaced = slo.with_launch_options(slo.with_launch_options(SAMPLE, "-old"), slo.OURS)

@@ -6,7 +6,10 @@ Street Fighter V's to run this with the pythonw.exe beside the Python that ran
 it, the virtual environment's in a development copy and the bundled one in a
 copy installed for players:
 
-    "<that Python's folder>\\pythonw.exe" "<this folder>\\start_with_game.pyw" %command%
+    "<that Python's folder>\\pythonw.exe" -E -s "<this folder>\\start_with_game.pyw" %command%
+
+-E and -s keep Python to the mod's own packages, ignoring PYTHONPATH and the
+player's per-user packages, and the mod is started with them too.
 
 It starts the mod unless a copy is already running, then starts the game and
 waits for it, so Steam sees the game running for as long as it really is.
@@ -38,7 +41,7 @@ def start_mod(with_game: bool) -> None:
     if instance.already_running():
         return
     LOG.parent.mkdir(exist_ok=True)
-    command = [str(PYTHONW), str(HERE / "run.py")] + (["--with-game"] if with_game else [])
+    command = [str(PYTHONW), "-E", "-s", str(HERE / "run.py")] + (["--with-game"] if with_game else [])
     with LOG.open("wb") as log:
         subprocess.Popen(command, cwd=HERE, stdin=subprocess.DEVNULL,
                          stdout=log, stderr=subprocess.STDOUT)

@@ -10,5 +10,5 @@ if not exist "%SFV%python\python.exe" (
     exit /b 1
 )
 cd /d "%SFV%"
-"python\python.exe" tools\install.py
+"python\python.exe" -E -s tools\install.py
 if errorlevel 1 pause

@@ -9,5 +9,5 @@ if not exist "%SFV%python\python.exe" (
     exit /b 1
 )
 cd /d "%SFV%"
-"python\python.exe" tools\uninstall.py
+"python\python.exe" -E -s tools\uninstall.py
 if errorlevel 1 pause

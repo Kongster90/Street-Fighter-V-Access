@@ -37,7 +37,11 @@ LAUNCHER = ROOT / "start_with_game.pyw"
 # pythonw.exe beside the Python running this: the virtual environment's in a
 # development copy, the bundled one in a copy installed for players.
 PYTHONW = Path(sys.executable).with_name("pythonw.exe")
-OURS = f'"{PYTHONW}" "{LAUNCHER}" %command%'
+# Keep that Python to the mod's own packages: -E ignores PYTHONPATH and the
+# like, -s the player's own per-user packages, either of which could put a
+# different version of a package ahead of the mod's.
+ISOLATE = ("-E", "-s")
+OURS = f'"{PYTHONW}" {" ".join(ISOLATE)} "{LAUNCHER}" %command%'
 BACKUP_SUFFIX = ".before-sfv-access"
 
 # A quoted string with its escapes, a brace, a comment or whitespace. Steam

@@ -1,9 +1,9 @@
 @echo off
 cd /d "%~dp0"
-rem A copy installed for players carries its own Python; a development copy has
-rem a virtual environment.
+rem A copy installed for players carries its own Python, kept to its own
+rem packages by -E and -s; a development copy has a virtual environment.
 if exist "python\python.exe" (
-    "python\python.exe" run.py
+    "python\python.exe" -E -s run.py
 ) else (
     ".venv\Scripts\python.exe" run.py
 )

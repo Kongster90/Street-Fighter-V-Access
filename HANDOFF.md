@@ -1860,6 +1860,22 @@ after the window closed, and the tidy process had exited. Both batch files
 then reached a scratch installed copy through a stand-in `LOCALAPPDATA`, and
 with nothing installed, each said so.
 
+**The bundled Python is kept to its own packages.** A copied Python is a
+normal install, not the embeddable one, so it puts `PYTHONPATH` first on
+`sys.path` and the player's per-user packages
+(`%APPDATA%\Python\Python314\site-packages`) ahead of its own site-packages.
+A tester with Python 3.14 and packages installed with `--user` could have
+loaded their own numpy and the like in place of the mod's. Now every start of
+the bundled Python passes `-E -s` (`slo.ISOLATE`): the three batch files, the
+launch options the installer and `--apply` write, the mod started by
+`start_with_game.pyw`, and the tidy job. `-I` would also drop the script's
+folder from `sys.path`, which `run.py` needs. The venv accepts the switches
+too, so the launcher always passes them. `is_ours` goes by the launcher's
+name, so launch options from before the switches are still recognised, and a
+reinstall replaces them. Until then, a tester's Steam starts the launcher
+without them. That's harmless, because it imports only the standard library
+and `sfv_access.instance`, and it starts the mod with them.
+
 **The VS screen online names both sides.** It used to call the far side the
 opponent, which is right against the CPU and wrong online: the user played a
 friend from the second player side on 2026-09-15 and heard their own fighter,
@@ -2304,7 +2320,7 @@ processes.
 for Stardew Valley with SMAPI, rather than something running from Windows
 startup. `tools/steam_launch_options.py --apply` sets Street Fighter V's
 (app 310950) in `userdata\<id>\config\localconfig.vdf` to
-`"<repo>\.venv\Scripts\pythonw.exe" "<repo>\start_with_game.pyw" %command%`,
+`"<repo>\.venv\Scripts\pythonw.exe" -E -s "<repo>\start_with_game.pyw" %command%`,
 refusing while steam.exe runs (Steam writes that file back on exit), keeping
 `localconfig.vdf.before-sfv-access`, and leaving alone launch options it did
 not write; `--remove` undoes it. The launcher starts `run.py --with-game`

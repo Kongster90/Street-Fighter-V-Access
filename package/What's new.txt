@@ -6,6 +6,7 @@ Each test version, newest first. The version you have is in VERSION.txt, beside 
 24 September 2026
 
 Once the installer closes, it clears out the folder you extracted, leaving only Install SFV Access, Uninstall SFV Access, Read me first.txt, What's new.txt and VERSION.txt. The rest is already in the installed copy, so there is now one copy of the mod, not two. Both batch files still work from the extracted folder. Install asks again whether to start with the game, and Uninstall removes the installed mod.
+The mod's own Python now ignores any other Python setup on your computer, so packages you installed for your own Python can no longer stop the mod starting.
 
 
 23 September 2026

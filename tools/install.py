@@ -111,7 +111,7 @@ def tidy_later(folder: Path) -> None:
     """
     try:
         subprocess.Popen(
-            [str(TARGET / "python" / "pythonw.exe"), str(TARGET / "tools" / "install.py"),
+            [str(TARGET / "python" / "pythonw.exe"), *slo.ISOLATE, str(TARGET / "tools" / "install.py"),
              "--tidy", str(folder), str(os.getpid())],
             cwd=TARGET, creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
     except OSError:
@@ -299,7 +299,8 @@ def main() -> int:
 
     say()
     pythonw = TARGET / "python" / "pythonw.exe"
-    value = f'"{pythonw}" "{TARGET / slo.LAUNCHER.name}" %command%' if with_game else None
+    value = (f'"{pythonw}" {" ".join(slo.ISOLATE)} "{TARGET / slo.LAUNCHER.name}" %command%'
+             if with_game else None)
     # Answering no when nothing of ours is set leaves Steam alone entirely,
     # which spares the player closing it.
     if with_game or ours_set(files):
