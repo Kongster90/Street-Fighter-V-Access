@@ -1095,6 +1095,15 @@ and `Fight.certain` is false while the order is only a guess, when
 guess that swapped the two would sound as a sudden drop. A mirror match
 counts as certain, nothing better being known. Not yet heard in play.
 
+**Two Survival runs in memory.** The same night Alt R, and every stage's
+sentence, said "Health 70 percent" whatever happened: an earlier run's
+`SurvivalIterationState_1` (the user's G, 719 of 1025) outlived it, and
+`SurvivalHealth` took the first found while the Seth run was
+`SurvivalIterationState_2`. The live run is `GameScene_0`'s `CurrentState`
+(reflected, on `KiwiGameScene`), so `SurvivalHealth._find` takes that,
+keeps the scene and checks at each reading that it still points at the run,
+and only with no scene on a run falls back to the newest by object index.
+
 **The screen a run ends on.** Read live on 2026-09-15 from a run the user
 lost on purpose at stage 7, having heard only fragments of it ("RESULT.
 SURVIVAL. EASY. Konggster. 0:00'34''400", then "RESULT. Match History. STAGES

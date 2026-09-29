@@ -684,16 +684,29 @@ def survival_share(raw: bytes | None) -> float | None:
     return vital / most
 
 
+SCENE_CLASS = "GameScene"
+
+
 class SurvivalHealth:
     """Player one's health in a Survival run, read from the run itself.
 
     The run's game object is found once in the background, as `KeyConfig`'s
     is, and from then on a reading is one small read. Asked for away from
     Survival it finds nothing and says so once in the screen log.
+
+    Which run: an earlier run's object can outlive it. On 2026-09-29 the
+    user's G run (SurvivalIterationState_1, 719 of 1025) was still there
+    during a Seth run (_2), taking the first found said "Health 70 percent"
+    after every stage, and Alt R the same. The live one is the game scene's
+    `CurrentState` (`GameScene_0`), so that is the one taken, and each
+    reading checks the scene still points at it.
     """
 
     def __init__(self, note=None) -> None:
         self.obj: int | None = None
+        # The scene, and where in it its current state is kept.
+        self.scene: int | None = None
+        self.scene_state = 0
         self._thread: threading.Thread | None = None
         self._note = note or (lambda text: None)
         self._last_note = ""
@@ -710,9 +723,11 @@ class SurvivalHealth:
         session = live.shared()
         if self.obj is None or not session.attached:
             return None, False
-        # Still the run, and not memory given to something else since.
+        # Still the run the scene is on, and not memory given to something else.
         cls = session.class_address(SURVIVAL_CLASS)
-        if cls is not None and session.pm.ptr(self.obj + session.objects.layout.class_private) == cls:
+        current = session.pm.ptr(self.scene + self.scene_state) if self.scene else self.obj
+        if (cls is not None and current == self.obj
+                and session.pm.ptr(self.obj + session.objects.layout.class_private) == cls):
             return survival_share(session.pm.read(self.obj + SURVIVAL_VITAL, 8)), True
         self.obj = None
         return None, False
@@ -739,10 +754,25 @@ class SurvivalHealth:
             if not session.attach():
                 self._say_once("survival health: could not attach to the game's objects")
                 return
-            for obj, _name in session.find_by_class(SURVIVAL_CLASS):
-                path = unreal.full_object_path(session.pm, session.names, obj, session.objects.layout)
-                if "Default__" in path:
+            session.invalidate()
+            cls = session.class_address(SURVIVAL_CLASS)
+            for scene, _name in session.find_by_class(SCENE_CLASS, limit=4):
+                prop = session.all_properties(scene).get("CurrentState")
+                state = session.pm.ptr(scene + prop.offset) if prop else None
+                if not state or session.pm.ptr(state + session.objects.layout.class_private) != cls:
                     continue
+                path = unreal.full_object_path(session.pm, session.names, state, session.objects.layout)
+                self.scene, self.scene_state, self.obj = scene, prop.offset, state
+                self._say_once(f"survival health: found {path} at {state:#x}, the scene's current state")
+                return
+            # No scene on a run: the newest run there is, by its place in the
+            # object list, and nothing to check it against.
+            self.scene = None
+            runs = [(session.pm.i32(obj + 0xC) or 0, obj) for obj, _name in session.find_by_class(SURVIVAL_CLASS)
+                    if "Default__" not in unreal.full_object_path(session.pm, session.names, obj,
+                                                                   session.objects.layout)]
+            for _index, obj in sorted(runs, reverse=True)[:1]:
+                path = unreal.full_object_path(session.pm, session.names, obj, session.objects.layout)
                 self.obj = obj
                 self._say_once(f"survival health: found {path} at {obj:#x}")
                 return
