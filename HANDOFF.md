@@ -994,7 +994,21 @@ records: they were new ones, at new addresses (found again, the old ones
 having lost their marker), and no controller linked either, so the side came
 from their order in memory, which was right again: Ken on the left at the
 higher address. The +0x300 flag read 1 for the left fighter there, who lost,
-settling that it follows the knock-out and not the side. The Survival
+settling that it follows the knock-out and not the side.
+
+Remembering the list was not enough: the user restarted the mod on the
+result screen (23:16:24), it had never seen the list, and Alt H gave them
+the CPU's 0 health. The game has the side: the live `KWBattleSetting`
+(under `KiwiGameSingleton_0`; the one under
+`Default__KWBattleSettingPseudoSave` is Training's saved setting, which read
+USER against DUMMY) points through `m_player_setting` to the players' table,
+and `GetCtrlType`'s code reads each player's `EKWCtrlType` at +0x21C of its
+0x590-byte entry: 0 USER, 1 NET, 2 COM, 3 DUMMY. CPU VS PLAYER 1 read COM
+then USER. `Fight.side` gives the side of the one USER (`fight.player_side`),
+None for two players on one machine; Alt H asks it at every press, and the
+narrator asks it on the VS screen (`scaleform.on_versus_screen`), keeping
+the side seen in the list or by Fighter ID for when it says None. Online the
+remote player should read NET, so it should work there too; not tried. The Survival
 changes above (the sentence's health from the run, "Health now at") went
 unheard that night too: no Survival run was played after the mod was
 restarted with them.

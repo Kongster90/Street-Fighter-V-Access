@@ -163,7 +163,7 @@ class Narrator:
     replayed through it in a test.
     """
 
-    def __init__(self, subtitles: bool = False, health=None, health_known=None) -> None:
+    def __init__(self, subtitles: bool = False, health=None, health_known=None, side=None) -> None:
         # Whether story scenes' subtitles are said: the player's choice, kept across resets.
         self.subtitles = subtitles
         # Asked for a health reading on the one screen that wants one, or None.
@@ -171,6 +171,9 @@ class Narrator:
         # The same reading, but only if the run has been found already, so
         # asking it anywhere costs nothing and starts no search. See HEALTH_RISE.
         self.health_known = health_known
+        # Which side the player is on as the game has it, 0 the left, or None:
+        # asked on the VS screen, and preferred to what the menus showed.
+        self.side = side
         self.reset()
 
     def reset(self) -> None:
@@ -405,6 +408,10 @@ class Narrator:
         mine = scaleform.versus_my_side(items, me)
         if mine is not None:
             self.player_side = mine
+        elif self.side is not None and scaleform.on_versus_screen(items):
+            known = self.side()
+            if known is not None:
+                self.player_side = known
         health = self.health_words()
         summary_screen, summary = scaleform.screen_summary(items, health, me, self.player_side)
         # Nothing is said about the screen until the reading is in: with it

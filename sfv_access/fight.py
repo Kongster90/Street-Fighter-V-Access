@@ -24,9 +24,17 @@ A CPU's controller (`KBP_BattlePlayerController_C`, its `NetPlayerIndex` the
 side) sometimes holds its own fighter's record at +0x6B0, where a player's
 holds -1: through Training and five matches, but not in a later one. Without
 it the order seen in every pair of records so far is used, player 1's at the
-higher address. Which side is the player's own is not this module's to know:
-the narrator keeps it (`Narrator.player_side`), from Versus's list or the
-player's Fighter ID on the VS screen.
+higher address.
+
+Which side is the player's own is in the battle's settings: the game's live
+`KWBattleSetting` (under `KiwiGameSingleton_0`; another under
+`Default__KWBattleSettingPseudoSave` is Training's saved one) points through
+`m_player_setting` to a `KWBattlePlayerSetting` whose +0x28 is a table of
+players 0x590 apart, and each has its `EKWCtrlType` at +0x21C (read from
+`GetCtrlType`'s code): 0 USER, 1 NET, 2 COM, 3 DUMMY. The player's side is
+the one USER (`player_side`). Choosing CPU VS PLAYER 1 on 2026-09-28 showed
+COM then USER; restarting the mod mid-session had lost the side it had seen
+chosen in Versus's list (`Narrator.player_side`, the fallback).
 """
 
 from __future__ import annotations
@@ -45,6 +53,11 @@ STOCK = 300                           # a Critical Art stock, and a V-Trigger ba
 MOST = 3000                           # nothing here is anything like this big
 CONTROLLER_CLASS = "KBP_BattlePlayerController_C"
 CONTROLLER_FIGHTER = 0x6B0
+SETTING_CLASS = "KWBattleSetting"
+PLAYER_TABLE = 0x28     # in a KWBattlePlayerSetting: the players' entries
+ENTRY = 0x590
+CTRL_TYPE = 0x21C       # EKWCtrlType
+USER = 0
 PAGE_READWRITE = 0x04
 LARGEST_REGION = 256 << 20
 
@@ -87,6 +100,12 @@ def describe(first: Gauges, second: Gauges) -> str:
     return f"{first.words('You')} {second.words('Opponent')}"
 
 
+def player_side(ctrl_types: list[int]) -> int | None:
+    """0 or 1 for the one side the player controls, None if both do or neither."""
+    users = [side for side, kind in enumerate(ctrl_types[:2]) if kind == USER]
+    return users[0] if len(users) == 1 else None
+
+
 def order(records: list[int], links: dict[int, int]) -> tuple[list[int], str]:
     """The two records with player 1's first, and how that was decided.
 
@@ -112,6 +131,7 @@ class Fight:
         self.records: list[int] | None = None
         self._note = note or (lambda text: None)
         self._last_how = ""
+        self._last_side = ""
         self._lock = threading.Lock()
 
     def read(self) -> tuple[Gauges, Gauges] | None:
@@ -138,6 +158,34 @@ class Fight:
             if first is None or second is None:
                 return None
             return first, second
+
+    def side(self) -> int | None:
+        """Which side the player is on, 0 the left, from the battle's settings, or None."""
+        from . import live, unreal
+
+        session = live.shared()
+        if not session.attach():
+            return None
+        try:
+            for obj, _name in session.find_by_class(SETTING_CLASS, limit=8):
+                path = unreal.full_object_path(session.pm, session.names, obj, session.objects.layout)
+                prop = session.all_properties(obj).get("m_player_setting")
+                if "Default__" in path or prop is None:
+                    continue
+                players = session.pm.ptr(obj + prop.offset)
+                table = session.pm.ptr(players + PLAYER_TABLE) if players else None
+                if not table:
+                    continue
+                kinds = [session.pm.i32(table + i * ENTRY + CTRL_TYPE) for i in (0, 1)]
+                side = player_side([k for k in kinds if k is not None])
+                note = f"fight: controllers {kinds}, the player's side {side}"
+                if note != self._last_side:
+                    self._last_side = note
+                    self._note(note)
+                return side
+        except Exception as exc:
+            self._note(f"fight: side not read: {exc!r}")
+        return None
 
     @staticmethod
     def _links(session) -> dict[int, int]:

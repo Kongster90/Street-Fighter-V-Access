@@ -64,6 +64,14 @@ check("the CPU as player 1 is put first, wherever it is in memory",
 check("with no CPU, player 1's record is the one higher in memory",
       fight.order([P2, P1], {0: 0xFFFFFFFFFFFFFFFF}) == ([P1, P2], "their order in memory"))
 
+# The battle's settings say who controls each side: 0 USER, 1 NET, 2 COM,
+# 3 DUMMY. CPU VS PLAYER 1 read COM then USER on 2026-09-28.
+check("the player is the side the one USER controls",
+      fight.player_side([2, 0]) == 1 and fight.player_side([0, 2]) == 0
+      and fight.player_side([0, 3]) == 0 and fight.player_side([1, 0]) == 1)
+check("two people on one machine, or nobody, leave the side unknown",
+      fight.player_side([0, 0]) is None and fight.player_side([2, 2]) is None and fight.player_side([]) is None)
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

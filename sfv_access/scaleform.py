@@ -1273,6 +1273,11 @@ def main_menu_selected(items: list[TextItem]) -> bool:
     return any(it.selected and it.text.strip() in MAIN_MENU_ENTRIES for it in items)
 
 
+def on_versus_screen(items: list[TextItem]) -> bool:
+    """The VS screen before a fight, whether or not both fighters show yet."""
+    return _versus_panel([it for it in items if it.shown]) is not None
+
+
 def versus_my_side(items: list[TextItem], me: str | None) -> int | None:
     """Online, the side whose Fighter ID is the player's on the VS screen, or None."""
     if not me:

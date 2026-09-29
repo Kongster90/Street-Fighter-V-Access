@@ -2413,6 +2413,17 @@ sided.step([item("ARCADE", 200, 300, GOLD)], 5.0)
 check("the narrator keeps the side chosen, names the right opponent, and the main menu resets it",
       chosen == 1 and heard and heard[0].startswith("Opponent, KEN,") and sided.player_side == 0,
       repr((chosen, heard, sided.player_side)))
+# The battle's settings know the side even when the mod was started after the
+# list was chosen, as it was on 2026-09-28; asked on the VS screen, they win.
+told = mn.Narrator(side=lambda: 1)
+heard = [said for said in [told.step(versus_screen(left="KEN", right="GUILE"), t / 10) for t in range(0, 30, 2)] if said]
+check("the side the game has is used on the VS screen, with no list seen",
+      told.player_side == 1 and heard and heard[0].startswith("Opponent, KEN,"), repr((told.player_side, heard)))
+unsure = mn.Narrator(side=lambda: None)
+unsure.step(side_list("CPU VS PLAYER 1"), 0.0)
+unsure.step(versus_screen(left="KEN", right="GUILE"), 0.5)
+check("when the game's settings cannot say, the side chosen in the list stands",
+      unsure.player_side == 1, repr(unsure.player_side))
 check("online, the side carrying the player's own Fighter ID is theirs",
       sf.versus_my_side(online_versus, "jamestoh") in (0, 1)
       and sf.versus_my_side(online_versus, "Konggster") == 1 - sf.versus_my_side(online_versus, "jamestoh")

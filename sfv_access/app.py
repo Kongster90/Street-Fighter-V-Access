@@ -342,11 +342,13 @@ class App:
         # Survival's health between stages, read from the run rather than
         # measured off the bar, which read 0 on a screen not shaped like ours.
         self.survival_health = memory_narration.SurvivalHealth(note=self.session.note)
-        # The fight's gauges for Alt H, read from the fighters' records.
+        # The fight's gauges for Alt H, read from the fighters' records, and
+        # which side is the player's.
         self.fight = fight.Fight(note=self.session.note)
         self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on(),
                                                  health=self.survival_health.read,
-                                                 health_known=self.survival_health.known)
+                                                 health_known=self.survival_health.known,
+                                                 side=self.fight.side)
         # Button Preview: each button said as it is pressed, while it is open.
         self.presses = pads.PressWatcher(self._on_preview_press)
         self._hang_file = None
@@ -598,9 +600,13 @@ class App:
         if gauges is None:
             self.speech.say("Cannot read the fight.")
             return
-        # Player 1's first; the player is whichever side they chose.
+        # Player 1's first. The player's side as the battle's settings have
+        # it, or as the narrator saw it chosen when they cannot be read.
         first, second = gauges
-        mine, theirs = (second, first) if self.narrator.player_side == 1 else (first, second)
+        side = self.fight.side()
+        if side is None:
+            side = self.narrator.player_side
+        mine, theirs = (second, first) if side == 1 else (first, second)
         self.speech.say(fight.describe(mine, theirs))
 
     def on_read_live(self) -> None:
