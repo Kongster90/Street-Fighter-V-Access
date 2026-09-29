@@ -881,6 +881,34 @@ they read as themselves. The full-health frames still read 95, 94 and 100, the
 100 being the shine-free one. A full bar is all gold, which is why the first
 picture read right and the damaged one did not.
 
+**The bar is measured off the game's picture, not the screen.** On
+2026-09-28 the user passed on a tester's report that health did not read
+properly after every fight. The tester's spoken-log.txt from 2026-09-16 (in
+`Friend-Logs/`) said "Health 0 percent" after every stage of a Survival run,
+Full Health Recovery included, and their Graphics Settings read "Resolution.
+1920 x 1200", "Full Screen Mode. OFF". The game keeps a 16 by 9 picture and
+fills a taller window with black bars above and below, 60 rows each at 1920 by
+1200, and a window's title bar moves it further; capture is of the whole
+screen, and `hud` scaled its 1920 by 1080 positions to the screen's size, so
+it looked above the bar and found nothing. `game.find_window` now also gives
+the window's client area (`GameWindow.client`), asked for in the screen's own
+pixels (`_screen_pixels`, since the mod is not DPI aware and a scaled laptop
+screen would shrink every position), and `GameWindow.picture` is the 16 by 9
+box inside it (`game.picture_box`). `App._frames` cuts that box out of each
+capture (`capture.crop`, black where it runs off the screen), so the HUD, the
+pixel reader and Alt S snapshots all see the picture as on a 16 by 9 screen;
+on the user's full screen 1920 by 1080 the box is the whole frame and nothing
+changes. `App._picture_box` looks the window up at most once a second
+(`PICTURE_RECHECK`) and notes each change in scaleform-log.txt ("game window
+..., picture 1920 by 1080 at 0, 60"), so the next tester log shows what
+their machine did. And a bar with nothing lit is now no reading at all
+(`App._health_share`), since the player has just won and always has some
+left: the sentence goes without health rather than saying 0. Checked with
+painted screens in `tools/test_hud.py` (a 1920 by 1200 screen, a 1280 by 720
+window with a title bar, a window pushed off the bottom), which also shows
+the old measurement reading the tall screen as 0; not yet heard in play on a
+machine like the tester's.
+
 **The screen a run ends on.** Read live on 2026-09-15 from a run the user
 lost on purpose at stage 7, having heard only fragments of it ("RESULT.
 SURVIVAL. EASY. Konggster. 0:00'34''400", then "RESULT. Match History. STAGES

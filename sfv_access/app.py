@@ -82,6 +82,9 @@ WATCH_INTERVAL = 0.12
 # served that way are polled less often. Still quick enough to keep up with a
 # cursor moving across the roster.
 MEMORY_INTERVAL = 0.35
+# How often the game's window is looked up to find where its picture is.
+# Looking costs a walk over every window, and the window rarely moves.
+PICTURE_RECHECK = 1.0
 
 # Started with the game from Steam (see start_with_game.pyw), the mod closes
 # when the game does. It waits this long for the game to appear at all, and
@@ -346,6 +349,9 @@ class App:
         # and which thread runs it: what `_watch_stalls` looks at.
         self._pass_started: float | None = None
         self._watch_thread_id: int | None = None
+        # Where the game's picture sits on screen, and when that was asked.
+        self._box: tuple[int, int, int, int] | None = None
+        self._box_checked = float("-inf")
 
     # -------------------------------------------------------------- lifecycle
     def run(self) -> None:
@@ -416,10 +422,39 @@ class App:
 
     # ---------------------------------------------------------------- helpers
     def _frames(self, max_age: float = 0.0):
+        """The game's picture as BGRA and RGB, or None, None if capture failed.
+
+        Capture is of the whole screen, and the game's picture is only the
+        same thing when it is full screen at a 16 by 9 size. A tester's game
+        at 1920 by 1200 had black bars above and below, which put every bar
+        60 rows lower than measured, and Survival said "Health 0 percent"
+        after every stage. So the picture is cut out first.
+        """
         bgra = self.capture.frame(max_age=max_age)
         if bgra is None:
             return None, None
+        box = self._picture_box()
+        if box is not None:
+            bgra = _capture.crop(bgra, box)
         return bgra, _capture.to_rgb(bgra)
+
+    def _picture_box(self) -> tuple[int, int, int, int] | None:
+        """Where the game's picture is on screen, looked up at most once a second.
+
+        Each change is written to the screen log, which testers send, since
+        a wrong reading on someone else's machine is otherwise a mystery.
+        """
+        now = time.monotonic()
+        if now - self._box_checked < PICTURE_RECHECK:
+            return self._box
+        self._box_checked = now
+        window = game.find_window()
+        box = None if window is None else window.picture
+        if box != self._box and window is not None:
+            self.session.note(
+                f"game window {window.client}, picture {box[2]} by {box[3]} at {box[0]}, {box[1]}")
+        self._box = box
+        return box
 
     def _health_share(self) -> float | None:
         """How full player one's health bar is, 0 to 1, or None if it cannot be read.
@@ -437,7 +472,11 @@ class App:
         if window is None or not window.is_foreground:
             return None
         _bgra, rgb = self._frames()
-        return None if rgb is None else hud.health_fraction(rgb, hud.HEALTH["p1"])
+        share = None if rgb is None else hud.health_fraction(rgb, hud.HEALTH["p1"])
+        # Nothing lit at all is a bar not found rather than an empty one: the
+        # player has just won the fight, so some health is always left. Said
+        # as a number, it was "Health 0 percent" after every stage.
+        return share or None
 
     def _refresh_lines(self, bgra) -> tuple[list, str]:
         items = ocr.reading_order(ocr.read(bgra))

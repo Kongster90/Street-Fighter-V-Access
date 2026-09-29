@@ -20,6 +20,30 @@ def to_rgb(bgra: np.ndarray) -> np.ndarray:
     return np.ascontiguousarray(bgra[:, :, 2::-1])
 
 
+def crop(frame: np.ndarray, box: tuple[int, int, int, int]) -> np.ndarray:
+    """The part of a whole-screen frame inside `box`: left, top, width, height.
+
+    Used to cut the game's picture out of the screen, so everything measured
+    off it lands where it would on a game filling a 16 by 9 screen. Where the
+    box runs off the screen, as a window pushed partly past its edge can, the
+    missing part is black and the rest stays in its place. A box not on this
+    screen at all leaves the frame whole, as it was before boxes were known.
+    """
+    left, top, width, height = box
+    h, w = frame.shape[:2]
+    if (left, top, width, height) == (0, 0, w, h):
+        return frame
+    x0, y0 = max(0, left), max(0, top)
+    x1, y1 = min(w, left + width), min(h, top + height)
+    if x1 <= x0 or y1 <= y0:
+        return frame
+    if (x0, y0, x1, y1) == (left, top, left + width, top + height):
+        return np.ascontiguousarray(frame[y0:y1, x0:x1])
+    out = np.zeros((height, width) + frame.shape[2:], dtype=frame.dtype)
+    out[y0 - top:y1 - top, x0 - left:x1 - left] = frame[y0:y1, x0:x1]
+    return out
+
+
 class Capture:
     def __init__(self, output_idx: int | None = None) -> None:
         import bettercam

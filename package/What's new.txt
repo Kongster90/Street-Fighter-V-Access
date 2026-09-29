@@ -3,6 +3,12 @@ What's new in Street Fighter V Access
 Each test version, newest first. The version you have is in VERSION.txt, beside this file.
 
 
+28 September 2026
+
+Survival: the health you carry into the next stage now reads on screens that are not 16 by 9, such as 1920 by 1200, and with the game in a window. It said "Health 0 percent" after every stage there, because the game puts black bars above and below its picture and the mod was measuring the bar in the wrong place. If the bar still cannot be found, the stage's sentence leaves health out rather than saying 0 percent.
+The same fix applies to Alt H, which reads health and meters during a fight.
+
+
 24 September 2026
 
 Once the installer closes, it clears out the folder you extracted, leaving only Install SFV Access, Uninstall SFV Access, Read me first.txt, What's new.txt and VERSION.txt. The rest is already in the installed copy, so there is now one copy of the mod, not two. Both batch files still work from the extracted folder. Install asks again whether to start with the game, and Uninstall removes the installed mod.
