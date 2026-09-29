@@ -16,7 +16,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from sfv_access import beeps, scaleform as sf  # noqa: E402
+import tempfile  # noqa: E402
+
+from sfv_access import beeps, buttons, scaleform as sf  # noqa: E402
 
 ok = True
 
@@ -72,6 +74,29 @@ check("10 percent is two short beeps with a gap, the others one",
       len(dict(beeps.LEVELS)[0.1]) == 2 and two > one, f"{one:.2f} s and {two:.2f} s")
 pitches = [dict(beeps.LEVELS)[level][0][0] for level in (0.75, 0.5, 0.25, 0.1)]
 check("the lower the health, the lower the pitch", pitches == sorted(pitches, reverse=True), repr(pitches))
+
+
+# F5 and Shift F5: the volume in percent, heard rather than measured, so the
+# tone's peak is the square of the share; 0 is silence.
+loud, _r, _s = channels(beeps.sound(0.75, 0, 100))
+half, _r, _s = channels(beeps.sound(0.75, 0, 50))
+quiet, _r, _s = channels(beeps.sound(0.75, 0, 0))
+check("a volume of 50 percent is a quarter of full strength, and 0 is silent",
+      abs(max(half) / max(loud) - 0.25) < 0.01 and not any(quiet), f"{max(half)} of {max(loud)}")
+left, right, _ = channels(beeps.sound(0.75, None, 50))
+check("the beep that answers F5 is in both speakers", any(left) and left == right)
+saved = buttons.SETTINGS, buttons._settings
+with tempfile.TemporaryDirectory() as folder:
+    buttons.SETTINGS, buttons._settings = Path(folder) / "settings.json", None
+    start = buttons.beep_volume()
+    steps = [buttons.change_beep_volume(-10) for _ in range(7)]
+    buttons._settings = None                       # as the next run would, from the file
+    kept = buttons.beep_volume()
+    top = [buttons.change_beep_volume(10) for _ in range(12)][-1]
+buttons.SETTINGS, buttons._settings = saved
+check("the volume starts at 50, goes down 10 at a time to 0 and no further, and is remembered",
+      start == 50 and steps == [40, 30, 20, 10, 0, 0, 0] and kept == 0 and top == 100,
+      repr((start, steps, kept, top)))
 
 
 def label(text, x, y=90.0):

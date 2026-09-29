@@ -17,8 +17,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from sfv_access import scaleform as sf  # noqa: E402
+from sfv_access import buttons, scaleform as sf  # noqa: E402
 from sfv_access.memory import Region  # noqa: E402
+
+# The narrator learns the player's Fighter ID from the main menu's card and
+# saves it, so from the first test on nothing may reach the real settings
+# file: the pretend menus below, carrying "Dengster", wrote it over the
+# user's own until 2026-09-28.
+buttons.SETTINGS = Path(tempfile.gettempdir()) / "sfv-access-test-settings.json"
+buttons.SETTINGS.unlink(missing_ok=True)
+assert buttons.SETTINGS != ROOT / "settings.json"
+buttons._settings = {}
 
 ok = True
 
@@ -1583,13 +1592,7 @@ check("a combo whose frame counters are hidden between hits is said once, at its
 never = narrate(hidden + [(2.5 + 0.5 * k, training(hits(8), None, None)) for k in range(6)])
 check("and if the counters never come back, once the numbers have held still",
       [s for _, s in never] == ["8 hits, 222 damage"], repr(never))
-from sfv_access import buttons  # noqa: E402
-
-# Button names come from the player's saved choice; the tests choose their own
-# and never touch the real settings file.
-buttons.SETTINGS = Path(tempfile.gettempdir()) / "sfv-access-test-settings.json"
-buttons.SETTINGS.unlink(missing_ok=True)
-assert buttons.SETTINGS != ROOT / "settings.json"
+# Button names come from the player's saved choice; the tests choose their own.
 buttons._settings = {"button_names": "xbox"}
 CONTROLLER_LABELS = list(sf.CONTROLLER_ROWS)
 SAVED_LAYOUT = bytes([4, 5, 6, 7, 8, 9, 10, 11, 17, 17, 17, 17, 17, 17, 17, 0])

@@ -1028,8 +1028,24 @@ memory (`scaleform.fight_on_screen`: "PLAYER 1" at (167, 90) and "CPU" at
 of the day never matched anything but a fight, so the fighters are only
 looked for while a fight shows (every `FIGHT_POLL`, `FIGHT_RETRY` after a
 failed sweep). `tools/test_beeps.py` checks the levels, the speakers and the
-labels; `tools/beep_demo.py` plays every level on each side. Not yet heard
-in a fight. The Survival
+labels; `tools/beep_demo.py` plays every level on each side. Heard in a
+fight by the user the same night: "It works pretty good", though "a bit
+loud". So F5 and Shift F5 (`beeps_louder`, `beeps_quieter`, at the user's
+choice of keys) move the volume 10 percent at a time, 0 to 100, kept as
+`beep_volume` in settings.json (`buttons.beep_volume`,
+`change_beep_volume`), saying "Beeps 40 percent." or "Beeps off." and
+playing the 75 percent beep in both speakers at the new volume. The
+percent is heard, not measured: a tone's peak is the square of the share
+(`beeps.loudness`), so the steps sound alike; the first beeps were about 59
+on that scale, and the default is 50.
+
+**The tests wrote over the player's Fighter ID.** `tools/test_scaleform.py`
+moved `buttons.SETTINGS` to a temporary file only halfway down, after the
+narrator had stepped through pretend main menus whose card says "Dengster";
+the narrator saves the card's Fighter ID, so every run put "Dengster" in the
+user's settings.json, and the mod put it back only on the next visit to the
+main menu. Found on 2026-09-28 when a run changed the file; the move now
+happens before the first test, and the file is left as it was. The Survival
 changes above (the sentence's health from the run, "Health now at") went
 unheard that night too: no Survival run was played after the mod was
 restarted with them.
