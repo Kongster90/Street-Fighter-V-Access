@@ -1051,7 +1051,7 @@ changes above (the sentence's health from the run, "Health now at") went
 unheard that night too: no Survival run was played after the mod was
 restarted with them.
 
-**OPEN: which fighter record is player 1 (2026-09-29).** After the zip
+**Which fighter record is player 1 (2026-09-29, fixed).** After the zip
 SFV-Access-2026-09-29-712ddef was built, the user played Survival and found
 Alt H and the beeps reversed (Alt R, from the Survival record, was right).
 `fight.order` falls back to "player 1's record at the higher address", and
@@ -1070,8 +1070,18 @@ character (or V-Trigger) in the records' shared part, to match record to
 side, with a mirror match as the case needing a fallback. Other routes: the
 health bars in the Scaleform display tree (the labels "PLAYER 1"/"CPU" at
 y 90 are its texts), whose drawn size gives each side's share to match
-against the records. Hold the zip until this is fixed; the user was told.
-The work stopped because the command tool's safety check kept failing.
+against the records. The work stopped a while because the command tool's
+safety check kept failing.
+
+Fixed by character: each record points at +0x98 to its character's data,
+which holds the code ("Z30", G) at +0x1C0; the live settings entry holds
+each player's code at +0x90 (`GetCharaCode`'s code reads there; `GetStartSide`
+reads +0x190, which was -1 for both). `fight.order_by_character` puts the
+record with player 1's code first, and `Fight.read` notes "by character";
+a mirror match, or a code that will not read, falls back to the controller
+link and then the address, and the note says the characters did not settle
+it. Read live in Survival: player 1 Z30 (G, the user, USER), player 2 Z40
+(COM). Not yet heard in play, and a mirror match is untried.
 
 **The screen a run ends on.** Read live on 2026-09-15 from a run the user
 lost on purpose at stage 7, having heard only fragments of it ("RESULT.

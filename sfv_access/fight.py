@@ -18,13 +18,16 @@ bar as 83 percent. The game keeps each fighter in a record found on
   against the screen: the gauge passed 300 as the first stock lit, 600 as the
   second, was 900 with all three and 0 after a Critical Art.
 
-Which record is player 1 is not in the record as far as has been found (a
-field at +0x300 that looked like it turned out to mark who was knocked out).
-A CPU's controller (`KBP_BattlePlayerController_C`, its `NetPlayerIndex` the
-side) sometimes holds its own fighter's record at +0x6B0, where a player's
-holds -1: through Training and five matches, but not in a later one. Without
-it the order seen in every pair of records so far is used, player 1's at the
-higher address.
+Which record is player 1 is found by character. Each record points at +0x98
+to its character's data, which holds the character's code ("Z30" for G) at
++0x1C0, and the battle's settings (below) hold each player's code at +0x90
+of their entry; the record whose code is player 1's is player 1's. Found on
+2026-09-29 after Survival put player 1's record lower in memory in one stage
+and higher in the next, and Alt H and the beeps swapped with it: the order
+in memory is chance. A mirror match leaves the codes alike, and then the old
+ways are used: a CPU's controller (`KBP_BattlePlayerController_C`, its
+`NetPlayerIndex` the side) sometimes holds its own fighter's record at
++0x6B0, and failing that player 1's is taken to be the higher address.
 
 Which side is the player's own is in the battle's settings: the game's live
 `KWBattleSetting` (under `KiwiGameSingleton_0`; another under
@@ -57,6 +60,9 @@ SETTING_CLASS = "KWBattleSetting"
 PLAYER_TABLE = 0x28     # in a KWBattlePlayerSetting: the players' entries
 ENTRY = 0x590
 CTRL_TYPE = 0x21C       # EKWCtrlType
+PLAYER_CHARA = 0x90     # the player's character code, "Z30", in their entry
+RECORD_CHARA = 0x98     # in a fighter record: its character's data
+CHARA_CODE = 0x1C0      # in that data: the character code
 USER = 0
 PAGE_READWRITE = 0x04
 LARGEST_REGION = 256 << 20
@@ -106,6 +112,27 @@ def player_side(ctrl_types: list[int]) -> int | None:
     return users[0] if len(users) == 1 else None
 
 
+def code(raw: bytes | None) -> bytes | None:
+    """A character code from the bytes it starts, "Z30", or None if it does not look like one."""
+    text = (raw or b"").split(b"\0")[0]
+    return text if 2 <= len(text) <= 4 and text.isalnum() else None
+
+
+def order_by_character(records: list[int], record_codes: dict[int, bytes | None],
+                       player_codes: list[bytes | None]) -> list[int] | None:
+    """The two records with player 1's first, by character, or None when that cannot tell them apart."""
+    if len(records) != 2 or len(player_codes) < 2 or None in player_codes[:2]:
+        return None
+    first, second = player_codes[:2]
+    if first == second:
+        return None                                     # a mirror match
+    ones = [r for r in records if record_codes.get(r) == first]
+    twos = [r for r in records if record_codes.get(r) == second]
+    if len(ones) != 1 or len(twos) != 1:
+        return None
+    return [ones[0], twos[0]]
+
+
 def order(records: list[int], links: dict[int, int]) -> tuple[list[int], str]:
     """The two records with player 1's first, and how that was decided.
 
@@ -150,7 +177,14 @@ class Fight:
             if len(self.records) != 2:
                 self.records = None
                 return None
-            ordered, how = order(self.records, self._links(session))
+            players = self._players(session)
+            codes = {r: code(self._record_code(session.pm, r)) for r in self.records}
+            by_character = order_by_character(self.records, codes, [c for _k, c in players])
+            if by_character is not None:
+                ordered, how = by_character, "character"
+            else:
+                ordered, how = order(self.records, self._links(session))
+                how += " (characters " + ", ".join(repr(c) for _k, c in players) + " did not settle it)"
             if how != self._last_how:
                 self._last_how = how
                 self._note(f"fight: player 1's record is {ordered[0]:#x}, by {how}")
@@ -161,11 +195,26 @@ class Fight:
 
     def side(self) -> int | None:
         """Which side the player is on, 0 the left, from the battle's settings, or None."""
-        from . import live, unreal
+        from . import live
 
         session = live.shared()
         if not session.attach():
             return None
+        players = self._players(session)
+        if not players:
+            return None
+        kinds = [kind for kind, _code in players]
+        side = player_side([k for k in kinds if k is not None])
+        note = f"fight: controllers {kinds}, the player's side {side}"
+        if note != self._last_side:
+            self._last_side = note
+            self._note(note)
+        return side
+
+    def _players(self, session) -> list[tuple[int | None, bytes | None]]:
+        """Player 1's and player 2's controller type and character code, from the live settings."""
+        from . import unreal
+
         try:
             for obj, _name in session.find_by_class(SETTING_CLASS, limit=8):
                 path = unreal.full_object_path(session.pm, session.names, obj, session.objects.layout)
@@ -176,16 +225,16 @@ class Fight:
                 table = session.pm.ptr(players + PLAYER_TABLE) if players else None
                 if not table:
                     continue
-                kinds = [session.pm.i32(table + i * ENTRY + CTRL_TYPE) for i in (0, 1)]
-                side = player_side([k for k in kinds if k is not None])
-                note = f"fight: controllers {kinds}, the player's side {side}"
-                if note != self._last_side:
-                    self._last_side = note
-                    self._note(note)
-                return side
+                return [(session.pm.i32(table + i * ENTRY + CTRL_TYPE),
+                         code(session.pm.read(table + i * ENTRY + PLAYER_CHARA, 8))) for i in (0, 1)]
         except Exception as exc:
-            self._note(f"fight: side not read: {exc!r}")
-        return None
+            self._note(f"fight: settings not read: {exc!r}")
+        return []
+
+    @staticmethod
+    def _record_code(pm, record: int) -> bytes | None:
+        data = pm.ptr(record + RECORD_CHARA)
+        return pm.read(data + CHARA_CODE, 8) if data else None
 
     @staticmethod
     def _links(session) -> dict[int, int]:

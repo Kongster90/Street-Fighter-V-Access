@@ -64,6 +64,21 @@ check("the CPU as player 1 is put first, wherever it is in memory",
 check("with no CPU, player 1's record is the one higher in memory",
       fight.order([P2, P1], {0: 0xFFFFFFFFFFFFFFFF}) == ([P1, P2], "their order in memory"))
 
+# Player 1's record by character: each record's character data holds its
+# code, and the settings hold each player's. Survival on 2026-09-29 had G
+# (Z30) as player 1 lower in memory in one stage and higher in the next.
+LOW, HIGH = 0x2516A85CC00, 0x2516A85E580
+check("a character code is read from the bytes it starts",
+      fight.code(b"Z30\0\0\0\0\0") == b"Z30" and fight.code(b"KEN\0") == b"KEN"
+      and fight.code(b"\0\0\0\0") is None and fight.code(b"\xff\xfe\x01\0") is None and fight.code(None) is None)
+check("player 1's record is the one with player 1's character, wherever it is in memory",
+      fight.order_by_character([LOW, HIGH], {LOW: b"Z30", HIGH: b"Z40"}, [b"Z30", b"Z40"]) == [LOW, HIGH]
+      and fight.order_by_character([LOW, HIGH], {LOW: b"Z40", HIGH: b"Z30"}, [b"Z30", b"Z40"]) == [HIGH, LOW])
+check("a mirror match, or a code not read, leaves it to the other ways",
+      fight.order_by_character([LOW, HIGH], {LOW: b"KEN", HIGH: b"KEN"}, [b"KEN", b"KEN"]) is None
+      and fight.order_by_character([LOW, HIGH], {LOW: None, HIGH: b"Z40"}, [b"Z30", b"Z40"]) is None
+      and fight.order_by_character([LOW, HIGH], {LOW: b"Z30", HIGH: b"Z40"}, [b"Z30", None]) is None)
+
 # The battle's settings say who controls each side: 0 USER, 1 NET, 2 COM,
 # 3 DUMMY. CPU VS PLAYER 1 read COM then USER on 2026-09-28.
 check("the player is the side the one USER controls",
