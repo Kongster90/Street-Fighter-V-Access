@@ -21,7 +21,12 @@ import threading
 import wave
 
 RATE = 44100
-VOLUME = 0.35
+# The beeps' volume in percent, F5 and Shift F5 in steps of `VOLUME_STEP`,
+# kept in the settings. It is heard, not measured: the level is the square
+# of the share, so each step sounds much the same size. The first beeps,
+# which the user found "a bit loud", were 59 percent on this scale.
+VOLUME_DEFAULT = 50
+VOLUME_STEP = 10
 FADE = 0.005          # seconds of fade at each end of a tone, so it does not click
 GAP = 0.06            # seconds between the tones of one warning
 
@@ -35,9 +40,15 @@ LEVELS = (
 REARM = 0.02          # back above a level by this much before it can sound again
 
 
-def sound(level: float, side: int) -> bytes:
-    """A level's warning as WAV data, in the left speaker for side 0 and the right for side 1."""
+def loudness(volume: int) -> float:
+    """The peak of a tone, 0 to 1, for a volume in percent."""
+    return (max(0, min(100, volume)) / 100) ** 2
+
+
+def sound(level: float, side: int | None, volume: int = VOLUME_DEFAULT) -> bytes:
+    """A level's warning as WAV data: the left speaker for side 0, the right for 1, both for None."""
     tones = dict(LEVELS)[level]
+    peak = loudness(volume)
     frames = bytearray()
     for n, (pitch, seconds) in enumerate(tones):
         if n:
@@ -46,8 +57,8 @@ def sound(level: float, side: int) -> bytes:
         fade = max(1, int(FADE * RATE))
         for i in range(count):
             envelope = min(1.0, i / fade, (count - 1 - i) / fade)
-            sample = int(32767 * VOLUME * envelope * math.sin(2 * math.pi * pitch * i / RATE))
-            frames += struct.pack("<hh", sample if side == 0 else 0, sample if side == 1 else 0)
+            sample = int(32767 * peak * envelope * math.sin(2 * math.pi * pitch * i / RATE))
+            frames += struct.pack("<hh", sample if side != 1 else 0, sample if side != 0 else 0)
     out = io.BytesIO()
     with wave.open(out, "wb") as w:
         w.setnchannels(2)

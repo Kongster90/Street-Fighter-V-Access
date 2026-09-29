@@ -95,6 +95,21 @@ def fighter_id() -> str | None:
     return name if isinstance(name, str) and name.strip() else None
 
 
+def beep_volume() -> int:
+    """The health beeps' volume in percent, as last set with F5 and Shift F5."""
+    from .beeps import VOLUME_DEFAULT
+
+    value = _load().get("beep_volume")
+    return value if isinstance(value, int) and 0 <= value <= 100 else VOLUME_DEFAULT
+
+
+def change_beep_volume(step: int) -> int:
+    """Move the beeps' volume by `step` percent, within 0 to 100, save it, and return it."""
+    value = max(0, min(100, beep_volume() + step))
+    _save("beep_volume", value)
+    return value
+
+
 def remember_fighter_id(name: str) -> None:
     if name.strip() and name.strip() != fighter_id():
         _save("fighter_id", name.strip())

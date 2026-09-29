@@ -44,6 +44,8 @@ Alt K: list all the keys.
 Alt X: stop speaking.
 Alt B: say buttons as Xbox, PlayStation or keyboard keys.
 Alt T: turn story subtitles on or off. They are off to start with, since the story voices are in English.
+Alt H: during a fight, both fighters' health, V-Trigger and Critical Art.
+F5 and Shift F5: make the health beeps louder or quieter, 10 percent at a time. At 0 they are off.
 Alt M: turn menu reading off or on.
 F10: close the mod until the next time you start the game.
 

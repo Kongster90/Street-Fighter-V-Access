@@ -70,6 +70,8 @@ HOTKEYS = {
     "switch_source": ("f9",         "switch between reading memory and reading the screen"),
     "button_names":  ("alt+b",      "name buttons as Xbox, PlayStation or keyboard"),
     "subtitles":     ("alt+t",      "turn story subtitles on or off"),
+    "beeps_louder":  ("f5",         "health beeps louder"),
+    "beeps_quieter": ("shift+f5",   "health beeps quieter"),
     "snapshot":      ("alt+s",      "save a snapshot for calibration"),
     "status":        ("alt+g",      "status"),
     "stop_speech":   ("alt+x",      "stop speaking"),
@@ -792,6 +794,19 @@ class App:
         self.narrator.subtitles = buttons.toggle_subtitles()
         self.speech.say(f"Subtitles {'on' if self.narrator.subtitles else 'off'}.")
 
+    def on_beeps_louder(self) -> None:
+        self._change_beeps(beeps.VOLUME_STEP)
+
+    def on_beeps_quieter(self) -> None:
+        self._change_beeps(-beeps.VOLUME_STEP)
+
+    def _change_beeps(self, step: int) -> None:
+        """Set the health beeps' volume, say it, and play one at it to hear."""
+        volume = buttons.change_beep_volume(step)
+        self.speech.say(f"Beeps {volume} percent." if volume else "Beeps off.")
+        if volume:
+            self._beep(beeps.sound(beeps.LEVELS[0][0], None, volume))
+
     def on_quit(self) -> None:
         self._close("Closing Street Fighter 5 access.")
 
@@ -985,10 +1000,14 @@ class App:
                 continue
             for side, (levels, g) in enumerate(zip(self.health_levels, gauges)):
                 level = levels.update(g.health / g.health_most)
-                if level is not None:
-                    if self.beeper is None:
-                        self.beeper = beeps.Player()
-                    self.beeper.play(beeps.sound(level, side))
+                volume = buttons.beep_volume()
+                if level is not None and volume > 0:
+                    self._beep(beeps.sound(level, side, volume))
+
+    def _beep(self, data: bytes) -> None:
+        if self.beeper is None:
+            self.beeper = beeps.Player()
+        self.beeper.play(data)
 
     def _keys_taken(self, failed: list[str]) -> None:
         """Say which keys another program owns, once for each different set.
