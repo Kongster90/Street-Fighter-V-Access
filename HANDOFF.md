@@ -1051,6 +1051,28 @@ changes above (the sentence's health from the run, "Health now at") went
 unheard that night too: no Survival run was played after the mod was
 restarted with them.
 
+**OPEN: which fighter record is player 1 (2026-09-29).** After the zip
+SFV-Access-2026-09-29-712ddef was built, the user played Survival and found
+Alt H and the beeps reversed (Alt R, from the Survival record, was right).
+`fight.order` falls back to "player 1's record at the higher address", and
+that is chance: Survival's stage 1 pair (0x2516A85CC00 the user's G, 783 of
+1025, 76 percent carried; 0x2516A85E580 the CPU) had player 1 lower, the
+stage 2 pair (0x251671F0CC0 the user, 683 of 1025; 0x2515FAEB280 the CPU)
+higher, which is why "halfway through the fight, the mod corrected itself".
+The side from the settings (`Fight.side`) was right throughout (0). The
+controller link was absent. Ruled out as a player-1 marker: +0x300 (knock-out
+flag), +0x2F4 (2/0 in two pairs, then 0/0), and past about +0x158 the records
+hold different things for different characters. No list in memory holds both
+records near each other. Next: `KWBattlePlayerSetting` has GetCharaCode
+(0xD14040), GetStartSide (0xD18E60), GetStartPosition (0xD18DD0) and
+GetVTriggerID (+0xDC); read the live table's entries 0 and 1 and look for the
+character (or V-Trigger) in the records' shared part, to match record to
+side, with a mirror match as the case needing a fallback. Other routes: the
+health bars in the Scaleform display tree (the labels "PLAYER 1"/"CPU" at
+y 90 are its texts), whose drawn size gives each side's share to match
+against the records. Hold the zip until this is fixed; the user was told.
+The work stopped because the command tool's safety check kept failing.
+
 **The screen a run ends on.** Read live on 2026-09-15 from a run the user
 lost on purpose at stage 7, having heard only fragments of it ("RESULT.
 SURVIVAL. EASY. Konggster. 0:00'34''400", then "RESULT. Match History. STAGES
