@@ -1761,8 +1761,39 @@ The pixel-read menus were judged "for the most part, maybe 95 per cent of the
 time" by the user. The memory reader then took over narration, and every screen
 the user tried with it in the watch mode ended with "it works as it should".
 The user finds memory reading better and wants it everywhere; the pixel reader
-is kept as the fallback and for the gauges.
+is kept as the fallback. The gauges moved to memory on 2026-09-28 (below).
 What follows is roughly in order of value.
+
+**The session of 2026-09-28 and 29, in short.** It began with a tester's
+report that Survival said "Health 0 percent" after every stage (a 1920 by
+1200 screen, windowed). The user then said they never wanted a pixel mod
+because of exactly that, so the rule since is: replace pixel reading with
+memory, do not tune it. Done and confirmed in play, each written up where it
+belongs (search for these): Survival's health from the run's own object
+(`SurvivalHealth`, the scene's `CurrentState`, since an old run can linger);
+Alt H's health, V-Trigger and Critical Art from the fighters' records
+(`fight.py`); the player's side from the battle's settings (`Fight.side`,
+the one USER), for Alt H and the VS screen, with Versus's list as the
+fallback; which record is player 1's by character (`order_by_character`);
+the health beeps (`beeps.py`, `App._watch_fight`) at 75, 50, 25 and 10
+percent, player 1 left and player 2 right, F5 and Shift F5 for volume (40
+to start, steps of 5, 0 off). Also: captures are cut to the game's picture
+(`game.picture_box`, `capture.crop`), and the tests no longer write over the
+user's Fighter ID. The zip SFV-Access-2026-09-29-6b22afd was built at the
+end, the user's go-ahead given; its What's new entry is dated 29 September.
+
+Not yet heard in play, the first things to check: "Health now at X percent"
+after a Survival recovery (fixed last, untried); a mirror match, where
+characters cannot tell the records apart and `Fight.certain` stays true on
+a guess; online, where the other side should read NET; two players on one
+machine, where `Fight.side` says None. Known loose end: `Fight.read` gives
+up when the marker sweep finds other than two records. The whole story is
+in "The bar is measured off the game's picture", "Survival's health is read
+from the run", "The fight's gauges come from the fighters' records", "Which
+side is the player's", "Health warning beeps", "Which fighter record is
+player 1" and "Two Survival runs in memory". The approach that found the
+fighters' records, a watcher matching memory against which bar moved (only
+the direction: a full bar measures 83 percent on screen), is there too.
 
 0. **Keep going screen by screen, as the user finds them.** The user's
    stated goal is memory reading everywhere. The way the 2026-09-13/14
