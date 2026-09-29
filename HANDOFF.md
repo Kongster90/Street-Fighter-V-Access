@@ -1081,7 +1081,19 @@ record with player 1's code first, and `Fight.read` notes "by character";
 a mirror match, or a code that will not read, falls back to the controller
 link and then the address, and the note says the characters did not settle
 it. Read live in Survival: player 1 Z30 (G, the user, USER), player 2 Z40
-(COM). Not yet heard in play, and a mirror match is untried.
+(COM).
+
+Still confused once in play (00:44 on 2026-09-29): Survival's settings move
+on to the next stage's opponent before the fight ends (in stage 3 against
+Ken they said Z23, Menat), and between stages they read as nothing for a
+moment (controllers [0, 3], no codes). So `order_by_character` now goes by
+player 1's code when exactly one record has it, player 2's only when player
+1's cannot decide; `Fight.read` keeps the order it settled by character
+(`_decided`) while the same two records last and the settings say nothing;
+and `Fight.certain` is false while the order is only a guess, when
+`App._watch_fight` sounds nothing and starts the levels afresh, since a
+guess that swapped the two would sound as a sudden drop. A mirror match
+counts as certain, nothing better being known. Not yet heard in play.
 
 **The screen a run ends on.** Read live on 2026-09-15 from a run the user
 lost on purpose at stage 7, having heard only fragments of it ("RESULT.

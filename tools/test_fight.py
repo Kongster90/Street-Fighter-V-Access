@@ -74,10 +74,15 @@ check("a character code is read from the bytes it starts",
 check("player 1's record is the one with player 1's character, wherever it is in memory",
       fight.order_by_character([LOW, HIGH], {LOW: b"Z30", HIGH: b"Z40"}, [b"Z30", b"Z40"]) == [LOW, HIGH]
       and fight.order_by_character([LOW, HIGH], {LOW: b"Z40", HIGH: b"Z30"}, [b"Z30", b"Z40"]) == [HIGH, LOW])
-check("a mirror match, or a code not read, leaves it to the other ways",
+check("Survival's settings naming the next opponent still find player 1 by their own character",
+      fight.order_by_character([LOW, HIGH], {LOW: b"KEN", HIGH: b"Z37"}, [b"Z37", b"Z23"]) == [HIGH, LOW])
+check("player 2's character decides it when player 1's cannot be read",
+      fight.order_by_character([LOW, HIGH], {LOW: None, HIGH: b"Z40"}, [b"Z30", b"Z40"]) == [LOW, HIGH]
+      and fight.order_by_character([LOW, HIGH], {LOW: b"Z30", HIGH: b"Z40"}, [None, b"Z40"]) == [LOW, HIGH])
+check("a mirror match, or nothing read, leaves it to the other ways",
       fight.order_by_character([LOW, HIGH], {LOW: b"KEN", HIGH: b"KEN"}, [b"KEN", b"KEN"]) is None
-      and fight.order_by_character([LOW, HIGH], {LOW: None, HIGH: b"Z40"}, [b"Z30", b"Z40"]) is None
-      and fight.order_by_character([LOW, HIGH], {LOW: b"Z30", HIGH: b"Z40"}, [b"Z30", None]) is None)
+      and fight.order_by_character([LOW, HIGH], {LOW: None, HIGH: None}, [b"Z30", b"Z40"]) is None
+      and fight.order_by_character([LOW, HIGH], {LOW: b"Z30", HIGH: b"Z40"}, [None, None]) is None)
 
 # The battle's settings say who controls each side: 0 USER, 1 NET, 2 COM,
 # 3 DUMMY. CPU VS PLAYER 1 read COM then USER on 2026-09-28.

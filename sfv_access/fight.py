@@ -120,17 +120,24 @@ def code(raw: bytes | None) -> bytes | None:
 
 def order_by_character(records: list[int], record_codes: dict[int, bytes | None],
                        player_codes: list[bytes | None]) -> list[int] | None:
-    """The two records with player 1's first, by character, or None when that cannot tell them apart."""
-    if len(records) != 2 or len(player_codes) < 2 or None in player_codes[:2]:
+    """The two records with player 1's first, by character, or None when that cannot tell them apart.
+
+    Player 1's character decides it when exactly one record has it; player
+    2's only when player 1's cannot. Survival's settings move on to the next
+    stage's opponent before the fight ends: in stage 3 against Ken they said
+    Menat, and asking both to match gave up (2026-09-29). A mirror match,
+    both records with the same character, is left to the other ways.
+    """
+    if len(records) != 2 or len(player_codes) < 2:
         return None
-    first, second = player_codes[:2]
-    if first == second:
-        return None                                     # a mirror match
-    ones = [r for r in records if record_codes.get(r) == first]
-    twos = [r for r in records if record_codes.get(r) == second]
-    if len(ones) != 1 or len(twos) != 1:
-        return None
-    return [ones[0], twos[0]]
+    for index, wanted in enumerate(player_codes[:2]):
+        if wanted is None:
+            continue
+        having = [r for r in records if record_codes.get(r) == wanted]
+        if len(having) == 1:
+            other = next(r for r in records if r != having[0])
+            return [having[0], other] if index == 0 else [other, having[0]]
+    return None
 
 
 def order(records: list[int], links: dict[int, int]) -> tuple[list[int], str]:
@@ -159,6 +166,11 @@ class Fight:
         self._note = note or (lambda text: None)
         self._last_how = ""
         self._last_side = ""
+        # The last order settled by character, player 1's record first, and
+        # whether the last reading's order can be trusted: settled by
+        # character, or a mirror match, where nothing better is known.
+        self._decided: list[int] | None = None
+        self.certain = False
         self._lock = threading.Lock()
 
     def read(self) -> tuple[Gauges, Gauges] | None:
@@ -180,8 +192,18 @@ class Fight:
             players = self._players(session)
             codes = {r: code(self._record_code(session.pm, r)) for r in self.records}
             by_character = order_by_character(self.records, codes, [c for _k, c in players])
+            player_codes = [c for _k, c in players]
+            mirror = len(player_codes) == 2 and player_codes[0] is not None and player_codes[0] == player_codes[1]
+            self.certain = by_character is not None or mirror
             if by_character is not None:
                 ordered, how = by_character, "character"
+                self._decided = by_character
+            elif self._decided is not None and set(self._decided) == set(self.records):
+                # The same two records, settled by character already: the
+                # settings are rewritten between Survival's stages, and for a
+                # moment read as nothing.
+                ordered, how = self._decided, "character, as before"
+                self.certain = True
             else:
                 ordered, how = order(self.records, self._links(session))
                 how += " (characters " + ", ".join(repr(c) for _k, c in players) + " did not settle it)"

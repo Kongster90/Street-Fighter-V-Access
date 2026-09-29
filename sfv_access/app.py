@@ -998,6 +998,13 @@ class App:
             if gauges is None:
                 retry_at = now + FIGHT_RETRY
                 continue
+            if not self.fight.certain:
+                # Which record is whose is a guess for the moment, as while
+                # the settings are rewritten between Survival's stages: a
+                # guess that swapped the two would sound as a sudden drop.
+                for levels in self.health_levels:
+                    levels.reset()
+                continue
             for side, (levels, g) in enumerate(zip(self.health_levels, gauges)):
                 level = levels.update(g.health / g.health_most)
                 volume = buttons.beep_volume()
