@@ -187,7 +187,7 @@ These work while the game has focus, including in fullscreen.
 - Alt M: turn menu narration on or off
 - F9: switch between reading the game's memory and reading the screen
 - Alt B: name buttons as Xbox buttons, PlayStation buttons or keyboard keys, remembered between runs
-- F5 and Shift F5: health beeps louder or quieter, 10 percent at a time, remembered between runs; 0 is off
+- F5 and Shift F5: health beeps louder or quieter, 5 percent at a time from 40, remembered between runs; 0 is off
 - Alt S: save a snapshot for calibration
 - Alt G: status
 - Alt X: stop speaking

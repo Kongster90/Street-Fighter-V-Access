@@ -11,7 +11,7 @@ Survival: a Health Recovery, or a Battle Item that restores health, is said as t
 Alt H, during a fight, reads both fighters' health, V-Trigger and Critical Art from the game itself rather than off the screen, so it works whatever your screen resolution or window. It now says how many bars each gauge has, such as "V-Trigger 1 of 2, Critical 2 of 3", and no longer calls a full health bar 83 percent. The first press in a session takes a couple of seconds.
 Versus against the CPU from the right-hand side (CPU VS PLAYER 1): the VS screen now names the fighter on the left as your opponent, and Alt H gives your own fighter's health first, as "You". Both assumed you were on the left. The mod asks the game which side you control, so this holds even if the mod was started in the middle of a session.
 Fights: a beep as either fighter's health drops past 75, 50 and 25 percent, each lower in pitch than the last, and two short low beeps at 10 percent. Player 1's beeps are in your left speaker and player 2's in the right, as their health bars are on screen. Each sounds once, and again only after health has gone back up, as it does in the next round.
-F5 makes the health beeps louder and Shift F5 quieter, 10 percent at a time, with a beep at the new volume each time. They start at 50 percent, a little quieter than the first version, and 0 turns them off. The setting is remembered.
+F5 makes the health beeps louder and Shift F5 quieter, 5 percent at a time, with a beep at the new volume each time. They start at 40 percent, quieter than the first version, and 0 turns them off for anyone who does not want them. The setting is remembered.
 
 
 24 September 2026

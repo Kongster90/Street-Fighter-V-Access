@@ -1031,13 +1031,14 @@ failed sweep). `tools/test_beeps.py` checks the levels, the speakers and the
 labels; `tools/beep_demo.py` plays every level on each side. Heard in a
 fight by the user the same night: "It works pretty good", though "a bit
 loud". So F5 and Shift F5 (`beeps_louder`, `beeps_quieter`, at the user's
-choice of keys) move the volume 10 percent at a time, 0 to 100, kept as
+choice of keys) move the volume `VOLUME_STEP` percent at a time, 0 to 100, kept as
 `beep_volume` in settings.json (`buttons.beep_volume`,
 `change_beep_volume`), saying "Beeps 40 percent." or "Beeps off." and
 playing the 75 percent beep in both speakers at the new volume. The
 percent is heard, not measured: a tone's peak is the square of the share
 (`beeps.loudness`), so the steps sound alike; the first beeps were about 59
-on that scale, and the default is 50.
+on that scale. The default was 50 and the step 10 until the user found 50
+still loud and asked for 40 and steps of 5.
 
 **The tests wrote over the player's Fighter ID.** `tools/test_scaleform.py`
 moved `buttons.SETTINGS` to a temporary file only halfway down, after the

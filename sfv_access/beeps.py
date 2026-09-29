@@ -24,9 +24,10 @@ RATE = 44100
 # The beeps' volume in percent, F5 and Shift F5 in steps of `VOLUME_STEP`,
 # kept in the settings. It is heard, not measured: the level is the square
 # of the share, so each step sounds much the same size. The first beeps,
-# which the user found "a bit loud", were 59 percent on this scale.
-VOLUME_DEFAULT = 50
-VOLUME_STEP = 10
+# which the user found "a bit loud", were 59 percent on this scale, and 50
+# still was; they asked for 40 to start and steps of 5 "for more control".
+VOLUME_DEFAULT = 40
+VOLUME_STEP = 5
 FADE = 0.005          # seconds of fade at each end of a tone, so it does not click
 GAP = 0.06            # seconds between the tones of one warning
 

@@ -89,13 +89,13 @@ saved = buttons.SETTINGS, buttons._settings
 with tempfile.TemporaryDirectory() as folder:
     buttons.SETTINGS, buttons._settings = Path(folder) / "settings.json", None
     start = buttons.beep_volume()
-    steps = [buttons.change_beep_volume(-10) for _ in range(7)]
+    steps = [buttons.change_beep_volume(-beeps.VOLUME_STEP) for _ in range(10)]
     buttons._settings = None                       # as the next run would, from the file
     kept = buttons.beep_volume()
-    top = [buttons.change_beep_volume(10) for _ in range(12)][-1]
+    top = [buttons.change_beep_volume(beeps.VOLUME_STEP) for _ in range(22)][-1]
 buttons.SETTINGS, buttons._settings = saved
-check("the volume starts at 50, goes down 10 at a time to 0 and no further, and is remembered",
-      start == 50 and steps == [40, 30, 20, 10, 0, 0, 0] and kept == 0 and top == 100,
+check("the volume starts at 40, goes down 5 at a time to 0 and no further, and is remembered",
+      start == 40 and steps == [35, 30, 25, 20, 15, 10, 5, 0, 0, 0] and kept == 0 and top == 100,
       repr((start, steps, kept, top)))
 
 
