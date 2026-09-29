@@ -1255,10 +1255,45 @@ def _versus_player(shown: list[TextItem], fighter: TextItem) -> str | None:
     return " ".join(row[0].text.split()) if row else None
 
 
-def versus_summary(items: list[TextItem], me: str | None = None) -> str | None:
+# Versus against the CPU puts the player on the side chosen in this list, and
+# nothing after it, VS screen or fight, says which: on 2026-09-28 the user
+# chose CPU VS PLAYER 1 and heard their own Guile called the opponent. Each
+# entry's side for the player, 0 the left.
+VERSUS_SIDES = {"PLAYER 1 VS PLAYER 2": 0, "PLAYER 1 VS CPU": 0, "CPU VS PLAYER 1": 1}
+
+
+def versus_side_choice(items: list[TextItem]) -> int | None:
+    """The side the Versus list's selected entry puts the player on, or None away from it."""
+    return next((VERSUS_SIDES[it.text.strip()] for it in items
+                 if it.selected and it.text.strip() in VERSUS_SIDES), None)
+
+
+def main_menu_selected(items: list[TextItem]) -> bool:
+    """The main menu with one of its modes selected, where every mode but Versus starts on the left."""
+    return any(it.selected and it.text.strip() in MAIN_MENU_ENTRIES for it in items)
+
+
+def versus_my_side(items: list[TextItem], me: str | None) -> int | None:
+    """Online, the side whose Fighter ID is the player's on the VS screen, or None."""
+    if not me:
+        return None
+    shown = [it for it in items if it.shown]
+    panel = _versus_panel(shown)
+    if panel is None:
+        return None
+    names = fighter_names()
+    fighters = sorted((it for it in shown if it.text.strip() in names and panel in it.chain), key=lambda it: it.x)
+    if not fighters or fighters[-1].x - fighters[0].x < STAGE_WIDTH / 4:
+        return None
+    players = [_versus_player(shown, side) for side in (fighters[0], fighters[-1])]
+    return players.index(me) if me in players else None
+
+
+def versus_summary(items: list[TextItem], me: str | None = None, side: int = 0) -> str | None:
     """"Opponent, ABIGAIL, V-Skill 1, V-Trigger 1. Metro City Bay Area." on the VS screen.
 
-    Against the CPU the far side is the opponent and is the only one named.
+    Against the CPU the side the player is not on (`side`, 0 the left, from
+    `versus_side_choice`) is the opponent and is the only one named.
     Online it is not that simple: the user played a friend from the second
     player side on 2026-09-15 and heard their own fighter called the opponent.
     Nothing on the screen says which side is yours, so when both sides carry a
@@ -1291,8 +1326,8 @@ def versus_summary(items: list[TextItem], me: str | None = None) -> str | None:
             ", ".join([who, side.text.strip()] + _versus_versions(shown, side))
             for side, who in zip(sides, players))
     else:
-        sentence = ", ".join([f"Opponent, {sides[-1].text.strip()}"]
-                             + _versus_versions(shown, sides[-1]))
+        theirs = sides[0] if side == 1 else sides[-1]
+        sentence = ", ".join([f"Opponent, {theirs.text.strip()}"] + _versus_versions(shown, theirs))
     known = game_strings()
     stages = [it.text.strip() for it in shown
               if len(it.chain) > 1 and it.chain[1] == panel and it.text.strip() in known
@@ -3271,7 +3306,7 @@ def path_story(items: list[TextItem]) -> list[str]:
 
 
 def screen_summary(items: list[TextItem], health: str | None = None,
-                   me: str | None = None) -> tuple[bool, str | None]:
+                   me: str | None = None, side: int = 0) -> tuple[bool, str | None]:
     """For screens read as one sentence rather than by what is selected.
 
     Whether this is one, and the sentence once all of it is showing: the
@@ -3294,7 +3329,7 @@ def screen_summary(items: list[TextItem], health: str | None = None,
     # since that rule wants the heading and the outcome in one movie and
     # this screen is read whether or not it is built that way.
     summary = (match_banner(items) or online_result_summary(items) or arcade_result_summary(items)
-               or versus_summary(items, me) or survival_summary(items, health)
+               or versus_summary(items, me, side) or survival_summary(items, health)
                or survival_result_summary(items) or ending_summary(items)
                or trial_summary(items) or status_line(items)
                or demonstration_page(items) or tutorial_instruction(items))

@@ -976,8 +976,25 @@ hand. The Critical Art gauge in the Survival record (+0x410 in
 `SurvivalIterationState`) and V-Gauge (+0x414) are the same numbers, copied
 at the stage's end. Alt H confirmed working in play by the user on
 2026-09-28 (sixteen Versus matches against the CPU as player 1 from 22:37,
-the side decided by the CPU's link). Not yet tried: a match with the user on
-the right, as player 2, and two people against each other. The Survival
+the side decided by the CPU's link). Not yet tried: two people against each
+other.
+
+**Which side is the player's.** Later that night the user chose CPU VS
+PLAYER 1 and found both the VS screen ("Opponent, GUILE", their own fighter)
+and Alt H taking them for the left. Nothing on the VS screen or in a fight
+says which side is the player's, offline; Versus's list does ("PLAYER 1 VS
+PLAYER 2", "PLAYER 1 VS CPU", "CPU VS PLAYER 1" at (503, 274 to 358), the
+choice gold), so `Narrator.player_side` takes the side of the selected entry
+(`scaleform.versus_side_choice`), goes back to the left when a main menu mode
+is selected (every other mode starts there), and online takes the side
+carrying the player's Fighter ID (`versus_my_side`). `versus_summary` names
+the other side against the CPU, and Alt H calls the record on the player's
+side "You" (`App.on_read_hud`). That match also showed two things about the
+records: they were new ones, at new addresses (found again, the old ones
+having lost their marker), and no controller linked either, so the side came
+from their order in memory, which was right again: Ken on the left at the
+higher address. The +0x300 flag read 1 for the left fighter there, who lost,
+settling that it follows the knock-out and not the side. The Survival
 changes above (the sentence's health from the run, "Health now at") went
 unheard that night too: no Survival run was played after the mod was
 restarted with them.

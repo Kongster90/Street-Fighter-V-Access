@@ -9,6 +9,7 @@ Survival: the health you carry into the next stage is now read from the game its
 Survival: the stage's sentence is said as soon as the supplement screen appears. It used to wait for the health bar to settle, and was sometimes lost if you moved on quickly.
 Survival: a Health Recovery, or a Battle Item that restores health, is said as the next stage starts, when the game applies it: "Health now at 100 percent".
 Alt H, during a fight, reads both fighters' health, V-Trigger and Critical Art from the game itself rather than off the screen, so it works whatever your screen resolution or window. It now says how many bars each gauge has, such as "V-Trigger 1 of 2, Critical 2 of 3", and no longer calls a full health bar 83 percent. The first press in a session takes a couple of seconds.
+Versus against the CPU from the right-hand side (CPU VS PLAYER 1): the VS screen now names the fighter on the left as your opponent, and Alt H calls your own fighter "You". Both assumed you were on the left.
 
 
 24 September 2026

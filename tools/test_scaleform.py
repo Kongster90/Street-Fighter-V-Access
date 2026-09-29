@@ -2388,6 +2388,38 @@ check("against the CPU, with nobody named, the far side is still the opponent",
       repr(sf.versus_summary(versus_screen())))
 
 
+# Versus against the CPU from the right: the user chose CPU VS PLAYER 1 on
+# 2026-09-28 and heard their own Guile called the opponent. The list's
+# selected entry says the side, the VS screen names the other one, and the
+# main menu puts the player back on the left.
+def side_list(chosen):
+    return [item(text, 503, y, GOLD if text == chosen else (0.27, 0.27, 0.27, 1.0))
+            for text, y in (("PLAYER 1 VS PLAYER 2", 274), ("PLAYER 1 VS CPU", 316), ("CPU VS PLAYER 1", 358))]
+
+
+check("the Versus list says which side each choice puts the player on",
+      sf.versus_side_choice(side_list("CPU VS PLAYER 1")) == 1
+      and sf.versus_side_choice(side_list("PLAYER 1 VS CPU")) == 0
+      and sf.versus_side_choice(on_story) is None)
+check("from the right, the VS screen names the fighter on the left as the opponent",
+      sf.versus_summary(versus_screen(left="KEN", right="GUILE"), side=1).startswith("Opponent, KEN,"),
+      repr(sf.versus_summary(versus_screen(left="KEN", right="GUILE"), side=1)))
+sided = mn.Narrator()
+sided.step(side_list("PLAYER 1 VS CPU"), 0.0)
+sided.step(side_list("CPU VS PLAYER 1"), 0.5)
+chosen = sided.player_side
+heard = [said for said in [sided.step(versus_screen(left="KEN", right="GUILE"), t / 10) for t in range(10, 40, 2)] if said]
+sided.step([item("ARCADE", 200, 300, GOLD)], 5.0)
+check("the narrator keeps the side chosen, names the right opponent, and the main menu resets it",
+      chosen == 1 and heard and heard[0].startswith("Opponent, KEN,") and sided.player_side == 0,
+      repr((chosen, heard, sided.player_side)))
+check("online, the side carrying the player's own Fighter ID is theirs",
+      sf.versus_my_side(online_versus, "jamestoh") in (0, 1)
+      and sf.versus_my_side(online_versus, "Konggster") == 1 - sf.versus_my_side(online_versus, "jamestoh")
+      and sf.versus_my_side(online_versus, "somebody else") is None
+      and sf.versus_my_side(online_versus, None) is None)
+
+
 # Arcade's result screens, read live on 2026-09-16: after a fight, and after
 # the bonus stage, each row's points a line lower and further right.
 def arcade_scores(bonus=False, total=True):

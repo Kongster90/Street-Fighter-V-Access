@@ -7,8 +7,10 @@ bar as 83 percent. The game keeps each fighter in a record found on
 
 - Every record starts with the same type marker, a pointer to module +
   `VTABLE_RVA`, so a sweep of the read-write pages for that value finds both.
-  Only two were ever there, and the same two lasted through Training and five
-  Versus matches in one run, so the sweep is needed once and then checked.
+  Only two were ever there. The same two lasted through Training and five
+  Versus matches in one run, and a later match had two new ones, found again
+  because the old ones had lost their marker; so the sweep is done when the
+  marker is gone and checked at every reading.
 - The numbers are 16.16 fixed point in 4-byte slots: health and its most at
   +0xD0 and +0xD4 (1000, 1025), the Critical Art gauge and its most at +0xDC
   and +0xE0 (900, three stocks of 300), the V-Gauge and its most at +0xF4 and
@@ -16,12 +18,15 @@ bar as 83 percent. The game keeps each fighter in a record found on
   against the screen: the gauge passed 300 as the first stock lit, 600 as the
   second, was 900 with all three and 0 after a Critical Art.
 
-Which record is player 1 is not in the record as far as has been found. A
-CPU's controller (`KBP_BattlePlayerController_C`, its `NetPlayerIndex` the
-side) holds its own fighter's record at +0x6B0, where a player's holds -1, so
-against the CPU the CPU's record and side are known and the other is the
-player's. Two people against each other leave no link, and the order seen in
-every match that day, player 1's record at the higher address, is used.
+Which record is player 1 is not in the record as far as has been found (a
+field at +0x300 that looked like it turned out to mark who was knocked out).
+A CPU's controller (`KBP_BattlePlayerController_C`, its `NetPlayerIndex` the
+side) sometimes holds its own fighter's record at +0x6B0, where a player's
+holds -1: through Training and five matches, but not in a later one. Without
+it the order seen in every pair of records so far is used, player 1's at the
+higher address. Which side is the player's own is not this module's to know:
+the narrator keeps it (`Narrator.player_side`), from Versus's list or the
+player's Fighter ID on the VS screen.
 """
 
 from __future__ import annotations

@@ -541,7 +541,7 @@ class App:
             if said and details:
                 said = memory_narration.phrase([said] + details)
             _summary_screen, summary = scaleform.screen_summary(
-                items, self.narrator.health_words(), buttons.fighter_id())
+                items, self.narrator.health_words(), buttons.fighter_id(), self.narrator.player_side)
             if summary:
                 said = memory_narration.phrase([summary, said])
             layout = scaleform.preview_summary(items)
@@ -598,7 +598,10 @@ class App:
         if gauges is None:
             self.speech.say("Cannot read the fight.")
             return
-        self.speech.say(fight.describe(*gauges))
+        # Player 1's first; the player is whichever side they chose.
+        first, second = gauges
+        mine, theirs = (second, first) if self.narrator.player_side == 1 else (first, second)
+        self.speech.say(fight.describe(mine, theirs))
 
     def on_read_live(self) -> None:
         """Read state out of the game itself rather than off the screen.

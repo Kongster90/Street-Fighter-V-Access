@@ -206,6 +206,10 @@ class Narrator:
         # and when they were last showing, to hear a recovery being applied.
         self.health_armed: float | None = None
         self.health_armed_at = 0.0
+        # Which side the player fights on, 0 the left: chosen in Versus's
+        # list against the CPU, found by Fighter ID online, the left anywhere
+        # else. The VS screen and the read key for the fight both need it.
+        self.player_side = 0
         # Battle Items: the entry whose description line is owed, when it was
         # named, and whether it has been given. See `DESCRIBE_AFTER`.
         self.described_key = None
@@ -392,8 +396,17 @@ class Narrator:
             self.health_value = self.health()
             self.health_settled = (self.health_value is not None
                                    or now - self.health_first_at >= HEALTH_CAP)
+        me = buttons.fighter_id()
+        choice = scaleform.versus_side_choice(items)
+        if choice is not None:
+            self.player_side = choice
+        elif scaleform.main_menu_selected(items):
+            self.player_side = 0
+        mine = scaleform.versus_my_side(items, me)
+        if mine is not None:
+            self.player_side = mine
         health = self.health_words()
-        summary_screen, summary = scaleform.screen_summary(items, health, buttons.fighter_id())
+        summary_screen, summary = scaleform.screen_summary(items, health, me, self.player_side)
         # Nothing is said about the screen until the reading is in: with it
         # inside the sentence, saying it early means saying it twice.
         if on_supplements and not self.health_settled:
