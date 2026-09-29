@@ -2125,23 +2125,53 @@ mn.Narrator(health=lambda: asked.append("asked") or 0.5).step(on_story, 0.5)
 check("the narrator asks for a reading on that screen and nowhere else",
       on_supplements == ["asked"] and asked == [], repr((on_supplements, asked)))
 
-# The bar arrives filling up and then a shine sweeps along it, so the reading
-# is the fullest of the last few samples, watched until it stops moving.
-filling = iter([0.33, 0.61, 0.88, 0.93, 0.95, 0.93, 0.95, 0.94, 0.95, 0.95, 0.95, 0.95])
-settling = mn.Narrator(health=lambda: next(filling, 0.95))
-heard = [said for said in
-         [settling.step(survival(), t / 10) for t in range(0, 30, 2)] if said]
-check("the sentence waits for the bar to stop filling, then says it once",
-      heard == ["Do not use a Supplement",
-                "Stage 1 cleared. Health 95 percent. Time 31.616 seconds. "
-                "Score for the stage 13900. Next stage 2. CPU level 2"], repr(heard))
+# The health is the run's own number, read from memory, so it is there at
+# once: the sentence is said as the screen arrives, with the selection after.
+SENTENCE = ("Stage 1 cleared. Health {} percent. Time 31.616 seconds. "
+            "Score for the stage 13900. Next stage 2. CPU level 2")
+straight = mn.Narrator(health=lambda: 645 / 975)
+heard = [said for said in [straight.step(survival(), t / 10) for t in range(0, 30, 2)] if said]
+check("the sentence is said at once with the run's health, then the selection",
+      heard == [SENTENCE.format(66) + ". Do not use a Supplement"], repr(heard))
 
-# A shine dips one sample; the fullest of the window ignores it.
-dipping = iter([0.95, 0.95, 0.95, 0.95, 0.62, 0.95, 0.95, 0.95, 0.95, 0.95])
-shone = mn.Narrator(health=lambda: next(dipping, 0.95))
-said = [s for s in [shone.step(survival(), t / 10) for t in range(0, 30, 2)] if s]
-check("a shine sweeping the bar does not lower the reading",
-      any("Health 95 percent" in s for s in said), repr(said))
+# Finding the run takes a moment the first time; the sentence waits for it,
+# and the selection is said meanwhile.
+finding = iter([None, None, None, 711 / 975])
+waiting = mn.Narrator(health=lambda: next(finding, 711 / 975))
+heard = [said for said in [waiting.step(survival(), t / 10) for t in range(0, 30, 2)] if said]
+check("the sentence waits while the run is being found, then says it once",
+      heard == ["Do not use a Supplement", SENTENCE.format(73)], repr(heard))
+
+# If the run is never found, the sentence goes without health, not with 0.
+missing = mn.Narrator(health=lambda: None)
+heard = [said for said in [missing.step(survival(), t / 10) for t in range(0, 60, 2)] if said]
+check("with no run found the sentence is said without health after a wait",
+      heard == ["Do not use a Supplement", SENTENCE.replace("Health {} percent. ", "")], repr(heard))
+
+# Buying Health Recovery on the screen raises the run's health at once. The
+# sentence is not said again for it; the read key gives the new number.
+level = [645 / 975]
+bought = mn.Narrator(health=lambda: level[0])
+heard = [s for s in [bought.step(survival(), t / 10) for t in range(0, 20, 2)] if s]
+level[0] = 1.0
+heard += [s for s in [bought.step(survival(), t / 10) for t in range(20, 40, 2)] if s]
+check("buying a recovery does not repeat the sentence, and the read key hears it",
+      heard == [SENTENCE.format(66) + ". Do not use a Supplement"]
+      and bought.health_words(fresh=True) == "Health 100 percent",
+      repr((heard, bought.health_words(fresh=True))))
+
+# The run is made as Survival's tips screen shows, so it is looked for then.
+asked.clear()
+tips = [item("SURVIVAL MODE TIPS", 200, 100)]
+mn.Narrator(health=lambda: asked.append("asked") or None).step(tips, 0.5)
+check("Survival's tips screen starts the search for the run", asked == ["asked"], repr(asked))
+
+check("the run's two numbers give a share, and nonsense gives nothing",
+      abs(mn.survival_share(struct.pack("<2i", 645, 975)) - 645 / 975) < 1e-9
+      and mn.survival_share(struct.pack("<2i", 0, 0)) is None
+      and mn.survival_share(struct.pack("<2i", 1200, 975)) is None
+      and mn.survival_share(struct.pack("<2i", 5, 999999)) is None
+      and mn.survival_share(None) is None and mn.survival_share(b"\x01") is None)
 
 check("a first stage says no stage cleared, and the parameter increase can be missing",
       sf.survival_summary(survival(next_stage="Next Stage 1")) ==

@@ -909,6 +909,36 @@ window with a title bar, a window pushed off the bottom), which also shows
 the old measurement reading the tall screen as 0; not yet heard in play on a
 machine like the tester's.
 
+**Survival's health is read from the run, not the screen.** The user then
+said they never wanted a pixel reading mod, because of exactly this, so the
+health on the supplement screen now comes from memory. The reflected
+`KWReSurvivalProgressData` (VitalGauge, VitalGaugeMax and the rest in
+`KWSurvivalPlayerParameterData`) turned out to be the suspended-run save
+(`GameProgressSave.SurvivalProgressData`), which did not change during play.
+The live numbers sit in `SurvivalIterationState_0` (in the Entry level,
+made as the SURVIVAL MODE TIPS screen shows), in memory the game does not
+describe: +0x408 the health, +0x40C the most it can be, +0x400 the total
+score, +0x404 the total before the last stage, +0x3FC the run's time in
+frames. Found with a watcher logging that object's memory while the user
+played on 2026-09-28, and checked against the bar: 645 of 975 after stage 7
+(the bar said 66 percent), 975 at once on buying Health Recovery High, 711
+after stage 8 (73 percent). The numbers change the moment a fight ends, some
+nine seconds before the supplement screen. `memory_narration.SurvivalHealth`
+finds the object in the background as `KeyConfig` does (1.6 to 1.9 seconds
+the first time here, then one small read), and `survival_share` rejects
+anything that is not a health within its most. The narrator asks on the
+tips screen so the run is found before the first stage, takes the first
+reading on the supplement screen, and waits at most `HEALTH_CAP` (3 s)
+before saying the sentence without health. The old waiting for the bar to
+settle is gone, and with it the sentences that went missing when the user
+moved on within two seconds (stages 2, 3 and 6 said nothing that day). The
+sentence keeps the arrival reading; Alt R reads again
+(`Narrator.health_words(fresh=True)`), so it gives the new health after a
+recovery is bought. Not yet heard in play with the mod's own code. The
+pixel health reading is left only on Alt H, for the fight itself, whose
+health lives in battle code the engine does not describe; replacing that
+from memory is the next step.
+
 **The screen a run ends on.** Read live on 2026-09-15 from a run the user
 lost on purpose at stage 7, having heard only fragments of it ("RESULT.
 SURVIVAL. EASY. Konggster. 0:00'34''400", then "RESULT. Match History. STAGES

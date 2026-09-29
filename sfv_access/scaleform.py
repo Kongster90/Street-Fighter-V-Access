@@ -1712,6 +1712,7 @@ SURVIVAL_HEADING = "BATTLE SUPPLEMENT"
 # description line, which the user asked to hear without pressing the read
 # key, a moment behind the name (see `Narrator.step`).
 SURVIVAL_ITEMS_HEADING = "Battle Items"
+SURVIVAL_TIPS_HEADING = "SURVIVAL MODE TIPS"
 SURVIVAL_NEXT_STAGE = "Next Stage"
 SURVIVAL_CPU_LEVEL = "CPU Level"
 SURVIVAL_SCORE = "SCORE"
@@ -1767,6 +1768,11 @@ def on_survival_supplements(items: list[TextItem]) -> bool:
     return any(it.shown and it.text.strip() == SURVIVAL_HEADING for it in items)
 
 
+def survival_tips(items: list[TextItem]) -> bool:
+    """Survival's tips screen, shown as a run begins and before each stage."""
+    return any(it.shown and it.text.strip() == SURVIVAL_TIPS_HEADING for it in items)
+
+
 def on_battle_items(items: list[TextItem]) -> bool:
     """Survival's Battle Items screen, which follows the supplement one."""
     return any(it.shown and it.text.strip() == SURVIVAL_ITEMS_HEADING for it in items)
@@ -1777,8 +1783,8 @@ def survival_summary(items: list[TextItem], health: str | None = None) -> str | 
 
     None away from the screen, and until every part of it is showing, so the
     sentence is said once and whole rather than growing as the panel arrives.
-    `health` is what the bars still drawn behind the screen read, measured off
-    the picture by the caller: health carries from stage to stage in Survival,
+    `health` is the run's own health, read from memory by the caller
+    (`memory_narration.SurvivalHealth`): health carries from stage to stage in Survival,
     so the user asked to hear it before choosing whether to buy a recovery.
     """
     shown = [it for it in items if it.shown]

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import bisect
 import datetime as _dt
+import struct
 import threading
 import time
 import traceback
@@ -47,18 +48,14 @@ ATTACK_SETTLE = 0.25
 # and long combos, the values holding still this long is taken as the end. In
 # the log the frame text came back about a second after a long combo's last hit.
 ATTACK_SETTLE_UNCOUNTED = 2.0
-# Survival's health bar, measured off the picture on the supplement screen.
-# It cannot be trusted at a glance: the bar arrives filling up from empty (a
-# reading taken as the screen opened said 33 percent when the player had lost
-# almost nothing), and once it is full a shine sweeps along it, hiding a
-# stretch (95 where a screenshot showed the bar full). So the reading is the
-# fullest of the last few samples, which ignores the shine, and it is watched
-# until that stops moving, which waits out the filling. The screen's sentence
-# is held back until then, so it is said once with the right number.
-HEALTH_WINDOW = 4          # samples kept, about a second
-HEALTH_TOLERANCE = 0.02    # a change smaller than this is not the bar moving
-HEALTH_STEADY = 0.6        # how long it must hold still to be believed
-HEALTH_CAP = 4.0           # give up waiting and say whatever it reads
+# Survival's health, for the supplement screen's sentence, is the run's own
+# number read from memory (`SurvivalHealth`), there the moment the fight ends.
+# It used to be measured off the bar still drawn behind the screen, which
+# meant waiting for the bar to fill and its shine to pass, lost the sentence
+# when the player moved on first, and said 0 percent on a tester's 1920 by
+# 1200 screen. The sentence waits this long for a first reading, then goes
+# without one: finding the run takes a second or two the first time.
+HEALTH_CAP = 3.0
 # On Survival's Battle Items screen the entries are things whose names say
 # nothing about what they do, so the description line follows the name by
 # itself after this long, at the user's request, rather than waiting for the
@@ -189,12 +186,10 @@ class Narrator:
         self.summary_since = 0.0
         self.summary_held: list[str] = []
         self.restarted_at = float("-inf")
-        # The health bar on the supplement screen showing now: the last few
-        # samples, the fullest of them, when that last changed, when the
-        # screen arrived, and whether it has held still long enough to say.
-        self.health_samples: list[float] = []
+        # The health read as the supplement screen showing now arrived, which
+        # its sentence carries, when it was first asked for, and whether the
+        # sentence has stopped waiting for it.
         self.health_value: float | None = None
-        self.health_moved_at = 0.0
         self.health_first_at = 0.0
         self.health_settled = False
         # Battle Items: the entry whose description line is owed, when it was
@@ -246,11 +241,17 @@ class Narrator:
         self.footer_changed_at = 0.0
         self.said = ""
 
-    def health_words(self) -> str | None:
-        """"Health 95 percent" once the bar has settled, for the read key too."""
-        if not self.health_settled or self.health_value is None:
-            return None
-        return f"Health {round(self.health_value * 100)} percent"
+    def health_words(self, fresh: bool = False) -> str | None:
+        """"Health 95 percent", as read when the supplement screen arrived.
+
+        `fresh` reads it again, for the read key: buying a Health Recovery on
+        that screen raises it at once, and the sentence kept the old number.
+        """
+        value = self.health_value if self.health_settled else None
+        if fresh and self.health is not None:
+            now = self.health()
+            value = now if now is not None else value
+        return None if value is None else f"Health {round(value * 100)} percent"
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
         """The sentence to speak for this reading, or an empty string."""
@@ -368,34 +369,25 @@ class Narrator:
         if card and card != buttons.fighter_id():
             buttons.remember_fighter_id(card)
 
-        # Survival's supplement screen is the one whose sentence needs something
-        # off the picture: the health bar still drawn behind it. See HEALTH_WINDOW.
+        # Survival's supplement screen is the one whose sentence carries the
+        # health taken into the next stage, read from the run. See HEALTH_CAP.
         on_supplements = scaleform.on_survival_supplements(items)
         if not on_supplements:
-            self.health_samples, self.health_value = [], None
-            self.health_settled, self.health_first_at = self.health is None, 0.0
+            self.health_value, self.health_first_at = None, 0.0
+            self.health_settled = self.health is None
+            # The run is made as its tips screen shows, before the first
+            # fight: asking then finds it in time for the first stage's sentence.
+            if self.health is not None and scaleform.survival_tips(items):
+                self.health()
         elif self.health is not None and not self.health_settled:
             self.health_first_at = self.health_first_at or now
-            share = self.health()
-            if share is not None:
-                self.health_samples = (self.health_samples + [share])[-HEALTH_WINDOW:]
-                fullest = max(self.health_samples)
-                # The reading is always the fullest of the window; the
-                # tolerance only decides whether the bar counts as still
-                # moving. Keeping the older value while a rise was within
-                # tolerance stuck at 93 with the bar reading 95.
-                if self.health_value is None or abs(fullest - self.health_value) > HEALTH_TOLERANCE:
-                    self.health_moved_at = now
-                elif (len(self.health_samples) >= HEALTH_WINDOW
-                      and now - self.health_moved_at >= HEALTH_STEADY):
-                    self.health_settled = True
-                self.health_value = fullest
-            if now - self.health_first_at >= HEALTH_CAP:
-                self.health_settled = True
+            self.health_value = self.health()
+            self.health_settled = (self.health_value is not None
+                                   or now - self.health_first_at >= HEALTH_CAP)
         health = self.health_words()
         summary_screen, summary = scaleform.screen_summary(items, health, buttons.fighter_id())
-        # Nothing is said about the screen while the bar is still moving: with
-        # the reading inside the sentence, saying it early means saying it twice.
+        # Nothing is said about the screen until the reading is in: with it
+        # inside the sentence, saying it early means saying it twice.
         if on_supplements and not self.health_settled:
             summary = None
         if summary_screen:
@@ -627,6 +619,84 @@ class Narrator:
             self.said = said
             return said
         return ""
+
+
+SURVIVAL_CLASS = "SurvivalIterationState"
+# Where a Survival run keeps the player's health between stages: the health,
+# then the most it can be, both whole numbers, in memory the game does not
+# describe. Found on 2026-09-28 by logging the run while the user played, and
+# checked against the bar: 645 of 975 after one stage, which the bar read as
+# 66 percent; back to 975 on buying Health Recovery High; 711 after the next,
+# 73 percent. Beside them sit the total score (+0x400), the total before the
+# last stage (+0x404) and the run's time in frames (+0x3FC).
+SURVIVAL_VITAL = 0x408
+SURVIVAL_VITAL_MAX = 0x40C
+SURVIVAL_VITAL_LIMIT = 3000     # no fighter has anything like this much
+
+
+def survival_share(raw: bytes | None) -> float | None:
+    """Health as a share of the most it can be, from the run's two numbers, or None."""
+    if not raw or len(raw) < 8:
+        return None
+    vital, most = struct.unpack_from("<2i", raw)
+    if not (0 < most <= SURVIVAL_VITAL_LIMIT and 0 <= vital <= most):
+        return None
+    return vital / most
+
+
+class SurvivalHealth:
+    """Player one's health in a Survival run, read from the run itself.
+
+    The run's game object is found once in the background, as `KeyConfig`'s
+    is, and from then on a reading is one small read. Asked for away from
+    Survival it finds nothing and says so once in the screen log.
+    """
+
+    def __init__(self, note=None) -> None:
+        self.obj: int | None = None
+        self._thread: threading.Thread | None = None
+        self._note = note or (lambda text: None)
+        self._last_note = ""
+
+    def _say_once(self, text: str) -> None:
+        if text != self._last_note:
+            self._last_note = text
+            self._note(text)
+
+    def read(self) -> float | None:
+        from . import live
+
+        session = live.shared()
+        if self.obj is not None and session.attached:
+            # Still the run, and not memory given to something else since.
+            cls = session.class_address(SURVIVAL_CLASS)
+            if cls is not None and session.pm.ptr(self.obj + session.objects.layout.class_private) == cls:
+                return survival_share(session.pm.read(self.obj + SURVIVAL_VITAL, 8))
+            self.obj = None
+        if self._thread is None or not self._thread.is_alive():
+            self._thread = threading.Thread(target=self._find, daemon=True)
+            self._thread.start()
+        return None
+
+    def _find(self) -> None:
+        from . import live, unreal
+
+        session = live.shared()
+        try:
+            if not session.attach():
+                self._say_once("survival health: could not attach to the game's objects")
+                return
+            for obj, _name in session.find_by_class(SURVIVAL_CLASS):
+                path = unreal.full_object_path(session.pm, session.names, obj, session.objects.layout)
+                if "Default__" in path:
+                    continue
+                self.obj = obj
+                self._say_once(f"survival health: found {path} at {obj:#x}")
+                return
+            self._say_once("survival health: no run found")
+            session.invalidate()
+        except Exception as exc:
+            self._say_once(f"survival health: search failed: {exc!r}")
 
 
 KEY_CONFIG_CLASS = "WSKeyConfigGFxPlayer"

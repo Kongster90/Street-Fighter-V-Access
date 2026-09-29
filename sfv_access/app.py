@@ -339,8 +339,11 @@ class App:
         # Narration from memory, preferred whenever the game can be read.
         self.use_memory = True
         self.session = memory_narration.Session()
+        # Survival's health between stages, read from the run rather than
+        # measured off the bar, which read 0 on a screen not shaped like ours.
+        self.survival_health = memory_narration.SurvivalHealth(note=self.session.note)
         self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on(),
-                                                 health=self._health_share)
+                                                 health=self.survival_health.read)
         # Button Preview: each button said as it is pressed, while it is open.
         self.presses = pads.PressWatcher(self._on_preview_press)
         self._hang_file = None
@@ -456,28 +459,6 @@ class App:
         self._box = box
         return box
 
-    def _health_share(self) -> float | None:
-        """How full player one's health bar is, 0 to 1, or None if it cannot be read.
-
-        Survival's supplement screen keeps the fight's display behind it, so
-        the health carried into the next stage can be measured there. One
-        frame, cheap enough to ask for on every pass: the narrator takes many
-        and decides which to believe, since the bar arrives filling up and a
-        shine sweeps along it once it is full.
-        """
-        window = game.find_window()
-        # What is captured is whatever is in front, so a reading taken while
-        # the player has tabbed away measures the desktop: five frames of the
-        # Claude window read as 0 percent during a test.
-        if window is None or not window.is_foreground:
-            return None
-        _bgra, rgb = self._frames()
-        share = None if rgb is None else hud.health_fraction(rgb, hud.HEALTH["p1"])
-        # Nothing lit at all is a bar not found rather than an empty one: the
-        # player has just won the fight, so some health is always left. Said
-        # as a number, it was "Health 0 percent" after every stage.
-        return share or None
-
     def _refresh_lines(self, bgra) -> tuple[list, str]:
         items = ocr.reading_order(ocr.read(bgra))
         _header, body, footer = menu.split_chrome(items)
@@ -556,10 +537,12 @@ class App:
             details = scaleform.stage_details(items)
             if said and details:
                 said = memory_narration.phrase([said] + details)
-            # The narrator's reading, which has watched the bar settle, rather
-            # than a fresh glance that a shine could catch halfway.
+            # Survival's health read again, since buying a recovery on the
+            # supplement screen raises it after the screen's sentence was said.
+            health = (self.narrator.health_words(fresh=True)
+                      if scaleform.on_survival_supplements(items) else None)
             _summary_screen, summary = scaleform.screen_summary(
-                items, self.narrator.health_words(), buttons.fighter_id())
+                items, health, buttons.fighter_id())
             if summary:
                 said = memory_narration.phrase([summary, said])
             layout = scaleform.preview_summary(items)
