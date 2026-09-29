@@ -1008,7 +1008,10 @@ then USER. `Fight.side` gives the side of the one USER (`fight.player_side`),
 None for two players on one machine; Alt H asks it at every press, and the
 narrator asks it on the VS screen (`scaleform.on_versus_screen`), keeping
 the side seen in the list or by Fighter ID for when it says None. Online the
-remote player should read NET, so it should work there too; not tried. The Survival
+remote player should read NET, so it should work there too; not tried.
+Confirmed in play by the user the same night: Alt H from the right, the mod
+restarted mid-session (23:25, "controllers [2, 0], the player's side 1").
+The VS screen's side from the settings went unheard, Play Again skipping it. The Survival
 changes above (the sentence's health from the run, "Health now at") went
 unheard that night too: no Survival run was played after the mod was
 restarted with them.
