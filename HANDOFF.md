@@ -1103,6 +1103,16 @@ sentence, said "Health 70 percent" whatever happened: an earlier run's
 (reflected, on `KiwiGameScene`), so `SurvivalHealth._find` takes that,
 keeps the scene and checks at each reading that it still points at the run,
 and only with no scene on a run falls back to the newest by object index.
+Confirmed in play by the user (01:00 onward: 91, 82, 35, 55 percent, and a
+fresh run's `SurvivalIterationState_3` followed), with Alt H and the beeps
+settled by character throughout.
+
+"Health now at" had never yet been heard: bought at 01:07:39 (Health
+Recovery Low, 35 to 55 percent), nothing was said. The rise lands at the
+Yes, while the Battle Items screen is still fading, and the narrator took
+that reading as the one before. It now keeps the lowest reading seen on the
+supplement and Battle Items screens (`health_armed`); `tools/test_scaleform.py`
+lands a recovery on the fading screen. Not yet heard in play.
 
 **The screen a run ends on.** Read live on 2026-09-15 from a run the user
 lost on purpose at stage 7, having heard only fragments of it ("RESULT.

@@ -2235,6 +2235,22 @@ heard = run_through((645 / 975, 1.0))
 check("a recovery applied as the stage starts is said once, with the new health",
       heard.count("Health now at 100 percent") == 1,
       repr(heard))
+
+def fading(levels):
+    """As `run_through`, the recovery landing while the Battle Items screen still shows."""
+    level = [levels[0]]
+    narrator = mn.Narrator(health=lambda: level[0], health_known=lambda: level[0])
+    heard = [narrator.step(survival(), t / 10) for t in range(0, 20, 2)]
+    heard += [narrator.step(battle_items(), t / 10) for t in range(20, 26, 2)]
+    level[0] = levels[1]
+    heard += [narrator.step(battle_items(), t / 10) for t in range(26, 32, 2)]
+    heard += [narrator.step([item("PLAYER 1", 200, 100)], 3.2 + t / 10) for t in range(0, 30, 2)]
+    return [h for h in heard if h]
+
+
+heard = fading((350 / 1000, 550 / 1000))
+check("a recovery landing as the Battle Items screen fades is still said",
+      heard.count("Health now at 55 percent") == 1, repr(heard))
 heard = run_through((645 / 975, 645 / 975))
 check("with nothing bought, starting the stage says nothing about health",
       not any("Health now" in h for h in heard), repr(heard))

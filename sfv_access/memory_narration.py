@@ -422,8 +422,13 @@ class Narrator:
         if self.health_known is not None:
             level = self.health_known()
             if on_supplements or scaleform.on_battle_items(items):
+                # The lowest seen on these screens: the recovery is applied
+                # at the Yes, while the Battle Items screen is still fading,
+                # and taking that reading as the one before hid the rise
+                # (35 to 55 percent at 01:07 on 2026-09-29, nothing said).
                 if level is not None:
-                    self.health_armed, self.health_armed_at = level, now
+                    self.health_armed = level if self.health_armed is None else min(self.health_armed, level)
+                    self.health_armed_at = now
             elif self.health_armed is not None and level is not None:
                 if now - self.health_armed_at > HEALTH_RISE_WINDOW or level < self.health_armed - HEALTH_RISE:
                     self.health_armed = None
