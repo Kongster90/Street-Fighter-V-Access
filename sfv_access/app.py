@@ -24,7 +24,7 @@ import traceback
 from pathlib import Path
 
 from . import capture as _capture
-from . import buttons, game, gametext, hud, instance, memory_narration, menu, ocr, pads, scaleform, screens, strings
+from . import buttons, fight, game, gametext, hud, instance, memory_narration, menu, ocr, pads, scaleform, screens, strings
 from .capture import Capture
 from .hotkeys import Hotkeys
 from .speech import Speaker
@@ -342,8 +342,11 @@ class App:
         # Survival's health between stages, read from the run rather than
         # measured off the bar, which read 0 on a screen not shaped like ours.
         self.survival_health = memory_narration.SurvivalHealth(note=self.session.note)
+        # The fight's gauges for Alt H, read from the fighters' records.
+        self.fight = fight.Fight(note=self.session.note)
         self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on(),
-                                                 health=self.survival_health.read)
+                                                 health=self.survival_health.read,
+                                                 health_known=self.survival_health.known)
         # Button Preview: each button said as it is pressed, while it is open.
         self.presses = pads.PressWatcher(self._on_preview_press)
         self._hang_file = None
@@ -537,12 +540,8 @@ class App:
             details = scaleform.stage_details(items)
             if said and details:
                 said = memory_narration.phrase([said] + details)
-            # Survival's health read again, since buying a recovery on the
-            # supplement screen raises it after the screen's sentence was said.
-            health = (self.narrator.health_words(fresh=True)
-                      if scaleform.on_survival_supplements(items) else None)
             _summary_screen, summary = scaleform.screen_summary(
-                items, health, buttons.fighter_id())
+                items, self.narrator.health_words(), buttons.fighter_id())
             if summary:
                 said = memory_narration.phrase([summary, said])
             layout = scaleform.preview_summary(items)
@@ -589,14 +588,17 @@ class App:
         self.speech.say(said)
 
     def on_read_hud(self) -> None:
-        _bgra, rgb = self._frames()
-        if rgb is None:
-            self.speech.say("Capture failed.")
+        """Both fighters' health, V-Trigger and Critical Art, from the game's records.
+
+        Measured off the bars on screen, this read a full bar as 83 percent
+        and nothing at all on a screen not shaped 16 by 9. Outside a fight
+        the records keep the last fight's numbers.
+        """
+        gauges = self.fight.read()
+        if gauges is None:
+            self.speech.say("Cannot read the fight.")
             return
-        if not hud.looks_like_match(rgb):
-            self.speech.say("No health bars on screen.")
-            return
-        self.speech.say(hud.read(rgb).describe())
+        self.speech.say(fight.describe(*gauges))
 
     def on_read_live(self) -> None:
         """Read state out of the game itself rather than off the screen.

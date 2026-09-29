@@ -56,6 +56,13 @@ ATTACK_SETTLE_UNCOUNTED = 2.0
 # 1200 screen. The sentence waits this long for a first reading, then goes
 # without one: finding the run takes a second or two the first time.
 HEALTH_CAP = 3.0
+# A Health Recovery bought on the supplement screen, or a Battle Item that
+# restores health, is applied as the next stage starts, the moment the player
+# says Yes to starting it (18:45:22 on 2026-09-28, 645 to 975 of 975), not
+# when it is chosen. A rise in the run's health this soon after leaving those
+# screens is said as "Health now at 100 percent", at the user's request.
+HEALTH_RISE = 0.005
+HEALTH_RISE_WINDOW = 15.0
 # On Survival's Battle Items screen the entries are things whose names say
 # nothing about what they do, so the description line follows the name by
 # itself after this long, at the user's request, rather than waiting for the
@@ -156,11 +163,14 @@ class Narrator:
     replayed through it in a test.
     """
 
-    def __init__(self, subtitles: bool = False, health=None) -> None:
+    def __init__(self, subtitles: bool = False, health=None, health_known=None) -> None:
         # Whether story scenes' subtitles are said: the player's choice, kept across resets.
         self.subtitles = subtitles
         # Asked for a health reading on the one screen that wants one, or None.
         self.health = health
+        # The same reading, but only if the run has been found already, so
+        # asking it anywhere costs nothing and starts no search. See HEALTH_RISE.
+        self.health_known = health_known
         self.reset()
 
     def reset(self) -> None:
@@ -192,6 +202,10 @@ class Narrator:
         self.health_value: float | None = None
         self.health_first_at = 0.0
         self.health_settled = False
+        # The health as the supplement and Battle Items screens last had it,
+        # and when they were last showing, to hear a recovery being applied.
+        self.health_armed: float | None = None
+        self.health_armed_at = 0.0
         # Battle Items: the entry whose description line is owed, when it was
         # named, and whether it has been given. See `DESCRIBE_AFTER`.
         self.described_key = None
@@ -241,17 +255,11 @@ class Narrator:
         self.footer_changed_at = 0.0
         self.said = ""
 
-    def health_words(self, fresh: bool = False) -> str | None:
-        """"Health 95 percent", as read when the supplement screen arrived.
-
-        `fresh` reads it again, for the read key: buying a Health Recovery on
-        that screen raises it at once, and the sentence kept the old number.
-        """
-        value = self.health_value if self.health_settled else None
-        if fresh and self.health is not None:
-            now = self.health()
-            value = now if now is not None else value
-        return None if value is None else f"Health {round(value * 100)} percent"
+    def health_words(self) -> str | None:
+        """"Health 95 percent", as read when the supplement screen arrived, for the read key too."""
+        if not self.health_settled or self.health_value is None:
+            return None
+        return f"Health {round(self.health_value * 100)} percent"
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
         """The sentence to speak for this reading, or an empty string."""
@@ -390,6 +398,18 @@ class Narrator:
         # inside the sentence, saying it early means saying it twice.
         if on_supplements and not self.health_settled:
             summary = None
+        # A recovery being applied as the next stage starts. See HEALTH_RISE.
+        if self.health_known is not None:
+            level = self.health_known()
+            if on_supplements or scaleform.on_battle_items(items):
+                if level is not None:
+                    self.health_armed, self.health_armed_at = level, now
+            elif self.health_armed is not None and level is not None:
+                if now - self.health_armed_at > HEALTH_RISE_WINDOW or level < self.health_armed - HEALTH_RISE:
+                    self.health_armed = None
+                elif level > self.health_armed + HEALTH_RISE:
+                    self.health_armed = None
+                    parts = (parts or []) + [f"Health now at {round(level * 100)} percent"]
         if summary_screen:
             self.summary_seen_at = now
             if not any(it.selected for it in items):
@@ -663,20 +683,33 @@ class SurvivalHealth:
             self._last_note = text
             self._note(text)
 
-    def read(self) -> float | None:
+    def _current(self) -> tuple[float | None, bool]:
+        """The reading, and whether the run is known; forgets a run that has gone."""
         from . import live
 
         session = live.shared()
-        if self.obj is not None and session.attached:
-            # Still the run, and not memory given to something else since.
-            cls = session.class_address(SURVIVAL_CLASS)
-            if cls is not None and session.pm.ptr(self.obj + session.objects.layout.class_private) == cls:
-                return survival_share(session.pm.read(self.obj + SURVIVAL_VITAL, 8))
-            self.obj = None
+        if self.obj is None or not session.attached:
+            return None, False
+        # Still the run, and not memory given to something else since.
+        cls = session.class_address(SURVIVAL_CLASS)
+        if cls is not None and session.pm.ptr(self.obj + session.objects.layout.class_private) == cls:
+            return survival_share(session.pm.read(self.obj + SURVIVAL_VITAL, 8)), True
+        self.obj = None
+        return None, False
+
+    def read(self) -> float | None:
+        """The run's health, starting a search for the run if it is not known."""
+        share, found = self._current()
+        if found:
+            return share
         if self._thread is None or not self._thread.is_alive():
             self._thread = threading.Thread(target=self._find, daemon=True)
             self._thread.start()
         return None
+
+    def known(self) -> float | None:
+        """The run's health if the run is known already; never starts a search."""
+        return self._current()[0]
 
     def _find(self) -> None:
         from . import live, unreal

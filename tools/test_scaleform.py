@@ -2148,17 +2148,17 @@ heard = [said for said in [missing.step(survival(), t / 10) for t in range(0, 60
 check("with no run found the sentence is said without health after a wait",
       heard == ["Do not use a Supplement", SENTENCE.replace("Health {} percent. ", "")], repr(heard))
 
-# Buying Health Recovery on the screen raises the run's health at once. The
-# sentence is not said again for it; the read key gives the new number.
+# Should the run's health change while the screen shows, its sentence is
+# not said again for it.
 level = [645 / 975]
-bought = mn.Narrator(health=lambda: level[0])
-heard = [s for s in [bought.step(survival(), t / 10) for t in range(0, 20, 2)] if s]
+steady = mn.Narrator(health=lambda: level[0])
+heard = [s for s in [steady.step(survival(), t / 10) for t in range(0, 20, 2)] if s]
 level[0] = 1.0
-heard += [s for s in [bought.step(survival(), t / 10) for t in range(20, 40, 2)] if s]
-check("buying a recovery does not repeat the sentence, and the read key hears it",
-      heard == [SENTENCE.format(66) + ". Do not use a Supplement"]
-      and bought.health_words(fresh=True) == "Health 100 percent",
-      repr((heard, bought.health_words(fresh=True))))
+heard += [s for s in [steady.step(survival(), t / 10) for t in range(20, 40, 2)] if s]
+check("a change of health on the supplement screen does not repeat its sentence",
+      heard == [SENTENCE.format(66) + ". Do not use a Supplement"], repr(heard))
+
+
 
 # The run is made as Survival's tips screen shows, so it is looked for then.
 asked.clear()
@@ -2204,6 +2204,42 @@ heard = [(t, said) for t, said in
 check("an item's description follows its name after a moment, once",
       [said for _t, said in heard] == ["Grapes", "Eat one to recover a little health."]
       and heard[1][0] >= 0.5, repr(heard))
+
+
+# A recovery is applied as the next stage starts, when the player says Yes on
+# the Battle Items screen (645 to 975 of 975 at 18:45:22 on 2026-09-28), and
+# the user asked to hear it then: "Health now at 100 percent".
+def run_through(levels, fight_at=3.2):
+    """What a narrator says over the supplement and Battle Items screens, then the fight.
+
+    `levels` gives the run's health: on the screens, then from `fight_at`.
+    """
+    level = [levels[0]]
+    narrator = mn.Narrator(health=lambda: level[0], health_known=lambda: level[0])
+    fight = [item("PLAYER 1", 200, 100)]
+    heard = []
+    for t in range(0, 20, 2):
+        heard.append(narrator.step(survival(), t / 10))
+    for t in range(20, 32, 2):
+        heard.append(narrator.step(battle_items(), t / 10))
+    level[0] = levels[1]
+    for t in range(0, 30, 2):
+        heard.append(narrator.step(fight, fight_at + t / 10))
+    return [h for h in heard if h]
+
+
+heard = run_through((645 / 975, 1.0))
+check("a recovery applied as the stage starts is said once, with the new health",
+      heard.count("Health now at 100 percent") == 1,
+      repr(heard))
+heard = run_through((645 / 975, 645 / 975))
+check("with nothing bought, starting the stage says nothing about health",
+      not any("Health now" in h for h in heard), repr(heard))
+heard = run_through((645 / 975, 300 / 975))
+check("losing health is not a recovery", not any("Health now" in h for h in heard), repr(heard))
+heard = run_through((645 / 975, 1.0), fight_at=40.0)
+check("a rise long after the screens, as a new run starting, says nothing",
+      not any("Health now" in h for h in heard), repr(heard))
 
 # Moving on before it is due drops it: only the new name is said.
 moving = mn.Narrator()

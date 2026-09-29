@@ -7,8 +7,8 @@ Each test version, newest first. The version you have is in VERSION.txt, beside 
 
 Survival: the health you carry into the next stage is now read from the game itself rather than measured off the health bar on screen, so it is right whatever your screen resolution or window. It said "Health 0 percent" after every stage on a 1920 by 1200 screen.
 Survival: the stage's sentence is said as soon as the supplement screen appears. It used to wait for the health bar to settle, and was sometimes lost if you moved on quickly.
-Survival: after buying a Health Recovery, Alt R gives your new health.
-Alt H, which reads health and meters during a fight, now finds the bars on screens that are not 16 by 9, such as 1920 by 1200, and with the game in a window.
+Survival: a Health Recovery, or a Battle Item that restores health, is said as the next stage starts, when the game applies it: "Health now at 100 percent".
+Alt H, during a fight, reads both fighters' health, V-Trigger and Critical Art from the game itself rather than off the screen, so it works whatever your screen resolution or window. It now says how many bars each gauge has, such as "V-Trigger 1 of 2, Critical 2 of 3", and no longer calls a full health bar 83 percent. The first press in a session takes a couple of seconds.
 
 
 24 September 2026

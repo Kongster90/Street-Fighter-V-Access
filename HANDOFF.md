@@ -934,10 +934,48 @@ settle is gone, and with it the sentences that went missing when the user
 moved on within two seconds (stages 2, 3 and 6 said nothing that day). The
 sentence keeps the arrival reading; Alt R reads again
 (`Narrator.health_words(fresh=True)`), so it gives the new health after a
-recovery is bought. Not yet heard in play with the mod's own code. The
-pixel health reading is left only on Alt H, for the fight itself, whose
-health lives in battle code the engine does not describe; replacing that
-from memory is the next step.
+recovery is bought. Not yet heard in play with the mod's own code.
+
+That last part was wrong, and is gone: the watcher showed the recovery
+applied at 18:45:22, the moment the player said Yes to starting the next
+stage on the Battle Items screen, score taken at the same moment, not when
+it was chosen. So nothing changes on the supplement screen. At the user's
+request a rise in the run's health within `HEALTH_RISE_WINDOW` of leaving
+the supplement or Battle Items screen is said as "Health now at 100
+percent" (`Narrator`, `health_known`, which reads the run only once it is
+known and never starts a search). A fall (the next fight's damage) and a
+rise long after (a new run starting full) say nothing.
+
+**The fight's gauges come from the fighters' records (`fight.py`).** Alt H
+measured the bars off the screen, which read a full health bar as 83
+percent even on the user's own screen. Each fighter has a record in battle
+code the engine does not describe, found on 2026-09-28 with watchers while
+the user played Training and Versus against the CPU (the first two tries
+failed: a full bar is not 100 percent on screen, and copying all memory
+took two seconds while the bars moved; the third matched only which bar
+moved, with reads straight into kept buffers). What was found, all in
+`fight.py`'s docstring: the records start with a pointer to module +
+`VTABLE_RVA` (0x2C51680), exactly two of them, the same two through
+Training and five matches; 16.16 fixed point in 4-byte slots, health +0xD0
+of +0xD4, the Critical Art gauge +0xDC of +0xE0 (300 a stock, checked
+against the stocks lit on screen), the V-Gauge +0xF4 of +0xF8 (600 or 900,
+300 a bar), stun +0x138 of +0x13C (Ken's reached its 1050 as he was
+stunned). Also seen and not used: a second health at +0xC0 that moves on its
+own for a moment (recoverable damage, perhaps), and +0x300, which looked
+like a side number until it read 0 for both at a match's start and turned 1
+on the fighter knocked out. Which record is player 1 is not in the record
+as far as was found: a CPU's `KBP_BattlePlayerController_C` holds its own
+fighter's record at +0x6B0 (a player's holds -1), its `NetPlayerIndex` the
+side, so against the CPU that decides it (`fight.order`); two people leave
+no link and the order seen all that day is used, player 1's record at the
+higher address. The code never steps by the distance between the two
+(0xBF40), so that order is not built in and is the thing to check first if
+Alt H ever swaps the two. Each finding and how the side was decided goes to
+scaleform-log.txt ("fight: ..."). `tools/test_fight.py` builds records by
+hand. The Critical Art gauge in the Survival record (+0x410 in
+`SurvivalIterationState`) and V-Gauge (+0x414) are the same numbers, copied
+at the stage's end. Not yet heard: Alt H in play, and a match with the user
+on the right, as player 2.
 
 **The screen a run ends on.** Read live on 2026-09-15 from a run the user
 lost on purpose at stage 7, having heard only fragments of it ("RESULT.
@@ -2349,7 +2387,7 @@ Day to day:
 ```
 
 The other suites are `selftest.py`, and `test_correction.py`, `test_learning.py`,
-`test_memory.py`, `test_scaleform.py` and `test_launch.py` under `tools/`. All
+`test_memory.py`, `test_scaleform.py`, `test_launch.py` and `test_fight.py` under `tools/`. All
 seven should pass before anything is committed. `tools/show_bands.py <snapshot>` explains why a screen was read the
 way it was, and is the first thing to reach for when one reads wrongly.
 
