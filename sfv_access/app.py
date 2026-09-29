@@ -24,7 +24,7 @@ import traceback
 from pathlib import Path
 
 from . import capture as _capture
-from . import buttons, fight, game, gametext, hud, instance, memory_narration, menu, ocr, pads, scaleform, screens, strings
+from . import beeps, buttons, fight, game, gametext, hud, instance, memory_narration, menu, ocr, pads, scaleform, screens, strings
 from .capture import Capture
 from .hotkeys import Hotkeys
 from .speech import Speaker
@@ -82,6 +82,10 @@ WATCH_INTERVAL = 0.12
 # served that way are polled less often. Still quick enough to keep up with a
 # cursor moving across the roster.
 MEMORY_INTERVAL = 0.35
+# How often the fighters' health is looked at for the warning beeps while a
+# fight shows, and how long to leave it after the fighters could not be found.
+FIGHT_POLL = 0.1
+FIGHT_RETRY = 3.0
 # How often the game's window is looked up to find where its picture is.
 # Looking costs a walk over every window, and the window rarely moves.
 PICTURE_RECHECK = 1.0
@@ -345,6 +349,9 @@ class App:
         # The fight's gauges for Alt H, read from the fighters' records, and
         # which side is the player's.
         self.fight = fight.Fight(note=self.session.note)
+        # Beeps as each fighter's health drops past a level, player 1 on the left.
+        self.health_levels = [beeps.Levels(), beeps.Levels()]
+        self.beeper: beeps.Player | None = None
         self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on(),
                                                  health=self.survival_health.read,
                                                  health_known=self.survival_health.known,
@@ -398,6 +405,7 @@ class App:
 
         threading.Thread(target=self._watch_loop, daemon=True).start()
         threading.Thread(target=self._watch_stalls, daemon=True).start()
+        threading.Thread(target=self._watch_fight, daemon=True).start()
         self.presses.start()
         if self.with_game:
             threading.Thread(target=self._follow_game, daemon=True).start()
@@ -948,6 +956,39 @@ class App:
                         self._hang_file.flush()
                 time.sleep(memory_narration.POLL if self.use_memory and self.session.available
                            else WATCH_INTERVAL)
+
+    def _watch_fight(self) -> None:
+        """Beep as either fighter's health drops past a level, while a fight shows.
+
+        The fight is known by its display's labels over the health bars, read
+        from memory with everything else, so nothing is searched for in the
+        menus. Player 1's beeps are in the left speaker, player 2's in the
+        right, as their bars are on screen. See `beeps`.
+        """
+        retry_at = 0.0
+        while not self._stop.wait(FIGHT_POLL):
+            items = self.session.items if self.use_memory and self.session.available else None
+            if not items or not scaleform.fight_on_screen(items):
+                for levels in self.health_levels:
+                    levels.reset()
+                continue
+            now = time.monotonic()
+            if now < retry_at:
+                continue
+            try:
+                gauges = self.fight.read()
+            except Exception as exc:
+                self.session.note(f"fight: beeps could not read the fight: {exc!r}")
+                gauges = None
+            if gauges is None:
+                retry_at = now + FIGHT_RETRY
+                continue
+            for side, (levels, g) in enumerate(zip(self.health_levels, gauges)):
+                level = levels.update(g.health / g.health_most)
+                if level is not None:
+                    if self.beeper is None:
+                        self.beeper = beeps.Player()
+                    self.beeper.play(beeps.sound(level, side))
 
     def _keys_taken(self, failed: list[str]) -> None:
         """Say which keys another program owns, once for each different set.

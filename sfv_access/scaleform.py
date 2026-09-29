@@ -1273,6 +1273,21 @@ def main_menu_selected(items: list[TextItem]) -> bool:
     return any(it.selected and it.text.strip() in MAIN_MENU_ENTRIES for it in items)
 
 
+# The fight's display names each side above its health bar: "PLAYER 1" at
+# (167, 90) and "CPU" at (1834, 90), or the other way round, or "PLAYER 2".
+# Across the whole memory log of 2026-09-28 and the one before it, a text at
+# that height near both top corners was only ever these labels in a fight.
+FIGHT_LABEL_ROW = (84.0, 96.0)
+FIGHT_LABEL_LEFT, FIGHT_LABEL_RIGHT = 400.0, 1520.0
+
+
+def fight_on_screen(items: list[TextItem]) -> bool:
+    """Whether a fight's display shows, by the labels over both health bars."""
+    row = [it for it in items if it.shown and it.text.strip()
+           and FIGHT_LABEL_ROW[0] <= it.y <= FIGHT_LABEL_ROW[1]]
+    return any(it.x < FIGHT_LABEL_LEFT for it in row) and any(it.x > FIGHT_LABEL_RIGHT for it in row)
+
+
 def on_versus_screen(items: list[TextItem]) -> bool:
     """The VS screen before a fight, whether or not both fighters show yet."""
     return _versus_panel([it for it in items if it.shown]) is not None

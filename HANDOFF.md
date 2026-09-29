@@ -1011,7 +1011,25 @@ the side seen in the list or by Fighter ID for when it says None. Online the
 remote player should read NET, so it should work there too; not tried.
 Confirmed in play by the user the same night: Alt H from the right, the mod
 restarted mid-session (23:25, "controllers [2, 0], the player's side 1").
-The VS screen's side from the settings went unheard, Play Again skipping it. The Survival
+The VS screen's side from the settings went unheard, Play Again skipping it.
+
+**Health warning beeps (`beeps.py`, `App._watch_fight`).** Asked for by
+the user the same night: "A higher beep at 75%, another highish beep at 50%,
+a lower beep at 25%, then maybe 2 short low beeps at 10%", player 1 in the
+left speaker and player 2 in the right ("like in a stereo field"), once per
+crossing. The tones (1047, 784 and 523 Hz, then 392 Hz twice) are made as
+WAV data and played by `winsound.PlaySound` from memory on a thread of their
+own, which does not touch the speech. A level sounds as health drops below
+it and again only once health is back above it by `REARM` (a new round); a
+combo past several sounds only the lowest; the first reading of a fight
+sounds nothing. The fight is known by the labels over the health bars in
+memory (`scaleform.fight_on_screen`: "PLAYER 1" at (167, 90) and "CPU" at
+(1834, 90), either way round, or "PLAYER 2"), which in both memory logs
+of the day never matched anything but a fight, so the fighters are only
+looked for while a fight shows (every `FIGHT_POLL`, `FIGHT_RETRY` after a
+failed sweep). `tools/test_beeps.py` checks the levels, the speakers and the
+labels; `tools/beep_demo.py` plays every level on each side. Not yet heard
+in a fight. The Survival
 changes above (the sentence's health from the run, "Health now at") went
 unheard that night too: no Survival run was played after the mod was
 restarted with them.
@@ -2426,7 +2444,7 @@ Day to day:
 ```
 
 The other suites are `selftest.py`, and `test_correction.py`, `test_learning.py`,
-`test_memory.py`, `test_scaleform.py`, `test_launch.py` and `test_fight.py` under `tools/`. All
+`test_memory.py`, `test_scaleform.py`, `test_launch.py`, `test_fight.py` and `test_beeps.py` under `tools/`. All
 seven should pass before anything is committed. `tools/show_bands.py <snapshot>` explains why a screen was read the
 way it was, and is the first thing to reach for when one reads wrongly.
 
