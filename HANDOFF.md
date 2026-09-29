@@ -974,8 +974,13 @@ Alt H ever swaps the two. Each finding and how the side was decided goes to
 scaleform-log.txt ("fight: ..."). `tools/test_fight.py` builds records by
 hand. The Critical Art gauge in the Survival record (+0x410 in
 `SurvivalIterationState`) and V-Gauge (+0x414) are the same numbers, copied
-at the stage's end. Not yet heard: Alt H in play, and a match with the user
-on the right, as player 2.
+at the stage's end. Alt H confirmed working in play by the user on
+2026-09-28 (sixteen Versus matches against the CPU as player 1 from 22:37,
+the side decided by the CPU's link). Not yet tried: a match with the user on
+the right, as player 2, and two people against each other. The Survival
+changes above (the sentence's health from the run, "Health now at") went
+unheard that night too: no Survival run was played after the mod was
+restarted with them.
 
 **The screen a run ends on.** Read live on 2026-09-15 from a run the user
 lost on purpose at stage 7, having heard only fragments of it ("RESULT.
