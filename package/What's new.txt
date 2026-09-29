@@ -3,7 +3,7 @@ What's new in Street Fighter V Access
 Each test version, newest first. The version you have is in VERSION.txt, beside this file.
 
 
-28 September 2026
+29 September 2026
 
 Survival: the health you carry into the next stage is now read from the game itself rather than measured off the health bar on screen, so it is right whatever your screen resolution or window. It said "Health 0 percent" after every stage on a 1920 by 1200 screen.
 Survival: the stage's sentence is said as soon as the supplement screen appears. It used to wait for the health bar to settle, and was sometimes lost if you moved on quickly.
