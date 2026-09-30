@@ -1052,7 +1052,9 @@ a fight, hence the name and not any lone label. The records themselves read
 online: Alt H swept two of them at 22:52, 23:24 and 23:32, and the settings
 said controllers [0, 1], USER and NET, as expected (on the VS screen, a
 moment earlier, they said [0, 0]). No note of the order changing was logged,
-so it was settled by character as offline. Between rounds online the display
+so it was settled by character as offline. The user confirmed Alt H read
+correctly online, checked by a sighted friend watching the screen. Between
+rounds online the display
 hides for about three seconds while "YOU" / "P1" shows over the player's
 fighter at (394, 557), which resets the levels; health is full then, so
 nothing is lost. Unknown: where "YOU" sits when the player is on the right
@@ -1804,7 +1806,8 @@ Not yet heard in play, the first things to check: "Health now at X percent"
 after a Survival recovery (fixed last, untried); a mirror match, where
 characters cannot tell the records apart and `Fight.certain` stays true on
 a guess; the beeps online, fixed on the evening of 2026-09-29 (see "Online
-the beeps were silent"; the other side does read NET); two players on one
+the beeps were silent"; the other side does read NET, and Alt H was
+confirmed right online by a sighted friend); two players on one
 machine, where `Fight.side` says None. Known loose end: `Fight.read` gives
 up when the marker sweep finds other than two records. The whole story is
 in "The bar is measured off the game's picture", "Survival's health is read
