@@ -110,6 +110,15 @@ check("one label, or labels elsewhere, is not a fight",
       not sf.fight_on_screen([label("PLAYER 1", 167)])
       and not sf.fight_on_screen([label("CPU", 729, 371), label("PLAYER 1", 1121, 477)])
       and not sf.fight_on_screen([]))
+# Online only the player's own bar is labelled (2026-09-29, Battle Lounge).
+check("online, YOU over either bar alone is a fight",
+      sf.fight_on_screen([label("YOU", 167), label("Rank 30462", 174, 122)])
+      and sf.fight_on_screen([label("YOU", 1834)]))
+check("the Battle Lounge's status on that row, or YOU over a fighter, is not a fight",
+      not sf.fight_on_screen([label("MENU", 190)])
+      and not sf.fight_on_screen([label("STANDBY", 190)])
+      and not sf.fight_on_screen([label("YOU", 394, 557), label("P1\n", 394, 557)])
+      and not sf.fight_on_screen([label("YOU", 631, 77)]))
 
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")

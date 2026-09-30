@@ -1040,6 +1040,24 @@ percent is heard, not measured: a tone's peak is the square of the share
 on that scale. The default was 50 and the step 10 until the user found 50
 still loud and asked for 40 and steps of 5.
 
+**Online the beeps were silent (2026-09-29, fixed, not yet heard).** The
+user played Battle Lounge matches that evening and heard no beeps. The
+fight's display online labels the player's own bar alone, "YOU" at (167,
+90), with nothing over the opponent's, so `fight_on_screen`, wanting a label
+at both corners, never saw a fight. It now also takes "YOU" alone at either
+corner of that row (`ONLINE_FIGHT_LABEL`). In that night's memory log "YOU"
+there was only ever that label, in 197 screens across the online fights; the
+Lounge's "MENU", "STANDBY" and "SELECT" sit on the same row at x 190 outside
+a fight, hence the name and not any lone label. The records themselves read
+online: Alt H swept two of them at 22:52, 23:24 and 23:32, and the settings
+said controllers [0, 1], USER and NET, as expected (on the VS screen, a
+moment earlier, they said [0, 0]). No note of the order changing was logged,
+so it was settled by character as offline. Between rounds online the display
+hides for about three seconds while "YOU" / "P1" shows over the player's
+fighter at (394, 557), which resets the levels; health is full then, so
+nothing is lost. Unknown: where "YOU" sits when the player is on the right
+(either corner is accepted).
+
 **The tests wrote over the player's Fighter ID.** `tools/test_scaleform.py`
 moved `buttons.SETTINGS` to a temporary file only halfway down, after the
 narrator had stepped through pretend main menus whose card says "Dengster";
@@ -1785,7 +1803,8 @@ end, the user's go-ahead given; its What's new entry is dated 29 September.
 Not yet heard in play, the first things to check: "Health now at X percent"
 after a Survival recovery (fixed last, untried); a mirror match, where
 characters cannot tell the records apart and `Fight.certain` stays true on
-a guess; online, where the other side should read NET; two players on one
+a guess; the beeps online, fixed on the evening of 2026-09-29 (see "Online
+the beeps were silent"; the other side does read NET); two players on one
 machine, where `Fight.side` says None. Known loose end: `Fight.read` gives
 up when the marker sweep finds other than two records. The whole story is
 in "The bar is measured off the game's picture", "Survival's health is read

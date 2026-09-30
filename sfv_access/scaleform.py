@@ -1277,14 +1277,25 @@ def main_menu_selected(items: list[TextItem]) -> bool:
 # (167, 90) and "CPU" at (1834, 90), or the other way round, or "PLAYER 2".
 # Across the whole memory log of 2026-09-28 and the one before it, a text at
 # that height near both top corners was only ever these labels in a fight.
+#
+# Online the player's own bar alone is labelled, "YOU" at (167, 90), and the
+# opponent's has nothing over it, so the beeps never started in the user's
+# Battle Lounge matches of 2026-09-29. In that night's memory logs "YOU" on
+# that row was only ever that label, through every online fight. The Battle
+# Lounge's own "MENU", "STANDBY" and "SELECT" sit on the same row at x 190
+# outside a fight, which is why the lone label must be "YOU".
 FIGHT_LABEL_ROW = (84.0, 96.0)
 FIGHT_LABEL_LEFT, FIGHT_LABEL_RIGHT = 400.0, 1520.0
+ONLINE_FIGHT_LABEL = "YOU"
 
 
 def fight_on_screen(items: list[TextItem]) -> bool:
-    """Whether a fight's display shows, by the labels over both health bars."""
+    """Whether a fight's display shows, by the labels over both health bars, or "YOU" over one online."""
     row = [it for it in items if it.shown and it.text.strip()
-           and FIGHT_LABEL_ROW[0] <= it.y <= FIGHT_LABEL_ROW[1]]
+           and FIGHT_LABEL_ROW[0] <= it.y <= FIGHT_LABEL_ROW[1]
+           and not FIGHT_LABEL_LEFT <= it.x <= FIGHT_LABEL_RIGHT]
+    if any(it.text.strip() == ONLINE_FIGHT_LABEL for it in row):
+        return True
     return any(it.x < FIGHT_LABEL_LEFT for it in row) and any(it.x > FIGHT_LABEL_RIGHT for it in row)
 
 
