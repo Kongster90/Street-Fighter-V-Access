@@ -1122,20 +1122,25 @@ walker.refresh_soon()
 
 
 class GappedMemory(FakeMemory):
-    """Two blocks: the first found by the last walk, the second made since in
-    the free stretch that walk noted after it."""
+    """Blocks as Windows hands them out: the first found by the last walk, then
+    more made since in the free stretch that walk noted, each 0x11000 at the
+    start of its own 128 KB, the 0xF000 after it free but too small to use."""
 
     def __init__(self):
-        super().__init__(size=0x31000)
-        self.second_made = False
+        super().__init__(size=0x51000)
+        self.made = 0
 
     def regions_and_gaps(self, max_size, min_gap):
-        return [Region(HEAP, 0x11000, 0x04)], [[HEAP + 0x20000, HEAP + 0x40000]]
+        return [Region(HEAP, 0x11000, 0x04)], [[HEAP + 0x20000, HEAP + 0x80000]]
 
     def query(self, address):
-        if self.second_made and HEAP + 0x20000 <= address < HEAP + 0x31000:
-            return HEAP + 0x20000, 0x11000, 0x1000, 0x04
-        return address, HEAP + 0x40000 - address, 0x10000, 0x01
+        for k in range(self.made):
+            block = HEAP + 0x20000 * (k + 1)
+            if block <= address < block + 0x11000:
+                return block, 0x11000, 0x1000, 0x04
+            if block + 0x11000 <= address < block + 0x20000:
+                return block + 0x11000, 0xF000, 0x10000, 0x01
+        return address, HEAP + 0x80000 - address, 0x10000, 0x01
 
 
 gapped = GappedMemory()
@@ -1143,15 +1148,21 @@ gapped_root = display_object(gapped, 0, 0, 0, WHITE)
 text_field(gapped, gapped_root, 100, 100, ["FIRST"])
 gapped.top = 0x20100
 text_field(gapped, gapped_root, 100, 200, ["SECOND"])
+gapped.top = 0x40100
+text_field(gapped, gapped_root, 100, 300, ["THIRD"])
 gapped_reader = sf.ScaleformText(gapped, MODULE)
 gapped_reader.refresh_pages()
 check("a quick read sweeps only the blocks the last walk found",
       [it.text for it in gapped_reader.items(quick=True)] == ["FIRST"])
-gapped.second_made = True
+gapped.made = 1
 check("a block made since, in a free stretch that walk noted, is read without another walk",
       [it.text for it in gapped_reader.items(quick=True)] == ["FIRST", "SECOND"],
       repr([it.text for it in gapped_reader.items(quick=True)]))
-check("and is kept on the block list", len(gapped_reader._scaleform_pages) == 2)
+gapped.made = 2
+check("and so is the next, past the first one's unusable free tail",
+      [it.text for it in gapped_reader.items(quick=True)] == ["FIRST", "SECOND", "THIRD"],
+      repr([it.text for it in gapped_reader.items(quick=True)]))
+check("both are kept on the block list", len(gapped_reader._scaleform_pages) == 3)
 reads: dict[int, int] = {}
 _read_node = cursor_list._read_node
 

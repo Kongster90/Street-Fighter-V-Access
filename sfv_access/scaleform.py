@@ -3545,7 +3545,9 @@ class ScaleformText:
                         at = gap[1]
                         break
                     base, size, state, protect = region
-                    if state == MEM_FREE:
+                    # A block leaves the rest of its 128 KB free but too
+                    # small to use, and the next block goes after that.
+                    if state == MEM_FREE and size >= SCALEFORM_CHUNK + SCALEFORM_EXTRA:
                         break
                     if (state == MEM_COMMIT and protect == PAGE_READWRITE and _block_shaped(size)
                             and base not in known):
