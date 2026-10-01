@@ -15,10 +15,13 @@ first, and a fast fall. They then asked for it three semitones lower than
 the first beeps, so the levels are A, E, A and E where they were C, G, C, G.
 
 A counter hit has a sound of its own, in the speaker on the side of whoever
-landed it, at a volume of its own (F6 and Shift F6). The user chose it from
-five on 2026-09-30, a click and a short high tone, for being quick: "anything
+landed it, at a volume of its own (F6 and Shift F6). The user chose a click
+and a short high tone from five on 2026-09-30, for being quick: "anything
 longer and I may not be able to react in time to follow up on the counter
-hit". A crush counter sounds nothing; the game's own sound for one says it.
+hit". The same evening they made their own in Reaper, `sounds/counter_hit.wav`
+(0.2 s, sounding from its second millisecond), and that is played, its two
+channels made one; the click is kept for when the file cannot be read. A
+crush counter sounds nothing; the game's own sound for one says it.
 """
 
 from __future__ import annotations
@@ -31,8 +34,10 @@ import random
 import struct
 import threading
 import wave
+from pathlib import Path
 
 RATE = 44100
+COUNTER_FILE = Path(__file__).resolve().parent / "sounds" / "counter_hit.wav"
 # The beeps' volume in percent, F5 and Shift F5 in steps of `VOLUME_STEP`,
 # kept in the settings. It is heard, not measured: the level is the square
 # of the share, so each step sounds much the same size. The first beeps,
@@ -117,13 +122,42 @@ def sound(level: float, side: int | None, volume: int = VOLUME_DEFAULT) -> bytes
     return _wav(frames)
 
 
+def recorded(path: Path) -> tuple[list[float], int] | None:
+    """A PCM WAV file's samples, its channels made one and its loudest at 1, and
+    its rate; None if it cannot be read."""
+    try:
+        with wave.open(str(path)) as w:
+            channels, width, rate = w.getnchannels(), w.getsampwidth(), w.getframerate()
+            raw = w.readframes(w.getnframes())
+    except (OSError, EOFError, wave.Error):
+        return None
+    if not channels or width not in (1, 2, 3, 4):
+        return None
+    if width == 1:
+        values = [b - 128 for b in raw]
+    else:
+        values = [int.from_bytes(raw[i:i + width], "little", signed=True)
+                  for i in range(0, len(raw) - width + 1, width)]
+    samples = [sum(values[i:i + channels]) / channels for i in range(0, len(values) - channels + 1, channels)]
+    peak = max((abs(s) for s in samples), default=0)
+    return ([s / peak for s in samples], rate) if peak else None
+
+
 @functools.lru_cache(maxsize=16)
 def counter_sound(side: int | None, volume: int = COUNTER_VOLUME_DEFAULT) -> bytes:
-    """The counter hit's sound as WAV data, in the speaker of `side`, the one who landed it.
+    """The counter hit's sound as WAV data, in the speaker of `side`, the one who landed it:
+    the user's recording if it can be read, otherwise a click and a short high tone.
 
     Kept once made, so a counter hit costs no time making it.
     """
     peak = loudness(volume)
+    voice = recorded(COUNTER_FILE)
+    if voice is not None:
+        samples, rate = voice
+        frames = bytearray()
+        for s in samples:
+            frames += _frame(int(32767 * peak * s), side)
+        return _wav(frames, rate)
     noise = random.Random(3)
     count = int(COUNTER_CLICK * RATE)
     click = [noise.gauss(0, 1) * (1 - i / count) for i in range(count)]
@@ -135,12 +169,12 @@ def counter_sound(side: int | None, volume: int = COUNTER_VOLUME_DEFAULT) -> byt
     return _wav(frames)
 
 
-def _wav(frames: bytes) -> bytes:
+def _wav(frames: bytes, rate: int = RATE) -> bytes:
     out = io.BytesIO()
     with wave.open(out, "wb") as w:
         w.setnchannels(2)
         w.setsampwidth(2)
-        w.setframerate(RATE)
+        w.setframerate(rate)
         w.writeframes(bytes(frames))
     return out.getvalue()
 

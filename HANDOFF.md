@@ -1142,7 +1142,15 @@ a script with each candidate's number said through the screen reader
 first, which worked well for choosing. They asked about the Python audio
 library Synthizer for the sounds; it was archived in 2023 with builds only
 up to Python 3.11, and the sounds are made here in a few lines instead.
-Not yet heard in a fight.
+Later that evening the user made a counter hit sound of their own in Reaper
+and asked for it: `sfv_access/sounds/counter_hit.wav`, 24-bit stereo at
+44.1 kHz, 0.2 s, above 1 percent of its peak from 2 ms and mostly over by
+40 ms. `beeps.recorded` reads any PCM WAV (8 to 32 bits), averages its
+channels and scales its peak to 1, so F6's volume means what it did, and
+`counter_sound` puts it in one speaker; the generated click is kept for when
+the file cannot be read. The package copies `sfv_access` whole, so the file
+goes with it. They had already set F6 to 15 when it was first played to
+them, so the key works in play; the sound in a fight is not yet reported.
 
 **Online the beeps were silent (2026-09-29, fixed, not yet heard).** The
 user played Battle Lounge matches that evening and heard no beeps. The

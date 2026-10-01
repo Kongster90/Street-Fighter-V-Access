@@ -103,11 +103,26 @@ left, right, counter_seconds = channels(beeps.counter_sound(0))
 check("player 1's counter hit is in the left speaker only", any(left) and not any(right))
 left, right, _ = channels(beeps.counter_sound(1))
 check("player 2's in the right", any(right) and not any(left))
-check("it is over within a twentieth of a second and a bit, to follow up on",
-      counter_seconds < 0.06, f"{counter_seconds * 1000:.0f} ms")
+voice = beeps.recorded(beeps.COUNTER_FILE)
+check("the user's recording, 24-bit stereo, reads as one channel at its full height",
+      voice is not None and voice[1] == 44100 and max(abs(s) for s in voice[0]) == 1.0
+      and abs(len(voice[0]) / voice[1] - 0.202) < 0.002, repr(voice[1:] if voice else voice))
+left, _r, _s = channels(beeps.counter_sound(0))
+onset = next(i for i, s in enumerate(left) if abs(s) > 0.01 * max(map(abs, left))) / 44100
+check("and is what plays, sounding within its first 3 ms",
+      abs(counter_seconds - 0.202) < 0.002 and onset < 0.003,
+      f"{counter_seconds * 1000:.0f} ms, sounding from {onset * 1000:.1f} ms")
 silent, _r, _s = channels(beeps.counter_sound(0, 0))
 check("at 0 it is silent", not any(silent))
 check("once made it is kept, not made again", beeps.counter_sound(0, 40) is beeps.counter_sound(0, 40))
+kept_file = beeps.COUNTER_FILE
+beeps.COUNTER_FILE = Path(tempfile.gettempdir()) / "no-such-counter-hit.wav"
+beeps.counter_sound.cache_clear()
+left, right, click_seconds = channels(beeps.counter_sound(0))
+beeps.COUNTER_FILE = kept_file
+beeps.counter_sound.cache_clear()
+check("without the recording, a click and a short tone, still in the left speaker",
+      click_seconds < 0.06 and any(left) and not any(right), f"{click_seconds * 1000:.0f} ms")
 with tempfile.TemporaryDirectory() as folder:
     buttons.SETTINGS, buttons._settings = Path(folder) / "settings.json", None
     beep_before = buttons.beep_volume()

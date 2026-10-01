@@ -7,7 +7,7 @@ Each test version, newest first. The version you have is in VERSION.txt, beside 
 
 Survival and Trials: scrolling down the fighter list says each fighter as you land on them, with their score and time in one sentence. Past the first five rows it used to say nothing until you went back up and down again.
 Menus and lists read a little faster, long lists especially.
-Fights: a counter hit sounds a quick click as it lands, in the speaker on the side of whoever landed it, so you can follow it up. Crush counters are left to the game's own sound. F6 and Shift F6 make the click louder or quieter, separately from the health beeps; it starts at 40 percent.
+Fights: a counter hit plays a short sound as it lands, in the speaker on the side of whoever landed it, so you can follow it up. Crush counters are left to the game's own sound. F6 and Shift F6 make it louder or quieter, separately from the health beeps; it starts at 40 percent.
 The health beeps are now short xylophone notes, a little lower than before, in place of plain tones.
 
 
