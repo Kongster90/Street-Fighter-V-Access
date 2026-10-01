@@ -38,6 +38,14 @@ players 0x590 apart, and each has its `EKWCtrlType` at +0x21C (read from
 the one USER (`player_side`). Choosing CPU VS PLAYER 1 on 2026-09-28 showed
 COM then USER; restarting the mod mid-session had lost the side it had seen
 chosen in Versus's list (`Narrator.player_side`, the fallback).
+
+A counter hit is marked in the record of the fighter it lands on: the byte
+at +0x2F8 goes from 0 to 1 as the hit lands and stays while they reel, 0.37
+to 0.7 seconds, back to 0 sooner if a follow-up hit lands, which is never a
+counter. A crush counter sets +0x2FC with it, for as long as its longer
+stagger lasts. Found on 2026-09-30 by keeping both records around 35 hits in
+Training, the dummy's Counter setting ON for 27 (crush counters among them)
+and Normal for 8: no other byte in either record told them apart.
 """
 
 from __future__ import annotations
@@ -52,6 +60,8 @@ HEALTH, HEALTH_MAX = 0xD0, 0xD4
 CRITICAL, CRITICAL_MAX = 0xDC, 0xE0
 V_GAUGE, V_GAUGE_MAX = 0xF4, 0xF8
 BLOCK = V_GAUGE_MAX + 4 - HEALTH      # one read covers them all
+COUNTER, CRUSH = 0x2F8, 0x2FC         # set while a counter hit, and a crush counter, has its target reeling
+MARKS = CRUSH + 1                     # read from the record's start, its type marker with them
 STOCK = 300                           # a Critical Art stock, and a V-Trigger bar
 MOST = 3000                           # nothing here is anything like this big
 CONTROLLER_CLASS = "KBP_BattlePlayerController_C"
@@ -100,6 +110,14 @@ def gauges_from(raw: bytes | None) -> Gauges | None:
         if not (0 < most <= MOST and 0 <= value <= most):
             return None
     return g
+
+
+def counter_marks(raw: bytes | None, marker: int) -> tuple[bool, bool] | None:
+    """Whether a fighter is reeling from a counter hit, and from a crush counter,
+    from the bytes read at their record's start; None if it is no longer a record."""
+    if not raw or len(raw) < MARKS or struct.unpack_from("<Q", raw)[0] != marker:
+        return None
+    return raw[COUNTER] == 1, raw[CRUSH] == 1
 
 
 def describe(first: Gauges, second: Gauges) -> str:
@@ -171,6 +189,8 @@ class Fight:
         # character, or a mirror match, where nothing better is known.
         self._decided: list[int] | None = None
         self.certain = False
+        # Player 1's record and player 2's, as the last reading ordered them.
+        self.ordered: list[int] | None = None
         self._lock = threading.Lock()
 
     def read(self) -> tuple[Gauges, Gauges] | None:
@@ -210,10 +230,28 @@ class Fight:
             if how != self._last_how:
                 self._last_how = how
                 self._note(f"fight: player 1's record is {ordered[0]:#x}, by {how}")
+            self.ordered = ordered
             first, second = (gauges_from(session.pm.read(r + HEALTH, BLOCK)) for r in ordered)
             if first is None or second is None:
                 return None
             return first, second
+
+    def counters(self) -> list[tuple[bool, bool]] | None:
+        """Player 1's and player 2's counter hit marks, as `counter_marks` gives them,
+        from the records the last `read` ordered; None while that order is unsure.
+
+        Two small reads and nothing else, so it can be asked far more often
+        than `read`: the counter hit's sound is for following up on it.
+        """
+        from . import live
+
+        ordered = self.ordered
+        session = live.shared()
+        if ordered is None or not self.certain or session.pm is None:
+            return None
+        marker = session.module_base + VTABLE_RVA
+        marks = [counter_marks(session.pm.read(r, MARKS), marker) for r in ordered]
+        return None if None in marks else marks
 
     def side(self) -> int | None:
         """Which side the player is on, 0 the left, from the battle's settings, or None."""

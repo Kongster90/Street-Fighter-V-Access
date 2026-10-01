@@ -98,6 +98,27 @@ check("the volume starts at 40, goes down 5 at a time to 0 and no further, and i
       start == 40 and steps == [35, 30, 25, 20, 15, 10, 5, 0, 0, 0] and kept == 0 and top == 100,
       repr((start, steps, kept, top)))
 
+# The counter hit: player 1's counter in the left speaker, quick, at its own volume.
+left, right, counter_seconds = channels(beeps.counter_sound(0))
+check("player 1's counter hit is in the left speaker only", any(left) and not any(right))
+left, right, _ = channels(beeps.counter_sound(1))
+check("player 2's in the right", any(right) and not any(left))
+check("it is over within a twentieth of a second and a bit, to follow up on",
+      counter_seconds < 0.06, f"{counter_seconds * 1000:.0f} ms")
+silent, _r, _s = channels(beeps.counter_sound(0, 0))
+check("at 0 it is silent", not any(silent))
+check("once made it is kept, not made again", beeps.counter_sound(0, 40) is beeps.counter_sound(0, 40))
+with tempfile.TemporaryDirectory() as folder:
+    buttons.SETTINGS, buttons._settings = Path(folder) / "settings.json", None
+    beep_before = buttons.beep_volume()
+    counter_start = buttons.counter_volume()
+    counter_after = buttons.change_counter_volume(-beeps.VOLUME_STEP)
+    buttons._settings = None
+    kept = buttons.counter_volume(), buttons.beep_volume()
+buttons.SETTINGS, buttons._settings = saved
+check("its volume starts at 40, moves 5 at a time, is remembered, and leaves the beeps' alone",
+      counter_start == 40 and counter_after == 35 and kept == (35, beep_before), repr((counter_start, counter_after, kept)))
+
 
 def label(text, x, y=90.0):
     return sf.TextItem(text, x, y, (1.0, 1.0, 1.0, 1.0), 4)

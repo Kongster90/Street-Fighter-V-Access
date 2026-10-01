@@ -188,6 +188,7 @@ These work while the game has focus, including in fullscreen.
 - F9: switch between reading the game's memory and reading the screen
 - Alt B: name buttons as Xbox buttons, PlayStation buttons or keyboard keys, remembered between runs
 - F5 and Shift F5: health beeps louder or quieter, 5 percent at a time from 40, remembered between runs; 0 is off
+- F6 and Shift F6: the counter hit sound louder or quieter, the same way
 - Alt S: save a snapshot for calibration
 - Alt G: status
 - Alt X: stop speaking

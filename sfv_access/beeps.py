@@ -8,14 +8,26 @@ above it, as it does at the start of the next round. A combo that drops
 past several levels at once sounds only the lowest, the news that matters.
 
 The tones are made here, as sound data, and played by Windows beside the
-game's own sound and the screen reader's speech.
+game's own sound and the screen reader's speech. They were plain sine tones
+until 2026-09-30, when the user picked a xylophone from eleven styles: each
+note its pitch with a softer partial three times higher that dies away
+first, and a fast fall. They then asked for it three semitones lower than
+the first beeps, so the levels are A, E, A and E where they were C, G, C, G.
+
+A counter hit has a sound of its own, in the speaker on the side of whoever
+landed it, at a volume of its own (F6 and Shift F6). The user chose it from
+five on 2026-09-30, a click and a short high tone, for being quick: "anything
+longer and I may not be able to react in time to follow up on the counter
+hit". A crush counter sounds nothing; the game's own sound for one says it.
 """
 
 from __future__ import annotations
 
+import functools
 import io
 import math
 import queue
+import random
 import struct
 import threading
 import wave
@@ -31,14 +43,26 @@ VOLUME_STEP = 5
 FADE = 0.005          # seconds of fade at each end of a tone, so it does not click
 GAP = 0.06            # seconds between the tones of one warning
 
-# Each level: the share of health, and its tones as (pitch in hertz, seconds).
+# Each level: the share of health, and its notes as (pitch in hertz, seconds).
 LEVELS = (
-    (0.75, ((1047, 0.11),)),
-    (0.50, ((784, 0.11),)),
-    (0.25, ((523, 0.13),)),
-    (0.10, ((392, 0.07), (392, 0.07))),
+    (0.75, ((880, 0.18),)),
+    (0.50, ((659, 0.18),)),
+    (0.25, ((440, 0.18),)),
+    (0.10, ((330, 0.1), (330, 0.1))),
 )
+# A xylophone note: how fast it rises, how fast it falls (the time to fall to
+# about a third), and the same for its partial three times higher, which is
+# this much of its loudness; then a short fade at the end.
+NOTE_RISE, NOTE_FALL = 0.001, 0.05
+PARTIAL, PARTIAL_SHARE = 3, 0.4
+PARTIAL_RISE, PARTIAL_FALL = 0.0005, 0.02
+NOTE_RELEASE = 0.01
 REARM = 0.02          # back above a level by this much before it can sound again
+# The counter hit's sound: a click of noise, then a short high tone.
+COUNTER_CLICK = 0.006       # seconds of click, fading out
+COUNTER_CLICK_SHARE = 0.6   # its loudest, as a share of the tone's
+COUNTER_PITCH, COUNTER_TONE = 2637, 0.05
+COUNTER_VOLUME_DEFAULT = 40
 
 
 def loudness(volume: int) -> float:
@@ -46,20 +70,72 @@ def loudness(volume: int) -> float:
     return (max(0, min(100, volume)) / 100) ** 2
 
 
-def sound(level: float, side: int | None, volume: int = VOLUME_DEFAULT) -> bytes:
-    """A level's warning as WAV data: the left speaker for side 0, the right for 1, both for None."""
-    tones = dict(LEVELS)[level]
-    peak = loudness(volume)
+def _frame(sample: int, side: int | None) -> bytes:
+    return struct.pack("<hh", sample if side != 1 else 0, sample if side != 0 else 0)
+
+
+def _tone(pitch: float, seconds: float, peak: float, side: int | None) -> bytearray:
     frames = bytearray()
-    for n, (pitch, seconds) in enumerate(tones):
+    count = int(seconds * RATE)
+    fade = max(1, int(FADE * RATE))
+    for i in range(count):
+        envelope = min(1.0, i / fade, (count - 1 - i) / fade)
+        frames += _frame(int(32767 * peak * envelope * math.sin(2 * math.pi * pitch * i / RATE)), side)
+    return frames
+
+
+def _xylophone(pitch: float, seconds: float) -> list[float]:
+    """One note, as samples of no particular scale."""
+    count = int(seconds * RATE)
+    release = int(NOTE_RELEASE * RATE)
+    out = []
+    for i in range(count):
+        t = i / RATE
+        body = min(1.0, t / NOTE_RISE) * math.exp(-t / NOTE_FALL) * math.sin(2 * math.pi * pitch * t)
+        bright = (PARTIAL_SHARE * min(1.0, t / PARTIAL_RISE) * math.exp(-t / PARTIAL_FALL)
+                  * math.sin(2 * math.pi * PARTIAL * pitch * t))
+        tail = min(1.0, (count - i) / release)
+        out.append((body + bright) * tail)
+    return out
+
+
+@functools.lru_cache(maxsize=32)
+def sound(level: float, side: int | None, volume: int = VOLUME_DEFAULT) -> bytes:
+    """A level's warning as WAV data: the left speaker for side 0, the right for 1, both for None.
+
+    Kept once made, so a warning costs no time making it.
+    """
+    samples: list[float] = []
+    for n, (pitch, seconds) in enumerate(dict(LEVELS)[level]):
         if n:
-            frames += b"\x00\x00\x00\x00" * int(GAP * RATE)
-        count = int(seconds * RATE)
-        fade = max(1, int(FADE * RATE))
-        for i in range(count):
-            envelope = min(1.0, i / fade, (count - 1 - i) / fade)
-            sample = int(32767 * peak * envelope * math.sin(2 * math.pi * pitch * i / RATE))
-            frames += struct.pack("<hh", sample if side != 1 else 0, sample if side != 0 else 0)
+            samples += [0.0] * int(GAP * RATE)
+        samples += _xylophone(pitch, seconds)
+    scale = 32767 * loudness(volume) / (max(abs(s) for s in samples) or 1.0)
+    frames = bytearray()
+    for s in samples:
+        frames += _frame(int(scale * s), side)
+    return _wav(frames)
+
+
+@functools.lru_cache(maxsize=16)
+def counter_sound(side: int | None, volume: int = COUNTER_VOLUME_DEFAULT) -> bytes:
+    """The counter hit's sound as WAV data, in the speaker of `side`, the one who landed it.
+
+    Kept once made, so a counter hit costs no time making it.
+    """
+    peak = loudness(volume)
+    noise = random.Random(3)
+    count = int(COUNTER_CLICK * RATE)
+    click = [noise.gauss(0, 1) * (1 - i / count) for i in range(count)]
+    scale = COUNTER_CLICK_SHARE / max(abs(c) for c in click)
+    frames = bytearray()
+    for c in click:
+        frames += _frame(int(32767 * peak * scale * c), side)
+    frames += _tone(COUNTER_PITCH, COUNTER_TONE, peak, side)
+    return _wav(frames)
+
+
+def _wav(frames: bytes) -> bytes:
     out = io.BytesIO()
     with wave.open(out, "wb") as w:
         w.setnchannels(2)

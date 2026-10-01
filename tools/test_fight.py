@@ -92,6 +92,27 @@ check("the player is the side the one USER controls",
 check("two people on one machine, or nobody, leave the side unknown",
       fight.player_side([0, 0]) is None and fight.player_side([2, 2]) is None and fight.player_side([]) is None)
 
+
+# Counter hits, marked in the record of the fighter hit (2026-09-30).
+MARKER = 0x7FF6_2C51_680
+
+
+def record_start(counter=0, crush=0, marker=MARKER):
+    raw = bytearray(fight.MARKS)
+    struct.pack_into("<Q", raw, 0, marker)
+    raw[fight.COUNTER], raw[fight.CRUSH] = counter, crush
+    return bytes(raw)
+
+
+check("a fighter reeling from a counter hit is marked so",
+      fight.counter_marks(record_start(1), MARKER) == (True, False))
+check("a crush counter is marked as both",
+      fight.counter_marks(record_start(1, 1), MARKER) == (True, True))
+check("otherwise neither", fight.counter_marks(record_start(), MARKER) == (False, False))
+check("memory that is no longer a record, or too little of it, is no reading",
+      fight.counter_marks(record_start(1, marker=MARKER + 8), MARKER) is None
+      and fight.counter_marks(record_start(1)[:-1], MARKER) is None and fight.counter_marks(None, MARKER) is None)
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

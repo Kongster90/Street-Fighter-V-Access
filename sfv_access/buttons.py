@@ -110,6 +110,21 @@ def change_beep_volume(step: int) -> int:
     return value
 
 
+def counter_volume() -> int:
+    """The counter hit sound's volume in percent, as last set with F6 and Shift F6."""
+    from .beeps import COUNTER_VOLUME_DEFAULT
+
+    value = _load().get("counter_volume")
+    return value if isinstance(value, int) and 0 <= value <= 100 else COUNTER_VOLUME_DEFAULT
+
+
+def change_counter_volume(step: int) -> int:
+    """Move the counter hit sound's volume by `step` percent, within 0 to 100, save it, and return it."""
+    value = max(0, min(100, counter_volume() + step))
+    _save("counter_volume", value)
+    return value
+
+
 def remember_fighter_id(name: str) -> None:
     if name.strip() and name.strip() != fighter_id():
         _save("fighter_id", name.strip())

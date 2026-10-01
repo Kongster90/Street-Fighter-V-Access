@@ -1114,6 +1114,36 @@ percent is heard, not measured: a tone's peak is the square of the share
 on that scale. The default was 50 and the step 10 until the user found 50
 still loud and asked for 40 and steps of 5.
 
+**Counter hits, and new sounds (2026-09-30).** The user asked whether the
+mod could say when a counter hit lands. The banner ("COUNTER", gold, on the
+attacker's side at about (200, 596), saved by a watcher at a hit) is a
+picture: no text field holds it, even hidden, and the game's strings have
+no "COUNTER" or "CRUSH COUNTER" on their own. The fighter records hold it
+instead. A recorder kept both records (0x2D00 bytes each; they sit 0x1FE0
+apart, so reading more from the second runs off its memory) every 2 ms and
+saved a window round each drop in health, while the user landed hits on
+Training's dummy with its Counter setting ON (27, crush counters among
+them) and Normal (8). One byte told them apart: +0x2F8 of the fighter hit
+goes 0 to 1 as the hit lands and holds 0.37 to 0.7 s, back to 0 at once if
+a follow-up hit lands, which is never a counter; +0x2FC is set with it on a
+crush counter, for the whole of its longer stagger (`fight.COUNTER`,
+`CRUSH`, `counter_marks`). +0x2F3 looked like a crush mark at first but
+stayed set through the normal hits. `App._watch_counters` reads only those
+marks, every `COUNTER_POLL` (10 ms, about 0.06 ms a read), from the records
+`Fight.read` last ordered, and plays `beeps.counter_sound` in the speaker of
+the side that landed it (the side opposite the record marked). Crush
+counters sound nothing, at the user's request, the game's own sound being
+distinct. F6 and Shift F6 set its own volume (`counter_volume`, default
+40). The user chose the sound from five played to them (a 6 ms click and a
+50 ms high tone at 2637 Hz) because it is quick enough to react to, and
+the health beeps' style from eleven: a xylophone, its third partial dying
+first, three semitones below the first beeps. The demos were played from
+a script with each candidate's number said through the screen reader
+first, which worked well for choosing. They asked about the Python audio
+library Synthizer for the sounds; it was archived in 2023 with builds only
+up to Python 3.11, and the sounds are made here in a few lines instead.
+Not yet heard in a fight.
+
 **Online the beeps were silent (2026-09-29, fixed, not yet heard).** The
 user played Battle Lounge matches that evening and heard no beeps. The
 fight's display online labels the player's own bar alone, "YOU" at (167,

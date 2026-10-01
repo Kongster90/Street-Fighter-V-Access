@@ -1,8 +1,9 @@
-"""Play the health warning beeps, to hear them without a fight.
+"""Play the health warning beeps and the counter hit sound, to hear them without a fight.
 
 Each level in turn, 75, 50, 25 and 10 percent, first for player 1 in the
 left speaker and then for player 2 in the right, at the volume F5 and
-Shift F5 last set. Needs no game.
+Shift F5 last set; then a counter hit landed by player 1 and one by player
+2, at the volume F6 and Shift F6 last set. Needs no game.
 
     .venv\\Scripts\\python.exe tools\\beep_demo.py
 """
@@ -25,3 +26,7 @@ for side in (0, 1):
                            winsound.SND_MEMORY | winsound.SND_NODEFAULT)
         time.sleep(0.5)
     time.sleep(1.0)
+for side in (0, 1):
+    winsound.PlaySound(beeps.counter_sound(side, buttons.counter_volume()),
+                       winsound.SND_MEMORY | winsound.SND_NODEFAULT)
+    time.sleep(0.7)

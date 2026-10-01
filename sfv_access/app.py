@@ -72,6 +72,8 @@ HOTKEYS = {
     "subtitles":     ("alt+t",      "turn story subtitles on or off"),
     "beeps_louder":  ("f5",         "health beeps louder"),
     "beeps_quieter": ("shift+f5",   "health beeps quieter"),
+    "counter_louder":  ("f6",       "counter hit sound louder"),
+    "counter_quieter": ("shift+f6", "counter hit sound quieter"),
     "snapshot":      ("alt+s",      "save a snapshot for calibration"),
     "status":        ("alt+g",      "status"),
     "stop_speech":   ("alt+x",      "stop speaking"),
@@ -88,6 +90,9 @@ MEMORY_INTERVAL = 0.35
 # fight shows, and how long to leave it after the fighters could not be found.
 FIGHT_POLL = 0.1
 FIGHT_RETRY = 3.0
+# How often a fight's counter hit marks are looked at. Two small reads; the
+# sound is for following up on the hit, so it should come as it lands.
+COUNTER_POLL = 0.01
 # How often the game's window is looked up to find where its picture is.
 # Looking costs a walk over every window, and the window rarely moves.
 PICTURE_RECHECK = 1.0
@@ -354,6 +359,7 @@ class App:
         # Beeps as each fighter's health drops past a level, player 1 on the left.
         self.health_levels = [beeps.Levels(), beeps.Levels()]
         self.beeper: beeps.Player | None = None
+        self._beeper_lock = threading.Lock()   # the health beeps and counter hits share it
         self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on(),
                                                  health=self.survival_health.read,
                                                  health_known=self.survival_health.known,
@@ -408,6 +414,7 @@ class App:
         threading.Thread(target=self._watch_loop, daemon=True).start()
         threading.Thread(target=self._watch_stalls, daemon=True).start()
         threading.Thread(target=self._watch_fight, daemon=True).start()
+        threading.Thread(target=self._watch_counters, daemon=True).start()
         self.presses.start()
         if self.with_game:
             threading.Thread(target=self._follow_game, daemon=True).start()
@@ -807,6 +814,19 @@ class App:
         if volume:
             self._beep(beeps.sound(beeps.LEVELS[0][0], None, volume))
 
+    def on_counter_louder(self) -> None:
+        self._change_counter(beeps.VOLUME_STEP)
+
+    def on_counter_quieter(self) -> None:
+        self._change_counter(-beeps.VOLUME_STEP)
+
+    def _change_counter(self, step: int) -> None:
+        """Set the counter hit sound's volume, say it, and play it at that volume to hear."""
+        volume = buttons.change_counter_volume(step)
+        self.speech.say(f"Counter hits {volume} percent." if volume else "Counter hits off.")
+        if volume:
+            self._beep(beeps.counter_sound(None, volume))
+
     def on_quit(self) -> None:
         self._close("Closing Street Fighter 5 access.")
 
@@ -1011,9 +1031,40 @@ class App:
                 if level is not None and volume > 0:
                     self._beep(beeps.sound(level, side, volume))
 
+    def _watch_counters(self) -> None:
+        """Sound a counter hit as it lands, in the speaker of whoever landed it.
+
+        The mark is in the record of the fighter hit, so player 2 being hit is
+        player 1's counter, heard on the left. Its own loop, and only the two
+        marks read, since `_watch_fight` looks only every tenth of a second
+        and the sound is for following up on the hit. A crush counter is left
+        to the game's own sound, at the user's request. See `fight.Fight.counters`.
+        """
+        before: list[bool] | None = None
+        while not self._stop.wait(COUNTER_POLL):
+            items = self.session.items if self.use_memory and self.session.available else None
+            marks = None
+            if items and scaleform.fight_on_screen(items):
+                try:
+                    marks = self.fight.counters()
+                except Exception as exc:
+                    self.session.note(f"fight: counter hits could not be read: {exc!r}")
+            if marks is None:
+                before = None
+                continue
+            reeling = [counter for counter, _crush in marks]
+            # The first reading of a fight only notes where things stand.
+            if before is not None:
+                for side, (counter, crush) in enumerate(marks):
+                    volume = buttons.counter_volume()
+                    if counter and not before[side] and not crush and volume > 0:
+                        self._beep(beeps.counter_sound(1 - side, volume))
+            before = reeling
+
     def _beep(self, data: bytes) -> None:
-        if self.beeper is None:
-            self.beeper = beeps.Player()
+        with self._beeper_lock:
+            if self.beeper is None:
+                self.beeper = beeps.Player()
         self.beeper.play(data)
 
     def _keys_taken(self, failed: list[str]) -> None:
