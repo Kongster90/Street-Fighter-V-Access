@@ -1169,8 +1169,10 @@ the code in the costume asset's name, none in a mirror match;
 `Fight.placements` reads them; `App._watch_counters` checks a health drop
 that opens an exchange (`CROSSUP_QUIET`, 1 s since that fighter was last
 hurt, so a crossup combo sounds once) and plays `beeps.crossup_sound`,
-`sounds/crossup.wav` if the user gives one, two quick falling tones until
-then, at F6's volume. Throws and other hits that switch sides are untried:
+`sounds/cross_up.wav`, the user's own from Reaper (0.34 s, sounding from
+its first tenth of a millisecond), two quick falling tones if it cannot be
+read, at its own volume on F7 and Shift F7 (`crossup_volume`), which the
+user asked for so each sound can be set on its own. Throws and other hits that switch sides are untried:
 one landing while the thrower stands behind the defender would sound too.
 Not yet heard in a fight.
 

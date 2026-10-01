@@ -22,6 +22,10 @@ hit". The same evening they made their own in Reaper, `sounds/counter_hit.wav`
 (0.2 s, sounding from its second millisecond), and that is played, its two
 channels made one; the click is kept for when the file cannot be read. A
 crush counter sounds nothing; the game's own sound for one says it.
+
+A crossup has a sound of its own too, `sounds/cross_up.wav`, also the user's
+from Reaper (0.34 s, sounding at once), at its own volume on F7 and Shift
+F7, which they asked for "so we can adjust each sound individually".
 """
 
 from __future__ import annotations
@@ -38,7 +42,7 @@ from pathlib import Path
 
 RATE = 44100
 COUNTER_FILE = Path(__file__).resolve().parent / "sounds" / "counter_hit.wav"
-CROSSUP_FILE = Path(__file__).resolve().parent / "sounds" / "crossup.wav"
+CROSSUP_FILE = Path(__file__).resolve().parent / "sounds" / "cross_up.wav"
 # The beeps' volume in percent, F5 and Shift F5 in steps of `VOLUME_STEP`,
 # kept in the settings. It is heard, not measured: the level is the square
 # of the share, so each step sounds much the same size. The first beeps,
@@ -69,8 +73,9 @@ COUNTER_CLICK = 0.006       # seconds of click, fading out
 COUNTER_CLICK_SHARE = 0.6   # its loudest, as a share of the tone's
 COUNTER_PITCH, COUNTER_TONE = 2637, 0.05
 COUNTER_VOLUME_DEFAULT = 40
-# A crossup's stand-in sound, until the user gives one: two quick falling tones.
+# A crossup's sound when its recording cannot be read: two quick falling tones.
 CROSSUP_PITCHES, CROSSUP_TONE, CROSSUP_GAP = (1760, 1175), 0.035, 0.012
+CROSSUP_VOLUME_DEFAULT = 40
 
 
 def loudness(volume: int) -> float:
@@ -173,9 +178,9 @@ def counter_sound(side: int | None, volume: int = COUNTER_VOLUME_DEFAULT) -> byt
 
 
 @functools.lru_cache(maxsize=16)
-def crossup_sound(side: int | None, volume: int = COUNTER_VOLUME_DEFAULT) -> bytes:
+def crossup_sound(side: int | None, volume: int = CROSSUP_VOLUME_DEFAULT) -> bytes:
     """A crossup's sound as WAV data, in the speaker of `side`, the one who landed it:
-    `sounds/crossup.wav` if it can be read, otherwise two quick falling tones.
+    the user's recording if it can be read, otherwise two quick falling tones.
 
     Kept once made, so a crossup costs no time making it.
     """

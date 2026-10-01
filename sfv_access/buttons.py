@@ -118,6 +118,21 @@ def counter_volume() -> int:
     return value if isinstance(value, int) and 0 <= value <= 100 else COUNTER_VOLUME_DEFAULT
 
 
+def crossup_volume() -> int:
+    """The crossup sound's volume in percent, as last set with F7 and Shift F7."""
+    from .beeps import CROSSUP_VOLUME_DEFAULT
+
+    value = _load().get("crossup_volume")
+    return value if isinstance(value, int) and 0 <= value <= 100 else CROSSUP_VOLUME_DEFAULT
+
+
+def change_crossup_volume(step: int) -> int:
+    """Move the crossup sound's volume by `step` percent, within 0 to 100, save it, and return it."""
+    value = max(0, min(100, crossup_volume() + step))
+    _save("crossup_volume", value)
+    return value
+
+
 def change_counter_volume(step: int) -> int:
     """Move the counter hit sound's volume by `step` percent, within 0 to 100, save it, and return it."""
     value = max(0, min(100, counter_volume() + step))

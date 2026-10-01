@@ -124,7 +124,21 @@ beeps.counter_sound.cache_clear()
 check("without the recording, a click and a short tone, still in the left speaker",
       click_seconds < 0.06 and any(left) and not any(right), f"{click_seconds * 1000:.0f} ms")
 
-# A crossup: its own sound in the speaker of whoever landed it, at F6's volume.
+# A crossup: its own sound in the speaker of whoever landed it, at its own volume (F7).
+left, right, crossup_seconds = channels(beeps.crossup_sound(0))
+check("the user's crossup recording is what plays, in the speaker of whoever landed it",
+      abs(crossup_seconds - 0.336) < 0.002 and any(left) and not any(right), f"{crossup_seconds * 1000:.0f} ms")
+with tempfile.TemporaryDirectory() as folder:
+    buttons.SETTINGS, buttons._settings = Path(folder) / "settings.json", None
+    counter_before = buttons.counter_volume()
+    crossup_start = buttons.crossup_volume()
+    crossup_after = buttons.change_crossup_volume(beeps.VOLUME_STEP)
+    buttons._settings = None
+    kept = buttons.crossup_volume(), buttons.counter_volume()
+buttons.SETTINGS, buttons._settings = saved
+check("its volume starts at 40, moves 5 at a time, is remembered, and leaves the counter hit's alone",
+      crossup_start == 40 and crossup_after == 45 and kept == (45, counter_before),
+      repr((crossup_start, crossup_after, kept)))
 kept_crossup = beeps.CROSSUP_FILE
 beeps.CROSSUP_FILE = Path(tempfile.gettempdir()) / "no-such-crossup.wav"
 beeps.crossup_sound.cache_clear()

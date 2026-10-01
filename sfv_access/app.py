@@ -72,8 +72,10 @@ HOTKEYS = {
     "subtitles":     ("alt+t",      "turn story subtitles on or off"),
     "beeps_louder":  ("f5",         "health beeps louder"),
     "beeps_quieter": ("shift+f5",   "health beeps quieter"),
-    "counter_louder":  ("f6",       "counter hit and crossup sounds louder"),
-    "counter_quieter": ("shift+f6", "counter hit and crossup sounds quieter"),
+    "counter_louder":  ("f6",       "counter hit sound louder"),
+    "counter_quieter": ("shift+f6", "counter hit sound quieter"),
+    "crossup_louder":  ("f7",       "crossup sound louder"),
+    "crossup_quieter": ("shift+f7", "crossup sound quieter"),
     "snapshot":      ("alt+s",      "save a snapshot for calibration"),
     "status":        ("alt+g",      "status"),
     "stop_speech":   ("alt+x",      "stop speaking"),
@@ -831,6 +833,19 @@ class App:
         if volume:
             self._beep(beeps.counter_sound(None, volume))
 
+    def on_crossup_louder(self) -> None:
+        self._change_crossup(beeps.VOLUME_STEP)
+
+    def on_crossup_quieter(self) -> None:
+        self._change_crossup(-beeps.VOLUME_STEP)
+
+    def _change_crossup(self, step: int) -> None:
+        """Set the crossup sound's volume, say it, and play it at that volume to hear."""
+        volume = buttons.change_crossup_volume(step)
+        self.speech.say(f"Crossups {volume} percent." if volume else "Crossups off.")
+        if volume:
+            self._beep(beeps.crossup_sound(None, volume))
+
     def on_quit(self) -> None:
         self._close("Closing Street Fighter 5 access.")
 
@@ -1044,7 +1059,7 @@ class App:
         and the sound is for following up on the hit. A crush counter is left
         to the game's own sound, at the user's request. See `fight.Fight.counters`.
         A crossup has no mark: a hit is one when it opens an exchange and
-        lands from behind (`_from_behind`). Both share F6's volume.
+        lands from behind (`_from_behind`). Each has its own volume, F6 and F7.
         """
         before: list[fight.Marks] | None = None
         hurt_at = [float("-inf"), float("-inf")]
@@ -1069,8 +1084,9 @@ class App:
                     if now_marks.health < was.health:
                         opening = now - hurt_at[side] > CROSSUP_QUIET
                         hurt_at[side] = now
-                        if opening and volume > 0 and self._from_behind(side):
-                            self._beep(beeps.crossup_sound(1 - side, volume))
+                        crossup_volume = buttons.crossup_volume()
+                        if opening and crossup_volume > 0 and self._from_behind(side):
+                            self._beep(beeps.crossup_sound(1 - side, crossup_volume))
             before = marks
 
     def _from_behind(self, side: int) -> bool:

@@ -46,7 +46,8 @@ Alt B: say buttons as Xbox, PlayStation or keyboard keys.
 Alt T: turn story subtitles on or off. They are off to start with, since the story voices are in English.
 Alt H: during a fight, both fighters' health, V-Trigger and Critical Art.
 F5 and Shift F5: make the health beeps louder or quieter, 5 percent at a time. They start at 40 percent, and at 0 they are off.
-F6 and Shift F6: the same for the counter hit and crossup sounds, which play in the speaker on the side of whoever landed the hit.
+F6 and Shift F6: the same for the counter hit sound, which plays in the speaker on the side of whoever landed the hit.
+F7 and Shift F7: the same for the crossup sound, also on the side of whoever landed it.
 Alt M: turn menu reading off or on.
 F10: close the mod until the next time you start the game.
 
