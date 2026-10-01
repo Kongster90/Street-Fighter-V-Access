@@ -551,6 +551,38 @@ lag behind the screen, so other screens may go blind the same way, and the
 110 ms, most of it the sweep and placing leftover text from closed screens.
 Worth speeding up, for instance by remembering DocViews that failed to place.
 
+On 2026-09-30, measured beside the mod with a profiler in its own process: a
+quick read of the main menu was 36 ms and about 3,000 ReadProcessMemory
+calls, two thirds of the time the sweep (616 blocks, 55 MB) and most of the
+rest placing each field. A list keeps every row it builds as it scrolls
+(Survival's fighter list went from 47 fields to 260, eight per row), and
+each text read every parent above it again, so the list took 75 ms. A pass
+of `items` now keeps each object's render node and parent for the pass
+(`_pass`, per thread, since the wide sweep reads on its own thread), reads
+a DocView's text, listener and box in one read, a StyledText's head and its
+paragraph array in one each, and an object's parent and render node entry
+in one: on Survival's screen, 7,311 reads to 4,441 and 65 ms to 52, results
+identical. What is left is the sweep (24 ms) and `_mark_highlighted_rows`
+(18 ms, only while a long list shows with no gold in it). Narrowing the
+sweep to blocks that held text is what made new text a second late before,
+and a scrolled-in row is new text, so it was left alone.
+
+**Fighter lists went quiet in the middle.** The user reported lag scrolling
+Survival's and Trials' fighter lists (two columns, five rows in view). It
+was silence, not lag: RYU to KARIN were said, then nothing all the way down
+however long they waited, and going up and back down said the fighter. The
+profiler showed reads fast enough; a recorder that logged every fighter's
+name read but not counted as showing found the cursor's cell there all
+along, gold and in place, at (646, 772), under a node at alpha zero with
+real bounds (third object up from the field). Pressing down from the bottom
+row scrolls a new row in; its other cell came up to full alpha within half
+a second, the cursor's stayed at zero until it was selected again without a
+scroll. Whether it is drawn is not known. `_show_list_cursor` counts it as
+showing, the final opponent's way: only while `FIGHTER_LIST_MIN` fighters'
+names show in one movie, only under the first zero-alpha object above a
+gold fighter's name, and only text hidden by nothing else. Not yet confirmed
+in play.
+
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but
 their render state looks exactly like the question's, so they are recognised

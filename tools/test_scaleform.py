@@ -1022,6 +1022,63 @@ check("no story away from path select", sf.path_story(ryu_ending) == [] and sf.p
 check("without its description line, a movie at zero alpha stays hidden",
       [it.text for it in path_select(prompt="Change the battle settings.")] == ["Change the battle settings."],
       repr([it.text for it in path_select(prompt="Change the battle settings.")]))
+SURVIVAL_ROWS = (("CHUN-LI", "CAMMY"), ("NASH", "M. BISON"), ("VEGA", "BIRDIE"), ("KARIN", "R. MIKA"),
+                 ("ZANGIEF", "DHALSIM"))
+
+
+def fighter_list(cursor="ZANGIEF", faded=("ZANGIEF",), rows=SURVIVAL_ROWS, elsewhere=False):
+    """Survival's fighter list as recorded on 2026-09-30, just scrolled down a row:
+    two columns of cells, each a name and its score under a holder, the cursor's
+    cell gold. The cells in `faded` hold alpha zero with bounds, as the cell the
+    list had scrolled to did for as long as the cursor stayed. With `elsewhere`
+    the faded cells sit in a movie of their own."""
+    mem = FakeMemory(size=0x21000)
+    movie = display_object(mem, 0, 0, 0, WHITE)
+    listing = display_object(mem, display_object(mem, movie, 0, 0, WHITE), 0, 0, WHITE)
+    other = display_object(mem, display_object(mem, 0, 0, 0, WHITE), 0, 0, WHITE)
+    text_field(mem, display_object(mem, movie, 157, 199, GOLD), 0, 0, ["EASY"])
+    for i, pair in enumerate(rows):
+        for j, name in enumerate(pair):
+            fade = name in faded
+            row = display_object(mem, other if fade and elsewhere else listing, 0, 156 + 154 * i, WHITE)
+            cell = display_object(mem, row, 646 + 636 * j, 0, (1.0, 1.0, 1.0, 0.0 if fade else 1.0))
+            holder = display_object(mem, cell, 0, 0, GOLD if name == cursor else GREY)
+            text_field(mem, holder, 0, 0, [name])
+            text_field(mem, holder, 0, 64, [f"SCORE {1000 + 10 * i + j} "])
+    return sf.ScaleformText(mem, MODULE)
+
+
+cursor_list = fighter_list()
+scrolled = cursor_list.items()
+check("a fighter list's cell scrolled to, held at alpha zero under the cursor, counts as showing",
+      [it.text.strip() for it in scrolled if it.selected and it.text.strip() != "EASY"] == ["ZANGIEF", "SCORE 1040"],
+      repr([it.text.strip() for it in scrolled if it.selected]))
+on_karin = fighter_list("KARIN", faded=()).items()
+check("and moving down onto it says it", [t.strip() for t in sf.landed_on(on_karin, scrolled)]
+      == ["ZANGIEF", "SCORE 1040"], repr(sf.landed_on(on_karin, scrolled)))
+both_faded = fighter_list(faded=("ZANGIEF", "DHALSIM")).items()
+check("its neighbour fading in beside it stays hidden until it has",
+      "DHALSIM" not in [it.text for it in both_faded] and "ZANGIEF" in [it.text for it in both_faded])
+check("with too few fighters showing it is not taken for a list",
+      "ZANGIEF" not in [it.text for it in fighter_list(rows=SURVIVAL_ROWS[3:]).items()])
+check("a gold fighter faded in another movie stays hidden",
+      "ZANGIEF" not in [it.text for it in fighter_list(elsewhere=True).items()])
+check("a grey fighter faded in the list stays hidden",
+      "ZANGIEF" not in [it.text for it in fighter_list(cursor="KARIN").items()])
+reads: dict[int, int] = {}
+_read_node = cursor_list._read_node
+
+
+def counted_read_node(obj):
+    reads[obj] = reads.get(obj, 0) + 1
+    return _read_node(obj)
+
+
+cursor_list._read_node = counted_read_node
+cursor_list.items()
+check("a pass reads each object's render node once, however many texts share it",
+      reads and max(reads.values()) == 1, f"most reads of one object {max(reads.values(), default=0)}")
+check("and forgets them after the pass", cursor_list._pass.nodes is None and cursor_list._pass.parents is None)
 artwork = [item("Special Artwork: BENGUS", 160, 911)]
 check("an unlocked picture's credit alone on screen is read",
       sf.screen_summary(artwork) == (True, "Special Artwork: BENGUS"), repr(sf.screen_summary(artwork)))

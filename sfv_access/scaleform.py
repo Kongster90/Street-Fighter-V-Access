@@ -58,7 +58,7 @@ import re
 import struct
 import threading
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from ctypes import wintypes
 from dataclasses import dataclass
 from pathlib import Path
@@ -1144,6 +1144,9 @@ ARCADE_NEXT_STAGE = "NEXT STAGE"
 # by alpha the same way the final opponent's card is.
 ARCADE_BONUS_STAGE = "BONUS STAGE"
 PATH_SELECT_PROMPT = "Please select a path."
+# Survival's and Trials' fighter lists show five rows of two, nine or ten names;
+# this many showing in one movie is taken as such a list. See `_show_list_cursor`.
+FIGHTER_LIST_MIN = 4
 VERSUS_LABELS = ("V-Skill", "V-TRIGGER")
 VERSUS_WORDS = {"V-Skill": "V-Skill", "V-TRIGGER": "V-Trigger"}
 VERSION_NUMERALS = {"I": 1, "II": 2, "III": 3}
@@ -3416,6 +3419,11 @@ class ScaleformText:
         # Whether the last read was the Home screen, where flag tiles are looked
         # for in grids too small or too gappy for the usual rule.
         self.on_home_screen = False
+        # Render nodes and parents already read in this pass of `items`, per
+        # thread. Every text under a list's rows shares their parents, and
+        # reading each parent again for each text cost Survival's fighter list,
+        # with 260 texts, twice the main menu's time.
+        self._pass = threading.local()
 
     # ------------------------------------------------------------- discovery
     def keep_pages_current(self, stop: threading.Event, interval: float = PAGE_REFRESH) -> None:
@@ -3494,18 +3502,29 @@ class ScaleformText:
         return found
 
     # ------------------------------------------------------------------ text
-    def field_text(self, docview: int) -> str | None:
-        styled = self.pm.ptr(docview + DOCVIEW_TEXT)
-        if not styled or self.pm.ptr(styled) != self.module_base + STYLED_TEXT_VTABLE:
+    def field_text(self, docview: int, styled: int | None = None) -> str | None:
+        """The field's text. `styled` is its StyledText when the caller has read it already.
+
+        Each piece that sits side by side in memory is taken in one read: the
+        StyledText's function table, paragraph array and count, then the
+        array. A field took ten reads before, and a long list holds hundreds.
+        """
+        if styled is None:
+            styled = self.pm.ptr(docview + DOCVIEW_TEXT)
+        head = self.pm.read(styled, TEXT_PARAGRAPH_COUNT + 8) if styled else None
+        if not head or len(head) < TEXT_PARAGRAPH_COUNT + 8:
             return None
-        data = self.pm.ptr(styled + TEXT_PARAGRAPHS)
-        count = self.pm.u64(styled + TEXT_PARAGRAPH_COUNT)
-        if count is None or count > MAX_PARAGRAPHS or (count and not data):
+        if struct.unpack_from("<Q", head)[0] != self.module_base + STYLED_TEXT_VTABLE:
             return None
+        data = struct.unpack_from("<Q", head, TEXT_PARAGRAPHS)[0]
+        count = struct.unpack_from("<Q", head, TEXT_PARAGRAPH_COUNT)[0]
+        if count > MAX_PARAGRAPHS or (count and not data):
+            return None
+        array = self.pm.read(data, count * 8) if count else b""
+        paras = struct.unpack_from(f"<{len(array or b'') // 8}Q", array or b"")
         parts = []
         self._pads = []
-        for i in range(count):
-            para = self.pm.ptr(data + i * 8)
+        for para in paras:
             if not para:
                 continue
             head = self.pm.read(para, PARAGRAPH_RUN_COUNT + 8)
@@ -3604,7 +3623,25 @@ class ScaleformText:
 
     # ------------------------------------------------------------- placement
     def _node(self, obj: int):
-        """An object's transform, colour multiplier and flag word, from its render node.
+        """An object's transform, colour multiplier and flag word, read once per pass of `items`."""
+        nodes = getattr(self._pass, "nodes", None)
+        if nodes is None:
+            return self._read_node(obj)[0]
+        if obj not in nodes:
+            nodes[obj], self._pass.parents[obj] = self._read_node(obj)
+        return nodes[obj]
+
+    def _parent(self, obj: int) -> int | None:
+        """The object above `obj`, read with its node in a pass of `items`."""
+        parents = getattr(self._pass, "parents", None)
+        if parents is None:
+            return self.pm.ptr(obj + DISPLAY_PARENT)
+        if obj not in parents:
+            self._node(obj)
+        return parents[obj]
+
+    def _read_node(self, obj: int):
+        """An object's render node, as (transform, colour multiplier, flag word), and its parent.
 
         A zero alpha on a node whose bounds are empty does not count. The
         Arcade opponent cards sat under such a node for minutes while plainly
@@ -3612,24 +3649,35 @@ class ScaleformText:
         recording and a row of the menu music list in another; every text a
         node like that hid, in 667 records, was showing in the screenshot. A
         node really faded out keeps its bounds.
+
+        The parent and the render node's entry sit side by side and are taken
+        in one read.
         """
-        entry = self.pm.ptr(obj + DISPLAY_RENDER_NODE)
+        span = DISPLAY_RENDER_NODE + 8 - DISPLAY_PARENT
+        links = self.pm.read(obj + DISPLAY_PARENT, span)
+        if not links or len(links) < span:
+            return None, None
+        parent = struct.unpack_from("<Q", links)[0]
+        entry = struct.unpack_from("<Q", links, DISPLAY_RENDER_NODE - DISPLAY_PARENT)[0]
         data = self.pm.ptr(entry + RENDER_NODE_DATA) if entry else None
         raw = self.pm.read(data, NODE_BOUNDS + 0x20) if data else None
         if not raw:
-            return None
+            return None, parent
         flags = struct.unpack_from("<H", raw, NODE_FLAGS)[0]
         m = struct.unpack_from("<8f", raw, NODE_MATRIX)
         cx = struct.unpack_from("<4f", raw, NODE_CXFORM)
         if not all(math.isfinite(v) and abs(v) < 1e7 for v in m + cx):
-            return None
+            return None, parent
         if cx[3] <= 0.01 and not any(struct.unpack_from("<8f", raw, NODE_BOUNDS)):
             cx = (cx[0], cx[1], cx[2], 1.0)
-        return (m[0], m[1], m[3], m[4], m[5], m[7]), cx, flags
+        return ((m[0], m[1], m[3], m[4], m[5], m[7]), cx, flags), parent
 
-    def place(self, docview: int):
-        """The owner chain, stage position, tint, hiddenness and rootedness of a DocView's field."""
-        listener = self.pm.ptr(docview + DOCVIEW_LISTENER)
+    def place(self, docview: int, listener: int | None = None):
+        """The owner chain, stage position, tint, hiddenness and rootedness of a DocView's field.
+
+        `listener` is the DocView's, when the caller has read it already."""
+        if listener is None:
+            listener = self.pm.ptr(docview + DOCVIEW_LISTENER)
         obj = self.pm.ptr(listener + LISTENER_OWNER) if listener else None
         if not obj:
             return None
@@ -3641,7 +3689,7 @@ class ScaleformText:
                 break
             nodes.append(node)
             chain.append(obj)
-            obj = self.pm.ptr(obj + DISPLAY_PARENT)
+            obj = self._parent(obj)
         if not chain:
             return None
         world = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
@@ -4157,6 +4205,52 @@ class ScaleformText:
             if cards.intersection(it.chain) and only_faded(it):
                 it.tint = (it.tint[0], it.tint[1], it.tint[2], 1.0)
 
+    def _show_list_cursor(self, every: list[TextItem]) -> None:
+        """Read the fighter a fighter list has just scrolled to.
+
+        Survival's and Trials' lists are two columns of fighters, five rows in
+        view. Pressing down from the bottom row scrolls a new row in, and the
+        cell the cursor lands on keeps a node at alpha zero with real bounds
+        for as long as the cursor stays, while its neighbour's comes up within
+        half a second. Its name, score and time were in memory, gold, in
+        place, and nothing was said: the user heard RYU to KARIN, then silence
+        all the way down, however long they waited (2026-09-30). Going up and
+        back down said it, the cell being selected again without a scroll.
+        Only while several fighters' names show in the list's movie, and only
+        under a cell holding a gold fighter's name, is text hidden by nothing
+        but that cell's alpha counted as showing.
+        """
+        names = fighter_names()
+        movies = Counter(it.chain[-1] for it in every if it.shown and it.chain and it.text.strip() in names)
+        lists = {movie for movie, count in movies.items() if count >= FIGHTER_LIST_MIN}
+        if not lists:
+            return
+
+        def only_faded(it):
+            return (it.depth >= 2 and it.rooted and not it.hidden and it.on_stage
+                    and it.tint[3] <= 0.01 and bool(it.chain) and it.chain[-1] in lists)
+
+        cells = set()
+        for it in every:
+            if it.text.strip() in names and it.highlighted and only_faded(it):
+                for obj in it.chain[1:]:
+                    node = self._node(obj)
+                    if node is not None and node[1][3] <= 0.01:
+                        cells.add(obj)
+                        break
+        if not cells:
+            return
+        for it in every:
+            if not (cells.intersection(it.chain) and only_faded(it)):
+                continue
+            alpha = 1.0
+            for obj in it.chain:
+                if obj not in cells:
+                    node = self._node(obj)
+                    alpha *= node[1][3] if node is not None else 0.0
+            if alpha > 0.01:
+                it.tint = (it.tint[0], it.tint[1], it.tint[2], alpha)
+
     def _slider_level(self, root: int, depth: int = 0) -> tuple[int, int] | None:
         """(level, most) for a slider of cells somewhere under `root`, or None."""
         if depth > SLIDER_DEPTH:
@@ -4286,6 +4380,13 @@ class ScaleformText:
         missed until the next refresh, so a caller polling quickly must run
         `keep_pages_current` alongside.
         """
+        self._pass.nodes, self._pass.parents = {}, {}
+        try:
+            return self._items(everything, quick)
+        finally:
+            self._pass.nodes = self._pass.parents = None
+
+    def _items(self, everything: bool, quick: bool) -> list[TextItem]:
         if quick:
             if self._scaleform_pages is None:
                 self.refresh_pages()
@@ -4295,21 +4396,32 @@ class ScaleformText:
         roots_before = set(self._roots)
         every = []
         for dv in docviews:
-            text = self.field_text(dv)
+            # The DocView's text, listener and box size, in one read.
+            head = self.pm.read(dv, DOCVIEW_SIZE + 8)
+            if head and len(head) == DOCVIEW_SIZE + 8:
+                styled, listener = (struct.unpack_from("<Q", head, at)[0]
+                                    for at in (DOCVIEW_TEXT, DOCVIEW_LISTENER))
+                if not styled:
+                    continue
+                size = head[DOCVIEW_SIZE:]
+            else:
+                styled = listener = size = None
+            text = self.field_text(dv, styled)
             if text is None:
                 continue
-            placed = self.place(dv)
+            placed = self.place(dv, listener)
             if placed is None:
                 every.append(TextItem(text, -1, -1, (0, 0, 0, 0), 0, dv))
                 continue
             chain, x, y, tint, hidden, rooted = placed
-            raw = self.pm.read(dv + DOCVIEW_SIZE, 8)
+            raw = size if size is not None else self.pm.read(dv + DOCVIEW_SIZE, 8)
             box = tuple(v / TWIPS_PER_PIXEL for v in struct.unpack("<2f", raw)) if raw else (0.0, 0.0)
             every.append(TextItem(text, x, y, tint, len(chain), dv, chain, hidden=hidden, box=box,
                                   rooted=rooted, buttons=self.hint_buttons.get(dv, ())))
         if not any(it.shown for it in every):
             self._show_hidden_stage_select(every)
         self._show_final_opponent(every)
+        self._show_list_cursor(every)
         self._show_path_select(every)
         self._show_notice_title(every)
         out = every if everything else [it for it in every if it.shown]

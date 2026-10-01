@@ -3,6 +3,12 @@ What's new in Street Fighter V Access
 Each test version, newest first. The version you have is in VERSION.txt, beside this file.
 
 
+30 September 2026
+
+Survival and Trials: scrolling down the fighter list says each fighter as you land on them. Past the first five rows it used to say nothing until you went back up and down again.
+Menus and lists read a little faster, long lists especially.
+
+
 29 September 2026
 
 Survival: the health you carry into the next stage is now read from the game itself rather than measured off the health bar on screen, so it is right whatever your screen resolution or window. It said "Health 0 percent" after every stage on a 1920 by 1200 screen.
