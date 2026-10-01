@@ -84,6 +84,12 @@ class FakeMemory:
     def regions(self, max_size=1 << 31):
         return [Region(HEAP, len(self.buf), 0x04)]
 
+    def regions_and_gaps(self, max_size, min_gap):
+        return self.regions(max_size), []
+
+    def query(self, address):
+        return None
+
 
 NODE_FLAG_WORD = sf.NODE_FLAGS
 
@@ -1113,6 +1119,39 @@ check("asking for a walk soon walks without waiting out the interval", len(walks
       f"{before_wake} walks, then {len(walks)}")
 walker_stop.set()
 walker.refresh_soon()
+
+
+class GappedMemory(FakeMemory):
+    """Two blocks: the first found by the last walk, the second made since in
+    the free stretch that walk noted after it."""
+
+    def __init__(self):
+        super().__init__(size=0x31000)
+        self.second_made = False
+
+    def regions_and_gaps(self, max_size, min_gap):
+        return [Region(HEAP, 0x11000, 0x04)], [[HEAP + 0x20000, HEAP + 0x40000]]
+
+    def query(self, address):
+        if self.second_made and HEAP + 0x20000 <= address < HEAP + 0x31000:
+            return HEAP + 0x20000, 0x11000, 0x1000, 0x04
+        return address, HEAP + 0x40000 - address, 0x10000, 0x01
+
+
+gapped = GappedMemory()
+gapped_root = display_object(gapped, 0, 0, 0, WHITE)
+text_field(gapped, gapped_root, 100, 100, ["FIRST"])
+gapped.top = 0x20100
+text_field(gapped, gapped_root, 100, 200, ["SECOND"])
+gapped_reader = sf.ScaleformText(gapped, MODULE)
+gapped_reader.refresh_pages()
+check("a quick read sweeps only the blocks the last walk found",
+      [it.text for it in gapped_reader.items(quick=True)] == ["FIRST"])
+gapped.second_made = True
+check("a block made since, in a free stretch that walk noted, is read without another walk",
+      [it.text for it in gapped_reader.items(quick=True)] == ["FIRST", "SECOND"],
+      repr([it.text for it in gapped_reader.items(quick=True)]))
+check("and is kept on the block list", len(gapped_reader._scaleform_pages) == 2)
 reads: dict[int, int] = {}
 _read_node = cursor_list._read_node
 

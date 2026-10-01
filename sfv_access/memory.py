@@ -25,6 +25,7 @@ PROCESS_VM_READ = 0x0010
 LIST_MODULES_ALL = 0x03
 
 MEM_COMMIT = 0x1000
+MEM_FREE = 0x10000
 PAGE_GUARD = 0x100
 PAGE_NOACCESS = 0x01
 READABLE = 0x02 | 0x04 | 0x20 | 0x40 | 0x80  # R, RW, XR, XRW, XWC
@@ -235,6 +236,44 @@ class ProcessMemory:
                 break
             addr = nxt
         return out
+
+    def regions_and_gaps(self, max_size: int, min_gap: int) -> tuple[list[Region], list[list[int]]]:
+        """`regions(max_size)`, and from the same walk every free stretch of at
+        least `min_gap` bytes, as [start, end] lists a caller may narrow."""
+        out: list[Region] = []
+        gaps: list[list[int]] = []
+        addr = 0
+        mbi = MEMORY_BASIC_INFORMATION64()
+        while addr < 0x7FFFFFFFFFFF:
+            got = kernel32.VirtualQueryEx(
+                self.handle, ctypes.c_void_p(addr), ctypes.byref(mbi), ctypes.sizeof(mbi)
+            )
+            if not got:
+                break
+            if mbi.State == MEM_FREE:
+                if mbi.RegionSize >= min_gap:
+                    gaps.append([mbi.BaseAddress, mbi.BaseAddress + mbi.RegionSize])
+            elif (
+                mbi.State == MEM_COMMIT
+                and (mbi.Protect & READABLE)
+                and not (mbi.Protect & PAGE_GUARD)
+                and mbi.RegionSize <= max_size
+            ):
+                out.append(Region(mbi.BaseAddress, mbi.RegionSize, mbi.Protect))
+            nxt = mbi.BaseAddress + mbi.RegionSize
+            if nxt <= addr:
+                break
+            addr = nxt
+        return out, gaps
+
+    def query(self, address: int) -> tuple[int, int, int, int] | None:
+        """The region holding `address`: its base, size, state and protection."""
+        mbi = MEMORY_BASIC_INFORMATION64()
+        if not kernel32.VirtualQueryEx(
+            self.handle, ctypes.c_void_p(address), ctypes.byref(mbi), ctypes.sizeof(mbi)
+        ):
+            return None
+        return mbi.BaseAddress, mbi.RegionSize, mbi.State, mbi.Protect
 
     def section(self, module: Module, name: str) -> Region | None:
         """One PE section of a loaded module, read from its in-memory headers."""

@@ -66,7 +66,7 @@ from pathlib import Path
 import numpy as np
 
 from . import buttons
-from .memory import ProcessMemory, find_pid
+from .memory import MEM_COMMIT, MEM_FREE, ProcessMemory, Region, find_pid
 
 EXE = "StreetFighterV.exe"
 GAME_PATH_HINT = r"Binaries\Win64"
@@ -184,6 +184,12 @@ HEAP_PAGE_LIMIT = 0x100000
 # for every page, so a quick read sweeps those alone.
 SCALEFORM_CHUNK = 0x10000
 SCALEFORM_EXTRA = 0x1000
+
+
+def _block_shaped(size: int) -> bool:
+    return size <= HEAP_PAGE_LIMIT and size % SCALEFORM_CHUNK == SCALEFORM_EXTRA and size > SCALEFORM_CHUNK
+
+
 # How often to walk the address space for blocks Scaleform has newly taken.
 PAGE_REFRESH = 1.0
 # A move brings the walk forward, since what the cursor lands on can be new
@@ -3427,6 +3433,11 @@ class ScaleformText:
         # new text field, often in a block that held none, and the answer was
         # heard a second late.
         self._scaleform_pages = None
+        # Free stretches of address space at the last walk, where Scaleform's
+        # next blocks will be; see `_probe_gaps`. The lock keeps a walk and a
+        # probe from each replacing the block list with one lacking the other's.
+        self._gaps: list[list[int]] = []
+        self._pages_lock = threading.Lock()
         self.pages_refreshed_at = 0.0   # time.monotonic() of the last walk for blocks
         # Regions outside the usual heap pages where a wide sweep has found text
         # showing, read alongside them from then on. See `wide_sweep`.
@@ -3501,12 +3512,50 @@ class ScaleformText:
         self._text_grids &= set(self._grids)
 
     def refresh_pages(self) -> None:
-        """Walk the address space for Scaleform's blocks, for quick reads to sweep."""
-        self._scaleform_pages = [
-            r for r in self.heap_pages()
-            if r.size % SCALEFORM_CHUNK == SCALEFORM_EXTRA and r.size > SCALEFORM_CHUNK
-        ]
-        self.pages_refreshed_at = time.monotonic()
+        """Walk the address space for Scaleform's blocks, for quick reads to sweep,
+        and note the free stretches a new block would be taken from."""
+        regions, gaps = self.pm.regions_and_gaps(HEAP_PAGE_LIMIT, SCALEFORM_CHUNK + SCALEFORM_EXTRA)
+        pages = [r for r in regions if r.protect == PAGE_READWRITE and _block_shaped(r.size)]
+        with self._pages_lock:
+            self._scaleform_pages, self._gaps = pages, gaps
+            self.pages_refreshed_at = time.monotonic()
+
+    def _probe_gaps(self) -> None:
+        """Take up blocks Scaleform has made since the last walk, from where they must be.
+
+        Each block is an allocation of its own, 68 KB in a 128 KB stretch of
+        address space, and a new one is placed in free space, at the start of
+        a stretch the last walk found free. Looking at each stretch's start,
+        and on through whatever is now there up to free space again, takes
+        about 3 ms where a walk takes 76, so every quick read does it: the row
+        a fighter list builds on a move is read the moment it is there
+        (2026-09-30), rather than at the next walk.
+        """
+        with self._pages_lock:
+            gaps, pages = self._gaps, self._scaleform_pages
+            if not gaps or pages is None:
+                return
+            known = {page.base for page in pages}
+            found = []
+            for gap in gaps:
+                at = gap[0]
+                while at < gap[1]:
+                    region = self.pm.query(at)
+                    if region is None:
+                        at = gap[1]
+                        break
+                    base, size, state, protect = region
+                    if state == MEM_FREE:
+                        break
+                    if (state == MEM_COMMIT and protect == PAGE_READWRITE and _block_shaped(size)
+                            and base not in known):
+                        found.append(Region(base, size, protect))
+                        known.add(base)
+                    at = max(base + size, at + 1)
+                gap[0] = at
+            if found:
+                self._scaleform_pages = pages + found
+            self._gaps = [gap for gap in gaps if gap[0] < gap[1]]
 
     def wide_sweep(self, stop: threading.Event | None = None) -> list[tuple]:
         """DocViews in readable regions the usual search skips, with their regions.
@@ -4437,6 +4486,7 @@ class ScaleformText:
         if quick:
             if self._scaleform_pages is None:
                 self.refresh_pages()
+            self._probe_gaps()
             docviews = self.docviews(self._scaleform_pages + self.extra_pages)
         else:
             docviews = self.docviews(self.heap_pages() + self.extra_pages)
