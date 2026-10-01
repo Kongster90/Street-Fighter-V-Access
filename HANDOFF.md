@@ -1173,6 +1173,21 @@ since on the hit's frame their model jolts 2.5 units backwards, which made
 level hits look like front ones (`fight.crossup`, from `placed_before` and
 `placed` in `_watch_counters`, which now reads the places every poll). All
 35 labelled hits right; the closest front one had the attacker 1.1 ahead.
+Next the user heard Akuma's forward throw as a crossup every time. A
+recording of 5 forward throws, 5 back throws and 6 jump-ins (the recorder
+now also keeps height and the first 0x400 bytes of both records) showed the
+forward throw carries the defender over and turns them round before the
+damage lands, after which the attacker is behind by place. Every throw had
+turned the defender 15 to 618 ms before its damage; no crossup in any
+session had the defender turn in the 0.6 s before it (the defender turns
+only after a hit, even with the attacker passing overhead). So a crossup
+also needs the defender to have faced one way for `FACING_STEADY`, 0.8 s
+(`fight.Turns`, fed every poll). The attacker's height would also have told
+them apart (0 for ground throws, 33 to 75 for the jump-ins), but would miss
+ground crossups and not catch air throws. One more case agreed: a jump-in
+landing level midscreen, a hair in front, had no banner, as the rule said.
+All 51 labelled hits replayed through the mod's logic at its 10 ms pace
+came out right.
 `Fight.read` finds the characters once a fight, matched to the records by
 the code in the costume asset's name, none in a mirror match;
 `Fight.placements` reads them; `App._watch_counters` checks a health drop

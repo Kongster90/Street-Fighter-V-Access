@@ -1060,10 +1060,13 @@ class App:
         to the game's own sound, at the user's request. See `fight.Fight.counters`.
         A crossup has no mark: a hit is one when it opens an exchange and
         lands from behind (`fight.crossup`), judged by where the fighters stood
-        at this reading and the one before. Each has its own volume, F6 and F7.
+        at this reading and the one before, on a defender who has not just been
+        turned round, as a throw does (`fight.Turns`). Each has its own
+        volume, F6 and F7.
         """
         before: list[fight.Marks] | None = None
         placed_before = None   # where the fighters stood at the last reading, for `fight.crossup`
+        turns = fight.Turns()  # when each last turned round, which a throw makes them do
         hurt_at = [float("-inf"), float("-inf")]
         while not self._stop.wait(COUNTER_POLL):
             items = self.session.items if self.use_memory and self.session.available else None
@@ -1077,9 +1080,10 @@ class App:
                 before = placed_before = None
                 continue
             placed = self._placements()
+            now = time.monotonic()
+            turns.update(placed, now)
             # The first reading of a fight only notes where things stand.
             if before is not None:
-                now = time.monotonic()
                 for side, (now_marks, was) in enumerate(zip(marks, before)):
                     volume = buttons.counter_volume()
                     if now_marks.counter and not was.counter and not now_marks.crush and volume > 0:
@@ -1088,7 +1092,8 @@ class App:
                         opening = now - hurt_at[side] > CROSSUP_QUIET
                         hurt_at[side] = now
                         crossup_volume = buttons.crossup_volume()
-                        if opening and crossup_volume > 0 and fight.crossup(side, placed_before, placed):
+                        if (opening and crossup_volume > 0 and turns.steady(side, now)
+                                and fight.crossup(side, placed_before, placed)):
                             self._beep(beeps.crossup_sound(1 - side, crossup_volume))
             before, placed_before = marks, placed
 

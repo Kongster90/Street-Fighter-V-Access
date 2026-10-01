@@ -65,6 +65,13 @@ the defender's place is taken from the reading before the hit, the
 attacker's from the hit's. Checked against the banner in screenshots of 35
 jump-in hits on 2026-09-30, 21 crossups (8 in the corner, level) and 14 not,
 all right; the closest front one had the attacker 1.1 units ahead.
+
+Throws then sounded as crossups in play: Akuma's forward throw carries the
+defender over and turns them round before its damage lands, which by place
+alone is a hit from behind. Every throw recorded (5 forward, 5 back) turned
+the defender between 15 and 618 ms before the damage, and no crossup had the
+defender turn in the 0.6 s before it, so a hit is a crossup only if the
+defender has faced the same way for `FACING_STEADY` (`Turns`).
 """
 
 from __future__ import annotations
@@ -82,6 +89,7 @@ BLOCK = V_GAUGE_MAX + 4 - HEALTH      # one read covers them all
 COUNTER, CRUSH = 0x2F8, 0x2FC         # set while a counter hit, and a crush counter, has its target reeling
 MARKS = CRUSH + 1                     # read from the record's start, its type marker with them
 PAWN_CLASS = "KBP_BattlePawn_C"       # a fighter's 3D character, and two spare ones without a costume
+FACING_STEADY = 0.8                   # seconds a defender must have faced one way for a hit to be a crossup
 STOCK = 300                           # a Critical Art stock, and a V-Trigger bar
 MOST = 3000                           # nothing here is anything like this big
 CONTROLLER_CLASS = "KBP_BattlePlayerController_C"
@@ -153,6 +161,28 @@ def behind(attacker_x: float, defender_x: float, defender_yaw: float) -> bool:
     the attacker's X on its frame and the defender's from before it."""
     facing = 1 if defender_yaw < 0 else -1
     return (attacker_x - defender_x) * facing <= 0
+
+
+class Turns:
+    """When each fighter last turned round, from successive `Fight.placements`."""
+
+    def __init__(self) -> None:
+        self.at = [float("-inf"), float("-inf")]
+        self._facing: list[bool] | None = None
+
+    def update(self, placed, now: float) -> None:
+        if not placed:
+            return
+        facing = [yaw < 0 for _x, yaw in placed]
+        if self._facing is not None:
+            for side in (0, 1):
+                if facing[side] != self._facing[side]:
+                    self.at[side] = now
+        self._facing = facing
+
+    def steady(self, side: int, now: float) -> bool:
+        """Whether `side` has faced the same way for `FACING_STEADY`, as no throw leaves them."""
+        return now - self.at[side] >= FACING_STEADY
 
 
 def crossup(side: int, placed_before, placed) -> bool:

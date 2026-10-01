@@ -130,6 +130,15 @@ before_hit = [(750.0, 90.0), (750.0, 90.0)]          # player 1 Akuma, player 2 
 on_hit = [(750.0, 90.0), (752.5, 90.0)]
 check("a hit is judged by the defender's place before it and the attacker's on it",
       fight.crossup(1, before_hit, on_hit) and not fight.behind(750.0, 752.5, 90.0))
+# Akuma's forward throw, as recorded: Ken turned round 0.42 s before its
+# damage, and then by place alone Akuma is behind him.
+turns = fight.Turns()
+turns.update([(-143.0, 90.0), (4.9, 90.0)], 0.0)
+turns.update([(28.2, 90.0), (110.6, -90.0)], 0.6)          # the throw turns Ken
+check("a defender turned round just before a hit, as by a throw, is not steady",
+      not turns.steady(1, 1.02) and turns.steady(0, 1.02))
+check("one who has faced the same way for long enough is", turns.steady(1, 1.6))
+check("nothing to go on is no turn", fight.Turns().steady(0, 0.0))
 check("without both readings there is no crossup",
       not fight.crossup(1, None, on_hit) and not fight.crossup(1, before_hit, None))
 
