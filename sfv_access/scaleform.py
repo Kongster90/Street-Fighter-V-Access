@@ -3524,12 +3524,14 @@ class ScaleformText:
         """Take up blocks Scaleform has made since the last walk, from where they must be.
 
         Each block is an allocation of its own, 68 KB in a 128 KB stretch of
-        address space, and a new one is placed in free space, at the start of
-        a stretch the last walk found free. Looking at each stretch's start,
-        and on through whatever is now there up to free space again, takes
-        about 3 ms where a walk takes 76, so every quick read does it: the row
-        a fighter list builds on a move is read the moment it is there
-        (2026-09-30), rather than at the next walk.
+        address space, and a new one is placed in space the last walk found
+        free. Going through each such stretch, one query per region in it,
+        takes about 3 ms where a walk takes 76, so every quick read does it:
+        the row a fighter list builds on a move is read the moment it is
+        there (2026-09-30), rather than at the next walk. A stretch is gone
+        through to its end, since Windows can leave free space between new
+        blocks: stopping at the first, 32 of 418 new blocks waited for a walk.
+        The next look starts at the first free space left big enough for one.
         """
         with self._pages_lock:
             gaps, pages = self._gaps, self._scaleform_pages
@@ -3538,23 +3540,22 @@ class ScaleformText:
             known = {page.base for page in pages}
             found = []
             for gap in gaps:
-                at = gap[0]
+                at, still_free = gap[0], None
                 while at < gap[1]:
                     region = self.pm.query(at)
                     if region is None:
-                        at = gap[1]
                         break
                     base, size, state, protect = region
-                    # A block leaves the rest of its 128 KB free but too
-                    # small to use, and the next block goes after that.
+                    # A block leaves the rest of its 128 KB free but too small to use.
                     if state == MEM_FREE and size >= SCALEFORM_CHUNK + SCALEFORM_EXTRA:
-                        break
-                    if (state == MEM_COMMIT and protect == PAGE_READWRITE and _block_shaped(size)
+                        if still_free is None:
+                            still_free = base
+                    elif (state == MEM_COMMIT and protect == PAGE_READWRITE and _block_shaped(size)
                             and base not in known):
                         found.append(Region(base, size, protect))
                         known.add(base)
                     at = max(base + size, at + 1)
-                gap[0] = at
+                gap[0] = gap[1] if still_free is None else max(still_free, gap[0])
             if found:
                 self._scaleform_pages = pages + found
             self._gaps = [gap for gap in gaps if gap[0] < gap[1]]

@@ -597,8 +597,33 @@ blocks only; the grid walk keeps its pace), and `landed_on` says a
 fighter's name again when new text joins it in its cell (the first two
 objects above, holding no other fighter's name: character select's two
 sides share one holder, and the first try said "KOLIN. KEN" as player 1
-moved). On a still screen that is still about one walk a second. Not yet
-confirmed in play.
+moved). On a still screen that is still about one walk a second.
+
+The user found that "about mostly the same", so the delay was measured: a
+recorder polling every controller and the keyboard (the game's bindings,
+the arrows, and the user's own Space for up and S for down) every 5 ms,
+reading as the mod does, timed each press to the first read with the new
+fighter gold. Median 209 ms, one in ten over 418, the worst about 530. Most
+moves were the game taking a few hundredths to light the cell plus one or
+two read cycles (a read of 50 to 110 ms, then `POLL`); the slow ones were
+blocks, the walk brought forward taking 210 ms while scrolling, against 76
+idle, and slowing the reads it ran beside. A walk over only Scaleform's
+stretch of addresses still meets about 8,000 regions (41 ms), so that was
+no help. What did help: each block is an allocation of its own, 0x11000 at
+the start of a 128 KB slot (the 0xF000 after it free but unusable), so a
+new one can only be in space the last walk found free, and there are about
+700 such stretches. `refresh_pages` notes them from the same walk
+(`ProcessMemory.regions_and_gaps`) and every quick read goes through them
+(`_probe_gaps`, one `query` per region, about 3 ms). A checker in its own
+process, probing every 0.1 s against a full walk every second, found the
+first version caught 7 new blocks of 187 (it stopped at the unusable
+tail), the second 386 of 418 (it stopped at free space Windows left between
+new blocks), and the third goes through each stretch to its end; the rest
+were blocks grown inside an existing allocation, left to the walks. With
+the first version (and the walk brought forward, which stays) the recorder
+measured median 194 ms, one in ten over 294, the worst 563, and the user
+called it "working pretty well"; with the second, "working nicely"
+(2026-09-30). The third was not tried in play; it only finds more.
 
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but

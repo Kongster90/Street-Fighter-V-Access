@@ -1124,45 +1124,56 @@ walker.refresh_soon()
 class GappedMemory(FakeMemory):
     """Blocks as Windows hands them out: the first found by the last walk, then
     more made since in the free stretch that walk noted, each 0x11000 at the
-    start of its own 128 KB, the 0xF000 after it free but too small to use."""
+    start of a 128 KB slot of its own, the 0xF000 after it free but too small
+    to use, and slots between new blocks sometimes left free."""
+
+    SLOT, END = 0x20000, HEAP + 0xA0000
 
     def __init__(self):
-        super().__init__(size=0x51000)
-        self.made = 0
+        super().__init__(size=0x91000)
+        self.made: set[int] = set()
 
     def regions_and_gaps(self, max_size, min_gap):
-        return [Region(HEAP, 0x11000, 0x04)], [[HEAP + 0x20000, HEAP + 0x80000]]
+        return [Region(HEAP, 0x11000, 0x04)], [[HEAP + self.SLOT, self.END]]
 
     def query(self, address):
-        for k in range(self.made):
-            block = HEAP + 0x20000 * (k + 1)
-            if block <= address < block + 0x11000:
+        slot = (address - HEAP) // self.SLOT
+        block = HEAP + slot * self.SLOT
+        if slot in self.made:
+            if address < block + 0x11000:
                 return block, 0x11000, 0x1000, 0x04
-            if block + 0x11000 <= address < block + 0x20000:
-                return block + 0x11000, 0xF000, 0x10000, 0x01
-        return address, HEAP + 0x80000 - address, 0x10000, 0x01
+            return block + 0x11000, 0xF000, 0x10000, 0x01
+        nxt = min([HEAP + k * self.SLOT for k in self.made if k > slot] + [self.END])
+        return address, nxt - address, 0x10000, 0x01
 
 
 gapped = GappedMemory()
 gapped_root = display_object(gapped, 0, 0, 0, WHITE)
 text_field(gapped, gapped_root, 100, 100, ["FIRST"])
-gapped.top = 0x20100
-text_field(gapped, gapped_root, 100, 200, ["SECOND"])
-gapped.top = 0x40100
-text_field(gapped, gapped_root, 100, 300, ["THIRD"])
+for k, word in ((1, "SECOND"), (2, "THIRD"), (4, "FOURTH")):
+    gapped.top = k * GappedMemory.SLOT + 0x100
+    text_field(gapped, gapped_root, 100, 100 + 100 * k, [word])
 gapped_reader = sf.ScaleformText(gapped, MODULE)
 gapped_reader.refresh_pages()
-check("a quick read sweeps only the blocks the last walk found",
-      [it.text for it in gapped_reader.items(quick=True)] == ["FIRST"])
-gapped.made = 1
+
+
+def gapped_texts():
+    return [it.text for it in gapped_reader.items(quick=True)]
+
+
+check("a quick read sweeps only the blocks the last walk found", gapped_texts() == ["FIRST"], repr(gapped_texts()))
+gapped.made = {1}
 check("a block made since, in a free stretch that walk noted, is read without another walk",
-      [it.text for it in gapped_reader.items(quick=True)] == ["FIRST", "SECOND"],
-      repr([it.text for it in gapped_reader.items(quick=True)]))
-gapped.made = 2
+      gapped_texts() == ["FIRST", "SECOND"], repr(gapped_texts()))
+gapped.made = {1, 2}
 check("and so is the next, past the first one's unusable free tail",
-      [it.text for it in gapped_reader.items(quick=True)] == ["FIRST", "SECOND", "THIRD"],
-      repr([it.text for it in gapped_reader.items(quick=True)]))
-check("both are kept on the block list", len(gapped_reader._scaleform_pages) == 3)
+      gapped_texts() == ["FIRST", "SECOND", "THIRD"], repr(gapped_texts()))
+gapped.made = {1, 2, 4}
+check("and one past free space Windows left between them",
+      gapped_texts() == ["FIRST", "SECOND", "THIRD", "FOURTH"], repr(gapped_texts()))
+check("all are kept on the block list", len(gapped_reader._scaleform_pages) == 4)
+check("the next look starts at the free space still big enough for a block",
+      gapped_reader._gaps == [[HEAP + 3 * GappedMemory.SLOT, GappedMemory.END]], repr(gapped_reader._gaps))
 reads: dict[int, int] = {}
 _read_node = cursor_list._read_node
 
