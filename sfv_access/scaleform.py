@@ -186,6 +186,13 @@ SCALEFORM_CHUNK = 0x10000
 SCALEFORM_EXTRA = 0x1000
 # How often to walk the address space for blocks Scaleform has newly taken.
 PAGE_REFRESH = 1.0
+# A move brings the walk forward, since what the cursor lands on can be new
+# text in a block taken that moment: scrolling a fighter list builds the row
+# scrolled to, and it was heard anywhere up to a second late, whenever the
+# next walk fell (2026-09-30). A walk takes about 76 ms. This is the least
+# time between walks brought forward, so a screen whose selection keeps
+# changing cannot keep one running all the time.
+PAGE_REFRESH_SOON = 0.15
 
 MAX_PARAGRAPHS = 512
 MAX_PARAGRAPH_CHARS = 4096
@@ -441,6 +448,26 @@ def landed_on(
                       and old_notes.get(i.text) == it.note), None)
         return [f"{it.note}, moved from {donor}" if donor and it.note != BUTTON_NONE else it.note]
     fresh = left_to_right_rows([it for it in lit if _where(it) not in was_lit])
+    # A fighter list's cell can be read in two goes, the name a read before
+    # its score and time, which sat in a block not yet walked: "GUILE", then
+    # "SCORE 195400. TIME..." alone, the second cutting the first off
+    # (2026-09-30). When what is new shares a cell with a fighter's name
+    # already lit, the name is said again with it. A cell holds one fighter's
+    # name: character select's two sides hang from one holder, and taking that
+    # for a cell said "KOLIN. KEN" as player 1 moved.
+    if fresh:
+        names = fighter_names()
+        holding: dict[int, set[str]] = defaultdict(set)
+        for it in after:
+            if it.text.strip() in names:
+                for obj in it.chain[1:CELL_DEPTH]:
+                    holding[obj].add(it.text.strip())
+        cells = {obj for it in fresh for obj in it.chain[1:CELL_DEPTH] if len(holding.get(obj, ())) == 1}
+        kept = [it for it in lit if _where(it) in was_lit and it.text.strip() in names
+                and cells.intersection(it.chain[1:CELL_DEPTH])]
+        if kept:
+            chosen = {id(it) for it in kept + fresh}
+            fresh = left_to_right_rows([it for it in lit if id(it) in chosen])
     if fresh:
         old_groups = {it.group for it in before if it.chosen} | set(recent_groups)
         new_groups = {it.group for it in fresh if it.chosen and it.group not in old_groups}
@@ -1147,6 +1174,9 @@ PATH_SELECT_PROMPT = "Please select a path."
 # Survival's and Trials' fighter lists show five rows of two, nine or ten names;
 # this many showing in one movie is taken as such a list. See `_show_list_cursor`.
 FIGHTER_LIST_MIN = 4
+# In those lists each text sits in a holder of its own under its fighter's
+# cell, so texts sharing either of the first two objects above them are one cell.
+CELL_DEPTH = 3
 VERSUS_LABELS = ("V-Skill", "V-TRIGGER")
 VERSUS_WORDS = {"V-Skill": "V-Skill", "V-TRIGGER": "V-Trigger"}
 VERSION_NUMERALS = {"I": 1, "II": 2, "III": 3}
@@ -3424,6 +3454,10 @@ class ScaleformText:
         # reading each parent again for each text cost Survival's fighter list,
         # with 260 texts, twice the main menu's time.
         self._pass = threading.local()
+        # Set when a quick read finds the selection changed, to walk for
+        # blocks without waiting out PAGE_REFRESH; and that selection.
+        self._refresh_now = threading.Event()
+        self._last_selected: tuple = ()
 
     # ------------------------------------------------------------- discovery
     def keep_pages_current(self, stop: threading.Event, interval: float = PAGE_REFRESH) -> None:
@@ -3435,16 +3469,29 @@ class ScaleformText:
         recording caught Battle Settings as seven lines of header.
         """
         def run():
+            grids_due = 0.0
             while not stop.is_set():
                 try:
                     self.refresh_pages()
-                    self.refresh_grids()
+                    # A walk brought forward by a move is for blocks only:
+                    # the grid walk keeps its own pace.
+                    if time.monotonic() >= grids_due:
+                        self.refresh_grids()
+                        grids_due = time.monotonic() + interval
                 except Exception as exc:  # the game closing, most likely
                     print(f"page refresh failed: {exc}")
-                stop.wait(interval)
+                if self._refresh_now.wait(interval):
+                    gap = self.pages_refreshed_at + PAGE_REFRESH_SOON - time.monotonic()
+                    if gap > 0:
+                        stop.wait(gap)
+                self._refresh_now.clear()
 
         self.refresh_pages()
         threading.Thread(target=run, daemon=True).start()
+
+    def refresh_soon(self) -> None:
+        """Have `keep_pages_current` walk for blocks now rather than at its next turn."""
+        self._refresh_now.set()
 
     def refresh_grids(self) -> None:
         """Walk the display tree under the movies last seen showing text for picture grids."""
@@ -4433,6 +4480,11 @@ class ScaleformText:
         mark_message_log(out)
         self._mark_sliders(out)
         out.sort(key=lambda it: (round(it.y), it.x))
+        if quick:
+            selected = tuple(it.text for it in out if it.selected)
+            if selected != self._last_selected:
+                self._last_selected = selected
+                self.refresh_soon()
         return out
 
 

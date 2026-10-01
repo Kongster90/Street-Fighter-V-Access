@@ -5,7 +5,7 @@ Each test version, newest first. The version you have is in VERSION.txt, beside 
 
 30 September 2026
 
-Survival and Trials: scrolling down the fighter list says each fighter as you land on them. Past the first five rows it used to say nothing until you went back up and down again.
+Survival and Trials: scrolling down the fighter list says each fighter as you land on them, with their score and time in one sentence. Past the first five rows it used to say nothing until you went back up and down again.
 Menus and lists read a little faster, long lists especially.
 
 

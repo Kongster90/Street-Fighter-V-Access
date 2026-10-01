@@ -580,8 +580,25 @@ a second, the cursor's stayed at zero until it was selected again without a
 scroll. Whether it is drawn is not known. `_show_list_cursor` counts it as
 showing, the final opponent's way: only while `FIGHTER_LIST_MIN` fighters'
 names show in one movie, only under the first zero-alpha object above a
-gold fighter's name, and only text hidden by nothing else. Not yet confirmed
-in play.
+gold fighter's name, and only text hidden by nothing else. The user found
+it "mostly working" the same day, with a few stutters that caught up after
+a moment.
+
+The stutters were blocks. A recorder logging the gold cell whenever it was
+incomplete, with a full search beside each quick read, found the row the
+list had just built complete and gold in the full search only, in blocks
+the quick read's list did not have yet, while the old cell's gold drained
+part by part; and earlier "GUILE" was said, then "SCORE 195400. TIME..."
+alone a second later, the name in a walked block and the rest not. Whatever
+the cursor lands on waited for the next walk, anything up to a second. Now
+a quick read whose selection differs from the last one brings the walk
+forward (`refresh_soon`, at most every `PAGE_REFRESH_SOON` after the last,
+blocks only; the grid walk keeps its pace), and `landed_on` says a
+fighter's name again when new text joins it in its cell (the first two
+objects above, holding no other fighter's name: character select's two
+sides share one holder, and the first try said "KOLIN. KEN" as player 1
+moved). On a still screen that is still about one walk a second. Not yet
+confirmed in play.
 
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but

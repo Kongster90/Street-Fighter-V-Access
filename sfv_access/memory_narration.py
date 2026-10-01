@@ -944,6 +944,8 @@ class Session:
     def close(self) -> None:
         if self._stop is not None:
             self._stop.set()
+            if self.reader is not None:
+                self.reader.refresh_soon()   # so its block walker wakes to the stop
         if self.reader is not None:
             try:
                 self.reader.pm.close()

@@ -12,6 +12,8 @@ import json
 import struct
 import sys
 import tempfile
+import threading
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -1065,6 +1067,52 @@ check("a gold fighter faded in another movie stays hidden",
       "ZANGIEF" not in [it.text for it in fighter_list(elsewhere=True).items()])
 check("a grey fighter faded in the list stays hidden",
       "ZANGIEF" not in [it.text for it in fighter_list(cursor="KARIN").items()])
+# The cell read in two goes, its score in a block not walked yet: the name
+# was said, then the score alone, cutting the name off (2026-09-30).
+name_first = [it for it in scrolled if not it.text.startswith("SCORE 1040")]
+check("a fighter's score arriving a read after the name says the name again with it",
+      [t.strip() for t in sf.landed_on(name_first, scrolled)] == ["ZANGIEF", "SCORE 1040"],
+      repr(sf.landed_on(name_first, scrolled)))
+player_one = sf.TextItem("KEN", 300, 900, GOLD, 5, chain=(11, 12, 13, 99))
+player_two = sf.TextItem("RYU", 1600, 900, GOLD, 5, chain=(21, 22, 23, 99))
+check("another fighter lit in a cell of their own is said alone",
+      sf.landed_on([player_one], [player_one, player_two]) == ["RYU"],
+      repr(sf.landed_on([player_one], [player_one, player_two])))
+volume = sf.TextItem("BGM Volume", 300, 400, GOLD, 5, chain=(31, 32, 33, 99))
+level = [sf.TextItem(v, 900, 400, GOLD, 5, chain=(41, 32, 33, 99)) for v in ("4", "5")]
+check("a setting's new value beside its label is said alone",
+      sf.landed_on([volume, level[0]], [volume, level[1]]) == ["5"],
+      repr(sf.landed_on([volume, level[0]], [volume, level[1]])))
+on_karin_reader = fighter_list("KARIN", faded=())
+on_karin_reader.items(quick=True)
+check("a quick read with a new selection brings the block walk forward", on_karin_reader._refresh_now.is_set())
+on_karin_reader._refresh_now.clear()
+on_karin_reader.items(quick=True)
+check("the same selection again does not", not on_karin_reader._refresh_now.is_set())
+on_karin_reader.pm, on_karin_reader._scaleform_pages = fighter_list("ZANGIEF", faded=()).pm, None
+on_karin_reader.items(quick=True)
+check("moving on does", on_karin_reader._refresh_now.is_set())
+walker = fighter_list()
+walks = []
+_refresh_pages = walker.refresh_pages
+
+
+def counted_refresh_pages():
+    walks.append(time.monotonic())
+    _refresh_pages()
+
+
+walker.refresh_pages = counted_refresh_pages
+walker_stop = threading.Event()
+walker.keep_pages_current(walker_stop, interval=30.0)
+time.sleep(0.3)
+before_wake = len(walks)
+walker.refresh_soon()
+time.sleep(0.5)
+check("asking for a walk soon walks without waiting out the interval", len(walks) == before_wake + 1,
+      f"{before_wake} walks, then {len(walks)}")
+walker_stop.set()
+walker.refresh_soon()
 reads: dict[int, int] = {}
 _read_node = cursor_list._read_node
 
