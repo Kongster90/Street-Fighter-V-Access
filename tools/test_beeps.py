@@ -123,6 +123,22 @@ beeps.COUNTER_FILE = kept_file
 beeps.counter_sound.cache_clear()
 check("without the recording, a click and a short tone, still in the left speaker",
       click_seconds < 0.06 and any(left) and not any(right), f"{click_seconds * 1000:.0f} ms")
+
+# A crossup: its own sound in the speaker of whoever landed it, at F6's volume.
+kept_crossup = beeps.CROSSUP_FILE
+beeps.CROSSUP_FILE = Path(tempfile.gettempdir()) / "no-such-crossup.wav"
+beeps.crossup_sound.cache_clear()
+left, right, crossup_seconds = channels(beeps.crossup_sound(1))
+check("without a recording, a crossup by player 2 is two quick tones in the right speaker only",
+      any(right) and not any(left) and crossup_seconds < 0.1, f"{crossup_seconds * 1000:.0f} ms")
+check("and it is not the counter hit's sound", beeps.crossup_sound(1) != beeps.counter_sound(1))
+beeps.CROSSUP_FILE = beeps.COUNTER_FILE    # any readable recording stands in for the user's own
+beeps.crossup_sound.cache_clear()
+left, right, recorded_seconds = channels(beeps.crossup_sound(0))
+check("a recording, when there is one, is what plays", abs(recorded_seconds - 0.202) < 0.002 and any(left)
+      and not any(right), f"{recorded_seconds * 1000:.0f} ms")
+beeps.CROSSUP_FILE = kept_crossup
+beeps.crossup_sound.cache_clear()
 with tempfile.TemporaryDirectory() as folder:
     buttons.SETTINGS, buttons._settings = Path(folder) / "settings.json", None
     beep_before = buttons.beep_volume()

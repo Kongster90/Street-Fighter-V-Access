@@ -97,21 +97,32 @@ check("two people on one machine, or nobody, leave the side unknown",
 MARKER = 0x7FF6_2C51_680
 
 
-def record_start(counter=0, crush=0, marker=MARKER):
+def record_start(counter=0, crush=0, marker=MARKER, health=1000):
     raw = bytearray(fight.MARKS)
     struct.pack_into("<Q", raw, 0, marker)
+    struct.pack_into("<i", raw, fight.HEALTH, health << 16)
     raw[fight.COUNTER], raw[fight.CRUSH] = counter, crush
     return bytes(raw)
 
 
-check("a fighter reeling from a counter hit is marked so",
-      fight.counter_marks(record_start(1), MARKER) == (True, False))
+check("a fighter reeling from a counter hit is marked so, with their health",
+      fight.counter_marks(record_start(1, health=812), MARKER) == fight.Marks(812, True, False))
 check("a crush counter is marked as both",
-      fight.counter_marks(record_start(1, 1), MARKER) == (True, True))
-check("otherwise neither", fight.counter_marks(record_start(), MARKER) == (False, False))
+      fight.counter_marks(record_start(1, 1), MARKER) == fight.Marks(1000, True, True))
+check("otherwise neither", fight.counter_marks(record_start(), MARKER) == fight.Marks(1000, False, False))
 check("memory that is no longer a record, or too little of it, is no reading",
       fight.counter_marks(record_start(1, marker=MARKER + 8), MARKER) is None
       and fight.counter_marks(record_start(1)[:-1], MARKER) is None and fight.counter_marks(None, MARKER) is None)
+
+# Crossups, from where the fighters were as hits landed on 2026-09-30: Ken
+# hit by Akuma, Ken's yaw -90 facing towards +X and +90 towards -X.
+landed = [  # (Akuma's X less Ken's, Ken's yaw, a crossup by the banner)
+    (-8.9, -90, True), (11.4, 90, True), (44.1, 90, True), (4.5, 90, True),
+    (50.0, -90, False), (3.6, -90, False), (-34.1, 90, False), (-10.2, 90, False),
+]
+check("a hit landing from the side the defender faces away from is a crossup, however close",
+      all(fight.behind(146 + rel, 146, yaw) == crossup for rel, yaw, crossup in landed),
+      repr([fight.behind(146 + rel, 146, yaw) for rel, yaw, _c in landed]))
 
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")

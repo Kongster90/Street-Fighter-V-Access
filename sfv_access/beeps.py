@@ -38,6 +38,7 @@ from pathlib import Path
 
 RATE = 44100
 COUNTER_FILE = Path(__file__).resolve().parent / "sounds" / "counter_hit.wav"
+CROSSUP_FILE = Path(__file__).resolve().parent / "sounds" / "crossup.wav"
 # The beeps' volume in percent, F5 and Shift F5 in steps of `VOLUME_STEP`,
 # kept in the settings. It is heard, not measured: the level is the square
 # of the share, so each step sounds much the same size. The first beeps,
@@ -68,6 +69,8 @@ COUNTER_CLICK = 0.006       # seconds of click, fading out
 COUNTER_CLICK_SHARE = 0.6   # its loudest, as a share of the tone's
 COUNTER_PITCH, COUNTER_TONE = 2637, 0.05
 COUNTER_VOLUME_DEFAULT = 40
+# A crossup's stand-in sound, until the user gives one: two quick falling tones.
+CROSSUP_PITCHES, CROSSUP_TONE, CROSSUP_GAP = (1760, 1175), 0.035, 0.012
 
 
 def loudness(volume: int) -> float:
@@ -166,6 +169,29 @@ def counter_sound(side: int | None, volume: int = COUNTER_VOLUME_DEFAULT) -> byt
     for c in click:
         frames += _frame(int(32767 * peak * scale * c), side)
     frames += _tone(COUNTER_PITCH, COUNTER_TONE, peak, side)
+    return _wav(frames)
+
+
+@functools.lru_cache(maxsize=16)
+def crossup_sound(side: int | None, volume: int = COUNTER_VOLUME_DEFAULT) -> bytes:
+    """A crossup's sound as WAV data, in the speaker of `side`, the one who landed it:
+    `sounds/crossup.wav` if it can be read, otherwise two quick falling tones.
+
+    Kept once made, so a crossup costs no time making it.
+    """
+    peak = loudness(volume)
+    voice = recorded(CROSSUP_FILE)
+    if voice is not None:
+        samples, rate = voice
+        frames = bytearray()
+        for s in samples:
+            frames += _frame(int(32767 * peak * s), side)
+        return _wav(frames, rate)
+    frames = bytearray()
+    for n, pitch in enumerate(CROSSUP_PITCHES):
+        if n:
+            frames += _frame(0, side) * int(CROSSUP_GAP * RATE)
+        frames += _tone(pitch, CROSSUP_TONE, peak, side)
     return _wav(frames)
 
 

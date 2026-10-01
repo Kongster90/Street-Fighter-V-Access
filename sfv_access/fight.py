@@ -46,6 +46,19 @@ counter. A crush counter sets +0x2FC with it, for as long as its longer
 stagger lasts. Found on 2026-09-30 by keeping both records around 35 hits in
 Training, the dummy's Counter setting ON for 27 (crush counters among them)
 and Normal for 8: no other byte in either record told them apart.
+
+A crossup, an attack landing from behind, is marked nowhere: not in the
+records, not in the 64 KB block they sit in, and the banner Training shows
+("CROSS-UP", where "COUNTER" goes) is a picture the fight draws itself. It is
+worked out instead, as the game must: at the moment a hit lands, the attacker
+is on the side the defender faces away from. Where each fighter is and which
+way they face come from their 3D characters (`PAWN_CLASS`), the two with a
+costume, matched to the records by the character code in the costume's name
+("DA_KEN_Costume_01"): the root component's location X, and its yaw, -90
+facing towards +X and +90 towards -X. Checked against the banner in the
+screenshots of 17 jump-in hits on 2026-09-30, 7 crossups and 10 not, all
+right, among them one landing 4.5 units behind and two 3.6 in front. The
+defender does not turn until after the hit, so the reading is good at it.
 """
 
 from __future__ import annotations
@@ -62,6 +75,7 @@ V_GAUGE, V_GAUGE_MAX = 0xF4, 0xF8
 BLOCK = V_GAUGE_MAX + 4 - HEALTH      # one read covers them all
 COUNTER, CRUSH = 0x2F8, 0x2FC         # set while a counter hit, and a crush counter, has its target reeling
 MARKS = CRUSH + 1                     # read from the record's start, its type marker with them
+PAWN_CLASS = "KBP_BattlePawn_C"       # a fighter's 3D character, and two spare ones without a costume
 STOCK = 300                           # a Critical Art stock, and a V-Trigger bar
 MOST = 3000                           # nothing here is anything like this big
 CONTROLLER_CLASS = "KBP_BattlePlayerController_C"
@@ -112,12 +126,26 @@ def gauges_from(raw: bytes | None) -> Gauges | None:
     return g
 
 
-def counter_marks(raw: bytes | None, marker: int) -> tuple[bool, bool] | None:
-    """Whether a fighter is reeling from a counter hit, and from a crush counter,
-    from the bytes read at their record's start; None if it is no longer a record."""
+@dataclass(frozen=True)
+class Marks:
+    """A fighter's health and whether they are reeling from a counter hit and a crush counter."""
+    health: int
+    counter: bool
+    crush: bool
+
+
+def counter_marks(raw: bytes | None, marker: int) -> Marks | None:
+    """A fighter's `Marks`, from the bytes read at their record's start; None if it is no longer a record."""
     if not raw or len(raw) < MARKS or struct.unpack_from("<Q", raw)[0] != marker:
         return None
-    return raw[COUNTER] == 1, raw[CRUSH] == 1
+    return Marks(_whole(raw, HEALTH), raw[COUNTER] == 1, raw[CRUSH] == 1)
+
+
+def behind(attacker_x: float, defender_x: float, defender_yaw: float) -> bool:
+    """Whether the attacker is on the side the defender faces away from: a yaw
+    of -90 faces towards +X, and +90 towards -X."""
+    facing = 1 if defender_yaw < 0 else -1
+    return (attacker_x - defender_x) * facing < 0
 
 
 def describe(first: Gauges, second: Gauges) -> str:
@@ -191,6 +219,9 @@ class Fight:
         self.certain = False
         # Player 1's record and player 2's, as the last reading ordered them.
         self.ordered: list[int] | None = None
+        # Where player 1's and player 2's 3D characters keep their location
+        # and rotation, found once a fight; see `placements`.
+        self._pawns: list[tuple[int, int]] | None = None
         self._lock = threading.Lock()
 
     def read(self) -> tuple[Gauges, Gauges] | None:
@@ -204,6 +235,7 @@ class Fight:
             marker = session.module_base + VTABLE_RVA
             if self.records is None or any(session.pm.ptr(r) != marker for r in self.records):
                 self.records = self._find(session.pm, marker)
+                self._pawns = None
                 self._note(f"fight: {len(self.records)} fighter records"
                            + (f" at {', '.join(f'{r:#x}' for r in self.records)}" if self.records else ""))
             if len(self.records) != 2:
@@ -231,14 +263,17 @@ class Fight:
                 self._last_how = how
                 self._note(f"fight: player 1's record is {ordered[0]:#x}, by {how}")
             self.ordered = ordered
+            if self._pawns is None:
+                # Looked for once a fight; an empty list is "looked, and none to use".
+                self._pawns = self._find_pawns(session, [code(self._record_code(session.pm, r)) for r in ordered]) or []
             first, second = (gauges_from(session.pm.read(r + HEALTH, BLOCK)) for r in ordered)
             if first is None or second is None:
                 return None
             return first, second
 
-    def counters(self) -> list[tuple[bool, bool]] | None:
-        """Player 1's and player 2's counter hit marks, as `counter_marks` gives them,
-        from the records the last `read` ordered; None while that order is unsure.
+    def counters(self) -> list[Marks] | None:
+        """Player 1's and player 2's `Marks`, from the records the last `read`
+        ordered; None while that order is unsure.
 
         Two small reads and nothing else, so it can be asked far more often
         than `read`: the counter hit's sound is for following up on it.
@@ -252,6 +287,55 @@ class Fight:
         marker = session.module_base + VTABLE_RVA
         marks = [counter_marks(session.pm.read(r, MARKS), marker) for r in ordered]
         return None if None in marks else marks
+
+    def placements(self) -> list[tuple[float, float]] | None:
+        """Player 1's and player 2's (location X, yaw), from their 3D characters;
+        None until `read` has found them, or if they no longer make sense."""
+        from . import live
+
+        pawns = self._pawns
+        session = live.shared()
+        if not pawns or session.pm is None:
+            return None
+        out = []
+        for location, rotation in pawns:
+            x, yaw = session.pm.f32(location), session.pm.f32(rotation + 4)
+            if x is None or yaw is None or abs(abs(yaw) - 90) > 1:
+                self._pawns = None   # found again at the next `read`
+                return None
+            out.append((x, yaw))
+        return out
+
+    def _find_pawns(self, session, codes: list[bytes | None]) -> list[tuple[int, int]] | None:
+        """Player 1's and player 2's characters' location and rotation addresses,
+        by the character code in each costume's name; None for a mirror match."""
+        from . import unreal
+
+        if len(codes) != 2 or None in codes or codes[0] == codes[1]:
+            return None
+        by_code = {}
+        try:
+            for obj, _name in session.find_by_class(PAWN_CLASS, limit=8):
+                props = session.all_properties(obj)
+                costume = session.pm.ptr(obj + props["CostumeData"].offset)
+                root = session.pm.ptr(obj + props["RootComponent"].offset)
+                if not costume or not root:
+                    continue
+                name = unreal.object_name(session.pm, session.names, costume, session.objects.layout) or ""
+                parts = name.split("_")
+                if len(parts) < 3 or parts[0] != "DA":
+                    continue
+                component = session.all_properties(root)
+                by_code[parts[1].encode()] = (root + component["RelativeLocation"].offset,
+                                              root + component["RelativeRotation"].offset)
+        except Exception as exc:
+            self._note(f"fight: characters not found: {exc!r}")
+            return None
+        found = [by_code.get(c) for c in codes]
+        if None in found:
+            self._note(f"fight: characters {sorted(by_code)} do not match the records' {codes}")
+            return None
+        return found
 
     def side(self) -> int | None:
         """Which side the player is on, 0 the left, from the battle's settings, or None."""

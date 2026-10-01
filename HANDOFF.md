@@ -1152,6 +1152,28 @@ the file cannot be read. The package copies `sfv_access` whole, so the file
 goes with it. They had already set F6 to 15 when it was first played to
 them, so the key works in play; the sound in a fight is not yet reported.
 
+**Crossups (2026-09-30).** The user asked for a sound when a crossup lands.
+Training shows "CROSS-UP" where "COUNTER" goes, but nothing marks it in the
+fighter records or the 64 KB block they share: three recordings of jump-ins,
+labelled from the banner in a frame saved at each hit (the user could not
+tell which crossed), found no byte that told them apart, and the banner is
+the fight's own picture (`/Game/BattleAsset/Notice/NoticeImage`, a texture;
+the only object named CrossUp is Arcade's score for one). The records hold
+no positions either. The fighters' 3D characters do: `KBP_BattlePawn_C`
+(four of them, two spare with no costume), root component location X and
+yaw. A crossup is a hit landing while the attacker is on the side the
+defender faces away from (`fight.behind`); over 17 labelled hits it was
+right every time, and the defender's yaw did not flip until after the hit.
+`Fight.read` finds the characters once a fight, matched to the records by
+the code in the costume asset's name, none in a mirror match;
+`Fight.placements` reads them; `App._watch_counters` checks a health drop
+that opens an exchange (`CROSSUP_QUIET`, 1 s since that fighter was last
+hurt, so a crossup combo sounds once) and plays `beeps.crossup_sound`,
+`sounds/crossup.wav` if the user gives one, two quick falling tones until
+then, at F6's volume. Throws and other hits that switch sides are untried:
+one landing while the thrower stands behind the defender would sound too.
+Not yet heard in a fight.
+
 **Online the beeps were silent (2026-09-29, fixed, not yet heard).** The
 user played Battle Lounge matches that evening and heard no beeps. The
 fight's display online labels the player's own bar alone, "YOU" at (167,
