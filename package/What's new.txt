@@ -3,13 +3,14 @@ What's new in Street Fighter V Access
 Each test version, newest first. The version you have is in VERSION.txt, beside this file.
 
 
-30 September 2026
+1 October 2026
 
+Fights: a counter hit plays a short sound as it lands, in the speaker on the side of whoever landed it, so you can follow it up. Crush counters are left to the game's own sound. F6 and Shift F6 make it louder or quieter; it starts at 40 percent.
+Fights: a crossup, a hit landing from behind, plays a sound of its own as it lands, also on the side of whoever landed it. It plays once for the hit that opens a combo, works in the corner too, and stays quiet for throws. F7 and Shift F7 set its volume, separately from the counter hit's. It is not made in a mirror match, both sides the same character.
+The health beeps are now short xylophone notes, a little lower than before, in place of plain tones.
+Online fights, in the Battle Lounge and ranked and casual matches: the health beeps now sound there too. They stayed silent, because online the game labels only your own health bar.
 Survival and Trials: scrolling down the fighter list says each fighter as you land on them, with their score and time in one sentence. Past the first five rows it used to say nothing until you went back up and down again.
 Menus and lists read a little faster, long lists especially.
-Fights: a counter hit plays a short sound as it lands, in the speaker on the side of whoever landed it, so you can follow it up. Crush counters are left to the game's own sound. F6 and Shift F6 make it louder or quieter, separately from the health beeps; it starts at 40 percent.
-The health beeps are now short xylophone notes, a little lower than before, in place of plain tones.
-Fights: a crossup, a hit landing from behind, plays a sound of its own as it lands, once for the hit that opens a combo, in the speaker on the side of whoever landed it. F7 and Shift F7 set its volume, separately from the counter hit's. It is not made in a mirror match, both sides the same character.
 
 
 29 September 2026
