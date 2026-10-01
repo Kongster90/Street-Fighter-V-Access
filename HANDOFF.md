@@ -145,6 +145,21 @@ Played by the user on 2026-09-15:
 - The lone "Sub Menu" hint at launch is no longer said (written the same
   day, not yet heard from a launch).
 
+Played by the user on 2026-09-30 and 2026-10-01 (see "Fighter lists went
+quiet in the middle", "Counter hits, and new sounds" and "Crossups"):
+
+- Survival's and Trials' fighter lists: each fighter said as the cursor
+  lands, past the first five rows and wrapping round, name, score and time
+  in one sentence. The user's words, after the last of four rounds: "working
+  nicely".
+- Crossups: the user's own sound as a crossup lands, in the speaker of
+  whoever landed it, once per combo, in the corner too, silent for throws,
+  F7 and Shift F7 for its volume: "Seems to be working".
+- F6 and Shift F6 for the counter hit sound's volume (the user had set it to
+  15 before it was first played to them). The counter hit sound itself in a
+  fight, and the xylophone health beeps in a fight, are not yet reported;
+  both were chosen by ear from demos.
+
 Written and checked against the game or a recording, but not yet heard in
 play: Controller Settings with both players' screens open in Versus. Heard in
 the user's Arcade run of 2026-09-16, and so ticked off: an ending ("G. The
@@ -1945,6 +1960,41 @@ The user finds memory reading better and wants it everywhere; the pixel reader
 is kept as the fallback. The gauges moved to memory on 2026-09-28 (below).
 What follows is roughly in order of value.
 
+**The session of 2026-09-30 and 10-01, in short.** Asked to speed up long
+lists in the menus, it found the "lag" was silence: Survival's and Trials'
+fighter lists keep the cell scrolled to at alpha zero (`_show_list_cursor`),
+and the rows a list builds on a move land in Scaleform blocks the quick read
+had not walked. Reads now keep each object's node for the pass and take
+side-by-side pieces in one read (7,311 calls to 4,441 on Survival's screen),
+go through the free stretches of address space for new blocks on every read
+(`_probe_gaps`, about 3 ms), and bring the block walk forward on a move
+(`refresh_soon`). Press to readable, measured with a recorder polling the
+pads and keyboard: median 194 ms, one in ten over 294. Then fight sounds:
+counter hits from a byte in the hit fighter's record (+0x2F8, crush counters
++0x2FC, left silent), crossups worked out from the 3D characters' places and
+facing (`fight.crossup`, `fight.Turns`, right for all 51 labelled hits), the
+user's own Reaper recordings in `sfv_access/sounds/` (`counter_hit.wav`,
+`cross_up.wav`), F6 and F7 for their volumes, and the health beeps made
+xylophone notes three semitones lower, the user's pick from eleven. Each is
+written up where it belongs: "Reads slow as a session goes on" and what
+follows it, "Counter hits, and new sounds", "Crossups". `tools/record_hits.py`
+is the recorder that found both fight marks; use it, labelling hits from the
+banner in its frames (`--sheet`), for any other banner Training draws there.
+The zip SFV-Access-2026-10-01-8f0cf93 was built at the end at the user's
+request; its What's new entry, dated 1 October, covers everything since the
+29 September zip, the online beeps fix included. It is not on GitHub: the
+user declined a release for now.
+
+Not yet heard in play, the first things to check: the counter hit sound and
+the xylophone beeps in a fight; the free-stretch probe's last change
+(98fe0fc, it only finds more); crossups landed by projectiles or ground
+moves, and air throws (the turn rule should keep them quiet); crossups in a
+mirror match are skipped by design, the characters being matched to records
+by the costume's character code. Offered and not taken up, should the user
+come back to it: a sound when the fighters swap sides, which would come
+before the hit rather than after. Other banners in Training's Key Display
+column, such as REVERSAL (a string the game has), were not looked at.
+
 **The session of 2026-09-28 and 29, in short.** It began with a tester's
 report that Survival said "Health 0 percent" after every stage (a 1920 by
 1200 screen, windowed). The user then said they never wanted a pixel mod
@@ -2129,6 +2179,24 @@ cycles button names between Xbox, PlayStation and keyboard keys, saved in
 saved there too.
 Before adding a key, check it registers (every current one was free), and
 remember a global hotkey is taken from every program while the mod runs.
+F5, F6 and F7 are the volumes of the health beeps, the counter hit sound and
+the crossup sound, each with Shift to lower it; they want each sound on its
+own key "so we can adjust each sound individually". Check the game's
+keyboard bindings too (`Input2.ini` under
+`%LOCALAPPDATA%\StreetFighterV\Saved\Config\WindowsNoEditor`); F6 and F7
+were free there. On the keyboard they play with A, S and D for left, down
+and right and Space for up.
+
+Learned on 2026-09-30 and 10-01. When they report lag, compare the spoken
+log's times with their presses before assuming slow reads: the lag in the
+fighter lists was silence. When they cannot tell what happened in a fight
+(which hits were crossups), the game's own banner in a saved frame is the
+answer, not their judgement. For sounds, play numbered candidates through a
+script that says each number with the screen reader first, and offer
+tweaks; they pick quickly that way, ask for replays by number, and may
+bring their own WAV made in Reaper (keep it in `sfv_access/sounds/`, read by
+`beeps.recorded`). Quick sounds matter to them for reacting in a fight.
+Zips: build one only when asked, and do not keep saying none has been built.
 
 Two things they have asked for that are easy to forget. Do not make them
 navigate by screen position: they cannot know what is on the left or the right
@@ -2737,10 +2805,20 @@ Day to day:
 .venv\Scripts\python.exe tools\test_screens.py
 ```
 
-The other suites are `selftest.py`, and `test_correction.py`, `test_learning.py`,
-`test_memory.py`, `test_scaleform.py`, `test_launch.py`, `test_fight.py` and `test_beeps.py` under `tools/`. All
-seven should pass before anything is committed. `tools/show_bands.py <snapshot>` explains why a screen was read the
+There are twelve suites, every `tools/test_*.py`: `test_beeps`, `test_correction`,
+`test_fight`, `test_highlight`, `test_hotkeys`, `test_hud`, `test_launch`, `test_learning`,
+`test_memory`, `test_scaleform`, `test_screens` and `test_watchdog`; all should pass before anything is
+committed (`selftest.py` checks speech, OCR and capture on the machine itself). A loop that runs them all:
+
+```bash
+for t in tools/test_*.py; do .venv/Scripts/python.exe "$t" > /dev/null 2>&1 && echo "ok   $t" || echo "FAIL $t"; done
+```
+
+`tools/show_bands.py <snapshot>` explains why a screen was read the
 way it was, and is the first thing to reach for when one reads wrongly.
+`tools/record_hits.py [name]` keeps a window round every hit in a fight, with a
+frame each, for finding what marks an event (see "Crossups"); `--sheet` lays the
+frames' banner areas out in one picture to label them by.
 
 Memory reading does not need the game in front, and does not care if it is
 minimised. Reading the screen does. So the mod narrates from memory whether or
