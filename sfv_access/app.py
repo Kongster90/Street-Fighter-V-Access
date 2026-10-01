@@ -1059,9 +1059,11 @@ class App:
         and the sound is for following up on the hit. A crush counter is left
         to the game's own sound, at the user's request. See `fight.Fight.counters`.
         A crossup has no mark: a hit is one when it opens an exchange and
-        lands from behind (`_from_behind`). Each has its own volume, F6 and F7.
+        lands from behind (`fight.crossup`), judged by where the fighters stood
+        at this reading and the one before. Each has its own volume, F6 and F7.
         """
         before: list[fight.Marks] | None = None
+        placed_before = None   # where the fighters stood at the last reading, for `fight.crossup`
         hurt_at = [float("-inf"), float("-inf")]
         while not self._stop.wait(COUNTER_POLL):
             items = self.session.items if self.use_memory and self.session.available else None
@@ -1072,8 +1074,9 @@ class App:
                 except Exception as exc:
                     self.session.note(f"fight: counter hits could not be read: {exc!r}")
             if marks is None:
-                before = None
+                before = placed_before = None
                 continue
+            placed = self._placements()
             # The first reading of a fight only notes where things stand.
             if before is not None:
                 now = time.monotonic()
@@ -1085,25 +1088,16 @@ class App:
                         opening = now - hurt_at[side] > CROSSUP_QUIET
                         hurt_at[side] = now
                         crossup_volume = buttons.crossup_volume()
-                        if opening and crossup_volume > 0 and self._from_behind(side):
+                        if opening and crossup_volume > 0 and fight.crossup(side, placed_before, placed):
                             self._beep(beeps.crossup_sound(1 - side, crossup_volume))
-            before = marks
+            before, placed_before = marks, placed
 
-    def _from_behind(self, side: int) -> bool:
-        """Whether the hit `side` has just taken came from behind them: a crossup.
-
-        Read the moment the hit is seen, as the defender turns only after it.
-        See `fight.behind`.
-        """
+    def _placements(self):
         try:
-            placements = self.fight.placements()
+            return self.fight.placements()
         except Exception as exc:
             self.session.note(f"fight: positions could not be read: {exc!r}")
-            return False
-        if placements is None:
-            return False
-        (defender_x, defender_yaw), (attacker_x, _yaw) = placements[side], placements[1 - side]
-        return fight.behind(attacker_x, defender_x, defender_yaw)
+            return None
 
     def _beep(self, data: bytes) -> None:
         with self._beeper_lock:

@@ -55,10 +55,16 @@ is on the side the defender faces away from. Where each fighter is and which
 way they face come from their 3D characters (`PAWN_CLASS`), the two with a
 costume, matched to the records by the character code in the costume's name
 ("DA_KEN_Costume_01"): the root component's location X, and its yaw, -90
-facing towards +X and +90 towards -X. Checked against the banner in the
-screenshots of 17 jump-in hits on 2026-09-30, 7 crossups and 10 not, all
-right, among them one landing 4.5 units behind and two 3.6 in front. The
-defender does not turn until after the hit, so the reading is good at it.
+facing towards +X and +90 towards -X. The defender does not turn until after
+the hit, so the hit's own frame is the one to judge by, with two catches
+found in the corner. There the attacker cannot get past a cornered
+defender, both stand at the wall (X 750), and the game calls it a crossup:
+level counts as behind. And on the hit's frame the defender's model jolts
+2.5 units backwards, which made those level hits look like front ones; so
+the defender's place is taken from the reading before the hit, the
+attacker's from the hit's. Checked against the banner in screenshots of 35
+jump-in hits on 2026-09-30, 21 crossups (8 in the corner, level) and 14 not,
+all right; the closest front one had the attacker 1.1 units ahead.
 """
 
 from __future__ import annotations
@@ -142,10 +148,19 @@ def counter_marks(raw: bytes | None, marker: int) -> Marks | None:
 
 
 def behind(attacker_x: float, defender_x: float, defender_yaw: float) -> bool:
-    """Whether the attacker is on the side the defender faces away from: a yaw
-    of -90 faces towards +X, and +90 towards -X."""
+    """Whether the attacker is level with the defender or on the side they face
+    away from: a yaw of -90 faces towards +X, and +90 towards -X. For a hit,
+    the attacker's X on its frame and the defender's from before it."""
     facing = 1 if defender_yaw < 0 else -1
-    return (attacker_x - defender_x) * facing < 0
+    return (attacker_x - defender_x) * facing <= 0
+
+
+def crossup(side: int, placed_before, placed) -> bool:
+    """Whether the hit `side` has just taken was a crossup, from `Fight.placements`
+    at the reading before the hit and the reading that saw it."""
+    if not placed_before or not placed:
+        return False
+    return behind(placed[1 - side][0], placed_before[side][0], placed[side][1])
 
 
 def describe(first: Gauges, second: Gauges) -> str:

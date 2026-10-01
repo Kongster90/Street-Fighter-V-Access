@@ -116,13 +116,22 @@ check("memory that is no longer a record, or too little of it, is no reading",
 
 # Crossups, from where the fighters were as hits landed on 2026-09-30: Ken
 # hit by Akuma, Ken's yaw -90 facing towards +X and +90 towards -X.
-landed = [  # (Akuma's X less Ken's, Ken's yaw, a crossup by the banner)
-    (-8.9, -90, True), (11.4, 90, True), (44.1, 90, True), (4.5, 90, True),
-    (50.0, -90, False), (3.6, -90, False), (-34.1, 90, False), (-10.2, 90, False),
+landed = [  # (Akuma's X on the hit's frame less Ken's before it, Ken's yaw, a crossup by the banner)
+    (-11.4, -90, True), (11.4, 90, True), (46.6, 90, True), (4.5, 90, True),
+    (50.0, -90, False), (1.1, -90, False), (-34.1, 90, False), (-10.2, 90, False),
+    (0.0, 90, True), (0.0, -90, True),     # in the corner, level at the wall
 ]
-check("a hit landing from the side the defender faces away from is a crossup, however close",
+check("a hit landing level with the defender, or from the side they face away from, is a crossup",
       all(fight.behind(146 + rel, 146, yaw) == crossup for rel, yaw, crossup in landed),
       repr([fight.behind(146 + rel, 146, yaw) for rel, yaw, _c in landed]))
+# Corner hit 2: both at the wall before the hit; on its frame Ken's model is
+# jolted 2.5 back to 752.5, which judged on its own would put Akuma in front.
+before_hit = [(750.0, 90.0), (750.0, 90.0)]          # player 1 Akuma, player 2 Ken
+on_hit = [(750.0, 90.0), (752.5, 90.0)]
+check("a hit is judged by the defender's place before it and the attacker's on it",
+      fight.crossup(1, before_hit, on_hit) and not fight.behind(750.0, 752.5, 90.0))
+check("without both readings there is no crossup",
+      not fight.crossup(1, None, on_hit) and not fight.crossup(1, before_hit, None))
 
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")

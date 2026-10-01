@@ -1164,6 +1164,15 @@ no positions either. The fighters' 3D characters do: `KBP_BattlePawn_C`
 yaw. A crossup is a hit landing while the attacker is on the side the
 defender faces away from (`fight.behind`); over 17 labelled hits it was
 right every time, and the defender's yaw did not flip until after the hit.
+In play the user then found corner crossups silent and was not sure they
+counted. A recording in the corner, labelled the same way, showed the game
+calls them crossups: a cornered defender cannot be passed, both stand at
+the wall (X 750), level. Two changes made those right: level counts as
+behind, and the defender's place is taken from the reading before the hit,
+since on the hit's frame their model jolts 2.5 units backwards, which made
+level hits look like front ones (`fight.crossup`, from `placed_before` and
+`placed` in `_watch_counters`, which now reads the places every poll). All
+35 labelled hits right; the closest front one had the attacker 1.1 ahead.
 `Fight.read` finds the characters once a fight, matched to the records by
 the code in the costume asset's name, none in a mirror match;
 `Fight.placements` reads them; `App._watch_counters` checks a health drop
