@@ -1187,7 +1187,8 @@ them apart (0 for ground throws, 33 to 75 for the jump-ins), but would miss
 ground crossups and not catch air throws. One more case agreed: a jump-in
 landing level midscreen, a hair in front, had no banner, as the rule said.
 All 51 labelled hits replayed through the mod's logic at its 10 ms pace
-came out right.
+came out right. The user tried it the same night (2026-10-01): "Seems to be
+working", throws silent and crossups heard midscreen and in the corner.
 `Fight.read` finds the characters once a fight, matched to the records by
 the code in the costume asset's name, none in a mirror match;
 `Fight.placements` reads them; `App._watch_counters` checks a health drop
@@ -1197,8 +1198,8 @@ hurt, so a crossup combo sounds once) and plays `beeps.crossup_sound`,
 its first tenth of a millisecond), two quick falling tones if it cannot be
 read, at its own volume on F7 and Shift F7 (`crossup_volume`), which the
 user asked for so each sound can be set on its own. Throws and other hits that switch sides are untried:
-one landing while the thrower stands behind the defender would sound too.
-Not yet heard in a fight.
+one landing while the thrower stands behind the defender would sound too
+(it did; see below).
 
 **Online the beeps were silent (2026-09-29, fixed, not yet heard).** The
 user played Battle Lounge matches that evening and heard no beeps. The
