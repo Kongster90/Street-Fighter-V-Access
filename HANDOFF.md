@@ -161,8 +161,7 @@ quiet in the middle", "Counter hits, and new sounds" and "Crossups"):
   15 before it was first played to them). The counter hit sound and the
   xylophone health beeps in a fight, both chosen by ear from demos, were
   confirmed on 2026-10-04: "I can hear the counter hit and health bar
-  sounds fine", in Training, in matches against the CPU, and "in a live
-  match as well".
+  sounds fine", in Training and in matches against the CPU. Not yet online.
 
 Written and checked against the game or a recording, but not yet heard in
 play: Controller Settings with both players' screens open in Versus. Heard in
