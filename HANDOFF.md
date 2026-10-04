@@ -1995,6 +1995,22 @@ The user finds memory reading better and wants it everywhere; the pixel reader
 is kept as the fallback. The gauges moved to memory on 2026-09-28 (below).
 What follows is roughly in order of value.
 
+**The session of 2026-10-04, in short.** Crossups, in Training with Ryu
+against Ken and then Akuma, Zeku and Akira, against the game's banners
+through `tools/record_hits.py`. Three fixes, all confirmed by the user ("It
+all seems fine now"): fighters matched to their 3D characters by the
+costume's folder, not its name (Ryu's costume 16 is DA_Z00); throws known
+by the hit fighter's `HIT_KIND` (-2), not only by a recent turn; and a
+crossup sounded only on a combo's first hit, by its `COMBO` count, not a
+one-second timer (Zeku's V-Trigger). See "Crossups silent, then Ryu's
+throws". The counter hit sound and the xylophone beeps were confirmed in
+play against the CPU. Also new: `tools/call_user.py`, the way to ask the
+user to act (see "Working with this person"), and restarting the mod
+yourself (see "Running things"). Seen in the spoken log of 2026-10-03 and
+not yet looked at: the main menu's summary ending "萸㼘. Halloween Event",
+two garbled characters before a seasonal entry, and "www" said in Sound
+Settings among the volume levels.
+
 **The session of 2026-09-30 and 10-01, in short.** Asked to speed up long
 lists in the menus, it found the "lag" was silence: Survival's and Trials'
 fighter lists keep the cell scrolled to at alpha zero (`_show_list_cursor`),
