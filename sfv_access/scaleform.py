@@ -752,7 +752,11 @@ def selected_tile(children, appearance, tiles) -> int | None:
     return next(tile for tile, look in looks.items() if look == odd)
 
 
-def highlighted_row(children, appearance, rows) -> int | None:
+# The part of a list row the interface names as its highlight bar.
+CURSOR_PART = "cursorElement"
+
+
+def highlighted_row(children, appearance, rows, name=None) -> int | None:
     """The one row of a list whose highlight bar is switched on.
 
     In the menu music list every row has the same parts, and the second, the
@@ -766,6 +770,12 @@ def highlighted_row(children, appearance, rows) -> int | None:
     section has two moves, sixteen parts a row, and only the third part, on
     only the row the cursor is on, differs; with so few rows, any one part
     that happens to differ would otherwise be taken for the cursor.
+
+    Where a row has a part the interface names "cursorElement", shown on one
+    row alone, that part decides, given `name` to read names with; lists not
+    yet seen with names keep the rule above. In the shop's lists the
+    price's backing shows only on what you do not own, which made Ring of
+    Justice the cursor's row wherever the cursor was (2026-10-04).
     """
     if len(rows) < SHORT_LIST_ROWS:
         return None
@@ -788,6 +798,11 @@ def highlighted_row(children, appearance, rows) -> int | None:
             looks.append(shown)
             continue
         looks.append(None)
+    if name is not None:
+        cursor = next((index for index in range(width) if name(parts[0][index]) == CURSOR_PART), None)
+        shown = looks[cursor] if cursor is not None else None
+        if shown is not None and shown.count(True) == 1:
+            return rows[shown.index(True)]
     if len(rows) < GRID_MIN_TILES:
         differing = [shown for shown in looks if shown is None or len(set(shown)) > 1]
         if len(differing) != 1 or differing[0] is None or differing[0].count(True) != 1:
@@ -799,7 +814,7 @@ def highlighted_row(children, appearance, rows) -> int | None:
     return None
 
 
-def highlighted_mixed_row(children, appearance, container) -> int | None:
+def highlighted_mixed_row(children, appearance, container, name=None) -> int | None:
     """The row whose highlight bar is on, in a list whose rows differ in size.
 
     A Fighter Profile's list of pages mixes entries under a heading, three
@@ -826,7 +841,7 @@ def highlighted_mixed_row(children, appearance, container) -> int | None:
         kids = children(obj)
         return kids[:width] if obj in members else kids
 
-    return highlighted_row(trimmed, appearance, rows)
+    return highlighted_row(trimmed, appearance, rows, name)
 
 
 # The Home screen, reached with a Fighter ID and Home change ticket, is a grid of
@@ -1831,8 +1846,10 @@ def extra_battle_details(items: list[TextItem], brief: bool = False) -> list[str
 
 FIGHT_MONEY = "Fight Money"
 # Numbers whose meaning the screen gives only as a picture beside them, by the
-# name of the element holding them: the header's Fight Money total.
-AMOUNT_WORDS = {"moneyLabelElement": FIGHT_MONEY}
+# name of the element holding them: the header's Fight Money total, and a shop
+# item's price, which shows only on what you do not own; what is sold for real
+# money (the stage Ring of Justice) shows no price in the game at all.
+AMOUNT_WORDS = {"moneyLabelElement": FIGHT_MONEY, "moneyNameElement": FIGHT_MONEY}
 MISSION_TITLE = "target_title"
 MISSION_PROGRESS = "progress"
 MISSION_REWARD = "reward"
@@ -4066,9 +4083,10 @@ class ScaleformText:
                 continue
             if any(it.highlighted for held in slots.values() for it, _level in held):
                 continue
-            row = highlighted_row(kids, appearance, grid_tiles(kids, container, minimum=SHORT_LIST_ROWS))
+            row = highlighted_row(kids, appearance, grid_tiles(kids, container, minimum=SHORT_LIST_ROWS),
+                                  self.object_name)
             if row is None:
-                row = highlighted_mixed_row(kids, appearance, container)
+                row = highlighted_mixed_row(kids, appearance, container, self.object_name)
             if row is None:
                 continue
             for it in shown:

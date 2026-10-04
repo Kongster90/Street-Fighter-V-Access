@@ -1772,6 +1772,19 @@ purchased", which `landed_on` and `selection_phrase` say in place of
 Unavailable: "Stage: Ring of Pride. Already purchased". Confirmed in play by
 the user on 2026-09-14 in Stages and the other categories.
 
+On 2026-10-04 the cursor on "Stage: Suzaku Castle at Night" said "Stage:
+Ring of Justice", the one stage not owned, wherever the cursor was. A row's
+nine parts are named (backgroundElement, moneyBackGround, cursorElement,
+isEntitlementElement, goodsNameElement, moneyImageElement, moneyNameElement,
+pointElement, Newicon), and two were each shown on one row only: the cursor's
+bar, and the price's backing on the row not owned. `highlighted_row` took the
+first. It now goes by the part named "cursorElement" when one row alone shows
+it, and by the old rule otherwise. Prices sit in "moneyNameElement" ("70000",
+"40000", hidden on what you own) and are said with "Fight Money" when shown;
+Ring of Justice, sold on Steam, has no price drawn at all, so nothing is said
+for it. No item for sale for Fight Money was seen, so a price being said is
+untried.
+
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
 right) read from the screen before memory took over, and never from memory:

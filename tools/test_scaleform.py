@@ -3349,6 +3349,44 @@ check("each mission is said as the cursor reaches it, and not again as its clock
           "Perform a normal throw 10 times! Progress 0 of 10. Reward 50 Fight Money. 4 hours 2 minutes remaining"],
       repr(said))
 
+# The shop's stage list as read live on 2026-10-04: nine parts a row, the
+# price's backing shown only on the stage not owned, the cursor's bar only on
+# the row the cursor is on.
+SHOP_PARTS = ["backgroundElement", "moneyBackGround", "cursorElement", "isEntitlementElement",
+              "goodsNameElement", "moneyImageElement", "moneyNameElement", "pointElement", "Newicon"]
+
+
+def shop_list(cursor, unowned, named=True):
+    tree, names = {}, {}
+    rows = []
+    for r in range(9):
+        base = 1000 * (r + 1)
+        parts = [base + p for p in range(len(SHOP_PARTS))]
+        for p, part in enumerate(parts):
+            shown = {"moneyBackGround": r == unowned, "cursorElement": r == cursor,
+                     "isEntitlementElement": r != unowned, "moneyImageElement": r == unowned,
+                     "moneyNameElement": r == unowned, "Newicon": False}.get(SHOP_PARTS[p], True)
+            tree[part] = {"kids": [], "flags": 1 if shown else 0}
+            names[part] = SHOP_PARTS[p]
+        tree[base] = {"kids": parts, "flags": 1}
+        rows.append(base)
+    tree[50] = {"kids": rows, "flags": 1}
+    kids = lambda o: tree.get(o, {}).get("kids", [])
+    look = lambda o: ((1, 1, 1, 1), tree[o]["flags"]) if o in tree else None
+    found = sf.highlighted_row(kids, look, sf.grid_tiles(kids, 50, minimum=sf.SHORT_LIST_ROWS),
+                               names.get if named else None)
+    return rows.index(found) if found in rows else None
+
+
+check("the shop's cursor is its cursor bar, not the price shown on the one stage not owned",
+      shop_list(cursor=0, unowned=2) == 0 and shop_list(cursor=2, unowned=2) == 2
+      and shop_list(cursor=5, unowned=2) == 5)
+check("without names the first part shown on one row decides, as before",
+      shop_list(cursor=0, unowned=2, named=False) == 2)
+price = [sf.TextItem("70000", 1334, 444, WHITE, 5, chain=(1, 2, 3, 4), part="moneyNameElement")]
+sf.name_amounts(price)
+check("a shop price is Fight Money", price[0].text == "70000 Fight Money", price[0].text)
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)
