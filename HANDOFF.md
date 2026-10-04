@@ -2162,6 +2162,12 @@ this. They play, the capture tool writes frames, you read the frames, you
 change the code, they play again. Ask for what you need in one message rather
 than several, since every round trip costs them a pass through the game.
 
+They listen to NVDA rather than watch the chat, so when they need to press a
+key or do something in the game, call them: `tools/call_user.py "<what you
+need>"` beeps for two seconds and says it through Prism three times. If
+nothing happens after that, stop and ask in the chat whether they did it, to
+tell a failed action from their having stepped away (asked for 2026-10-04).
+
 For memory narration the loop was: they play with narration on and say what
 sounded wrong, you read `snapshots/scaleform-log.txt`, which has every screen
 and everything said. When a screen marks its selection in a way nobody knows
