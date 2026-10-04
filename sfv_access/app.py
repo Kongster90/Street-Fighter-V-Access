@@ -528,6 +528,7 @@ class App:
             matchup = scaleform.matchup_details(items)
             profile_page = scaleform.profile_page_details(items)
             timeline = scaleform.timeline_entry(items)
+            mission = scaleform.mission_entry(items, brief=False)
             if message and entry is None:
                 # What the message says, then when it arrived.
                 said = memory_narration.phrase([message[0], message[1]])
@@ -540,6 +541,11 @@ class App:
             elif profile_page and entry is None:
                 # Any other Fighter Profile page: its name, then its figures.
                 said = memory_narration.phrase(profile_page)
+            elif mission and entry is None:
+                # A mission in full, then the description line, which names
+                # the modes it counts in.
+                said = memory_narration.phrase(
+                    mission + ([foot.text] if foot is not None and not foot.selected else []))
             elif chapter and entry is None:
                 # A story chapter, then the fighter's profile beside it.
                 said = memory_narration.phrase([chapter] + scaleform.story_profile(items))

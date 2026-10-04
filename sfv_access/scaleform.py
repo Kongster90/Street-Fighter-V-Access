@@ -95,6 +95,15 @@ STRING_CHARS = 0x0C
 MAX_RUNS = 64
 DISPLAY_PARENT = 0x38
 DISPLAY_RENDER_NODE = 0x48
+# The name handle, holding the instance name the interface gives the object
+# ("moneyLabelElement", "reward"): an ASString node at +0x10, whose first
+# field points at the name's characters. Found on 2026-10-04 by following
+# pointers out of the header's objects to readable strings.
+DISPLAY_NAME = 0x70
+NAME_HANDLE_NAME = 0x10
+MAX_NAME = 64
+NAME_CACHE_LIMIT = 20000
+PART_DEPTH = 2
 DISPLAY_CHILDREN = 0xD8      # array of children, an object pointer per entry
 DISPLAY_CHILD_COUNT = 0xE0
 DISPLAY_CHILD_STRIDE = 16
@@ -232,6 +241,7 @@ class TextItem:
     note: str = ""           # said after the text in place of a tick or unavailability: "Already purchased"
     row: int = 0             # the list row whose highlight bar marked this text, when one did
     buttons: tuple = ()      # controller buttons drawn in it: (pad key number, the words after it)
+    part: str = ""           # the interface's name for the element holding it: "reward", "progress"
 
     @property
     def highlighted(self) -> bool:
@@ -1805,6 +1815,106 @@ def extra_battle_details(items: list[TextItem], brief: bool = False) -> list[str
     return extra_battle_brief(sentences) if brief else sentences
 
 
+# -------------------------------------------------------------------- missions
+#
+# Challenges' Missions page lists each mission as a row: what to do, START and
+# DEADLINE each with a date, the time left, Reward with an amount beside the
+# Fight Money picture, and progress such as "0/10". The cursor's row was read
+# as its texts in columns, labels before values, and the amount was a bare
+# number: "Perform a normal throw 10 time(s)! START. DEADLINE. Reward. Oct 4,
+# 2026, 9:00:00 PM. 50. ( 4:03 remaining). 0/10" (2026-10-04). The user asked
+# for the amount to say what it is. Each part is held by an element the
+# interface names, "target_title", "progress", "reward" and so on, which is
+# what the sentence is built from. That a mission's reward is Fight Money is
+# the Message Log's word: "Clear Trials #01-#05 consecutively! CLEAR! Reward:
+# 500 Fight Money".
+
+FIGHT_MONEY = "Fight Money"
+# Numbers whose meaning the screen gives only as a picture beside them, by the
+# name of the element holding them: the header's Fight Money total.
+AMOUNT_WORDS = {"moneyLabelElement": FIGHT_MONEY}
+MISSION_TITLE = "target_title"
+MISSION_PROGRESS = "progress"
+MISSION_REWARD = "reward"
+MISSION_START = "start_date"
+MISSION_DEADLINE = "end_date"
+MISSION_LEFT = "remain_date"
+# The mission row holding a text: its element, then the row.
+MISSION_ROW_DEPTH = 2
+_BARE_AMOUNT = re.compile(r"[\d,]+")
+
+
+def _row_of(it: TextItem) -> int | None:
+    return it.chain[MISSION_ROW_DEPTH] if len(it.chain) > MISSION_ROW_DEPTH else None
+
+
+def name_amounts(items: list[TextItem]) -> None:
+    """Put a word after each number whose element says what it counts: "128690 Fight Money"."""
+    missions = {_row_of(it) for it in items if it.part == MISSION_TITLE} - {None}
+    for it in items:
+        words = AMOUNT_WORDS.get(it.part)
+        if words is None and it.part == MISSION_REWARD and _row_of(it) in missions:
+            words = FIGHT_MONEY
+        if words and _BARE_AMOUNT.fullmatch(it.text.strip()):
+            it.text = f"{it.text.strip()} {words}"
+
+
+def mission_row(items: list[TextItem]) -> int | None:
+    """The row of the mission the cursor is on, or None off the Missions page."""
+    title = next((it for it in items if it.shown and it.selected and it.part == MISSION_TITLE), None)
+    return _row_of(title) if title else None
+
+
+def _mission_parts(items: list[TextItem]) -> dict[str, str] | None:
+    """The cursor's mission row, each part's text by its element's name, or None."""
+    row = mission_row(items)
+    if row is None:
+        return None
+    parts = {}
+    for it in items:
+        if it.shown and _row_of(it) == row and it.part and it.text.strip():
+            parts.setdefault(it.part, " ".join(it.text.split()))
+    return parts
+
+
+def mission_entry(items: list[TextItem], brief: bool = True) -> list[str]:
+    """The mission the cursor is on as sentences, or nothing off the Missions page.
+
+    Brief, said as the cursor lands: what to do, progress, reward and time
+    left. In full, for the read key: the deadline with the time left, and
+    when it started.
+    """
+    parts = _mission_parts(items)
+    if not parts:
+        return []
+    out = [_counted(parts[MISSION_TITLE])]
+    progress = re.fullmatch(r"(\d+)\s*/\s*(\d+)", parts.get(MISSION_PROGRESS, ""))
+    if progress:
+        out.append(f"Progress {progress[1]} of {progress[2]}")
+    if parts.get(MISSION_REWARD):
+        out.append(f"Reward {parts[MISSION_REWARD]}")
+    # Worded as the notices after logging in word it: "3 hours 46 minutes
+    # remaining, deadline October 4, 2026, 9:00 PM".
+    left = _time_left(parts[MISSION_LEFT].strip("() ")) if parts.get(MISSION_LEFT) else ""
+    if brief:
+        return out + ([left] if left else [])
+    if parts.get(MISSION_DEADLINE):
+        out.append(", ".join(filter(None, [left, f"deadline {_spoken_date(parts[MISSION_DEADLINE])}"])))
+    elif left:
+        out.append(left)
+    if parts.get(MISSION_START):
+        out.append(f"Started {_spoken_date(parts[MISSION_START])}")
+    return out
+
+
+def mission_texts(items: list[TextItem]) -> set[str]:
+    """Every text in the cursor's mission row, to leave out of what a move says."""
+    row = mission_row(items)
+    if row is None:
+        return set()
+    return {" ".join(it.text.split()) for it in items if it.shown and _row_of(it) == row}
+
+
 # -------------------------------------------------------------------- survival
 #
 # Survival puts a Battle Supplement screen between fights. Its list of
@@ -2160,6 +2270,10 @@ TIMELINE_DATE = re.compile(r"^[A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d\d:\d\d [A
 def timeline_entry(items: list[TextItem]) -> tuple[str, str, str, frozenset] | None:
     """(the date as drawn, who and what, the date as said, the entry's texts) for the
     timeline entry the cursor is on."""
+    # A mission's row holds dates too, and read as an entry here it came out
+    # as labels then values, its start date taken for the entry's date.
+    if mission_row(items) is not None:
+        return None
     lit = [it for it in items if it.shown and it.selected and it.row]
     for it in lit:
         if TIMELINE_DATE.match(it.text.strip()):
@@ -3472,6 +3586,8 @@ class ScaleformText:
         # reading each parent again for each text cost Survival's fighter list,
         # with 260 texts, twice the main menu's time.
         self._pass = threading.local()
+        # Instance names by object and name handle; see `object_name`.
+        self._names: dict[tuple[int, int], str | None] = {}
         # Set when a quick read finds the selection changed, to walk for
         # blocks without waiting out PAGE_REFRESH; and that selection.
         self._refresh_now = threading.Event()
@@ -3742,8 +3858,40 @@ class ScaleformText:
         if nodes is None:
             return self._read_node(obj)[0]
         if obj not in nodes:
-            nodes[obj], self._pass.parents[obj] = self._read_node(obj)
+            nodes[obj], self._pass.parents[obj], self._pass.handles[obj] = self._read_node(obj)
         return nodes[obj]
+
+    def object_name(self, obj: int) -> str | None:
+        """The instance name the interface gives a display object, or None.
+
+        "moneyLabelElement" holds the header's Fight Money total, "reward" a
+        mission's reward: a number's meaning that the screen shows only as a
+        picture beside it. The name handle comes with the node's read in a
+        pass of `items`, and each name is kept, so a screen already seen
+        costs nothing more.
+        """
+        handles = getattr(self._pass, "handles", None)
+        if handles is None:
+            handle = self.pm.ptr(obj + DISPLAY_NAME)
+        else:
+            if obj not in handles:
+                self._node(obj)
+            handle = handles.get(obj)
+        if not handle:
+            return None
+        key = (obj, handle)
+        if key in self._names:
+            return self._names.get(key)   # the wide sweep's thread may clear it between
+        if len(self._names) > NAME_CACHE_LIMIT:
+            self._names.clear()
+        node = self.pm.ptr(handle + NAME_HANDLE_NAME)
+        data = self.pm.ptr(node) if node else None
+        raw = (self.pm.read(data, MAX_NAME) or b"") if data else b""
+        name = raw.split(b"\0", 1)[0]
+        found = (name.decode("ascii") if name and len(name) < len(raw)
+                 and all(32 < c < 127 for c in name) else None)
+        self._names[key] = found
+        return found
 
     def _parent(self, obj: int) -> int | None:
         """The object above `obj`, read with its node in a pass of `items`."""
@@ -3764,27 +3912,29 @@ class ScaleformText:
         node like that hid, in 667 records, was showing in the screenshot. A
         node really faded out keeps its bounds.
 
-        The parent and the render node's entry sit side by side and are taken
-        in one read.
+        The parent, the render node's entry and the name handle sit close
+        together and are taken in one read; the handle is the third value
+        returned, for `object_name`.
         """
-        span = DISPLAY_RENDER_NODE + 8 - DISPLAY_PARENT
+        span = DISPLAY_NAME + 8 - DISPLAY_PARENT
         links = self.pm.read(obj + DISPLAY_PARENT, span)
         if not links or len(links) < span:
-            return None, None
+            return None, None, None
         parent = struct.unpack_from("<Q", links)[0]
         entry = struct.unpack_from("<Q", links, DISPLAY_RENDER_NODE - DISPLAY_PARENT)[0]
+        handle = struct.unpack_from("<Q", links, DISPLAY_NAME - DISPLAY_PARENT)[0]
         data = self.pm.ptr(entry + RENDER_NODE_DATA) if entry else None
         raw = self.pm.read(data, NODE_BOUNDS + 0x20) if data else None
         if not raw:
-            return None, parent
+            return None, parent, handle
         flags = struct.unpack_from("<H", raw, NODE_FLAGS)[0]
         m = struct.unpack_from("<8f", raw, NODE_MATRIX)
         cx = struct.unpack_from("<4f", raw, NODE_CXFORM)
         if not all(math.isfinite(v) and abs(v) < 1e7 for v in m + cx):
-            return None, parent
+            return None, parent, handle
         if cx[3] <= 0.01 and not any(struct.unpack_from("<8f", raw, NODE_BOUNDS)):
             cx = (cx[0], cx[1], cx[2], 1.0)
-        return ((m[0], m[1], m[3], m[4], m[5], m[7]), cx, flags), parent
+        return ((m[0], m[1], m[3], m[4], m[5], m[7]), cx, flags), parent, handle
 
     def place(self, docview: int, listener: int | None = None):
         """The owner chain, stage position, tint, hiddenness and rootedness of a DocView's field.
@@ -4494,11 +4644,11 @@ class ScaleformText:
         missed until the next refresh, so a caller polling quickly must run
         `keep_pages_current` alongside.
         """
-        self._pass.nodes, self._pass.parents = {}, {}
+        self._pass.nodes, self._pass.parents, self._pass.handles = {}, {}, {}
         try:
             return self._items(everything, quick)
         finally:
-            self._pass.nodes = self._pass.parents = None
+            self._pass.nodes = self._pass.parents = self._pass.handles = None
 
     def _items(self, everything: bool, quick: bool) -> list[TextItem]:
         if quick:
@@ -4544,6 +4694,11 @@ class ScaleformText:
         if not quick and self._roots != roots_before:
             self.refresh_grids()
         self.on_home_screen = any(it.shown and it.text.strip() == HOME_PROMPT for it in out)
+        for it in out:
+            # The field itself is seldom named; the element holding it is.
+            if it.shown:
+                it.part = next((n for n in map(self.object_name, it.chain[:PART_DEPTH]) if n), "")
+        name_amounts(out)
         self.mark_choices(out)
         mark_message_log(out)
         self._mark_sliders(out)

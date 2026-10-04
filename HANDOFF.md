@@ -662,6 +662,44 @@ null or a carriage return, inside its counted length, with no null before
 it; `field_text` now drops a field whose paragraph does not, and it reads
 whole a read later.
 
+**Display objects carry their instance names.** Found on 2026-10-04, and
+worth reaching for first on any new screen: the names the interface's
+author gave each part say what a text means where its position cannot. A
+display object's name handle is at `+0x70`; its ASString node at handle
+`+0x10`; the node's first field points at the ASCII name. The text field
+itself is seldom named; the element holding it, one up, is. The header:
+"fighterNameLabelElement", "lPLabelElement", "moneyLabelElement" holding the
+Fight Money total, "moneyIconAdHocElement" the picture beside it,
+"regionAdHocElement". A mission row: "target_title", "progress",
+"start_date", "end_date", "remain_date", "reward", "reward_icon",
+"clear_icon". Every shown text's `TextItem.part` is that name (the nearest
+named of its field and the element above), read with the node in the same
+read and kept by object and handle (`object_name`), so it costs nothing
+after a screen's first read; a quick read measured 54 to 58 ms on the
+Missions page with it. `name_amounts` puts "Fight Money" after a bare number
+in "moneyLabelElement" or a mission's "reward". The picture beside the
+header's total is a separate object loading
+"img:///Game/CommonAsset/TaggedImages/fm.fm", the same picture the notices
+draw inside their text, which `ICON_WORDS` already named; it was found by
+following pointers from the object to readable strings, and only the name
+was needed in the end.
+
+**Challenges' Missions.** Each mission is a row of the named parts above,
+the cursor's row lit by its highlight bar. The CFN timeline rule took the
+row for a timeline entry, since it holds dates, and said its texts in
+columns with the start date dropped as the entry's date: "Perform a normal
+throw 10 time(s)! START. DEADLINE. Reward. Oct 4, 2026, 9:00:00 PM. 50.
+( 4:03 remaining). 0/10". `timeline_entry` now stands aside where
+`mission_row` finds a mission, and `mission_entry` says it as the notices
+after logging in do: "Perform a normal throw 10 times! Progress 0 of 10.
+Reward 50 Fight Money. 4 hours 3 minutes remaining." Alt R adds the deadline
+and start, then the description line, which names the modes the mission
+counts in. The time left changes every minute, so the narrator says a
+mission only as the cursor reaches another row (`Narrator.mission_said`).
+That mission rewards are Fight Money is the Message Log's word ("CLEAR!
+Reward: 500 Fight Money"). Written 2026-10-04 against the live page; not
+yet heard in play.
+
 **The render node's visible bit only counts on parents.** It is clear on the
 Exit prompt's question while the question is on screen, and dropping the
 check entirely brought back a date line that never shows on the main menu,
@@ -2024,6 +2062,12 @@ yourself (see "Running things"). Two faults from the spoken log of
 2026-10-03 were fixed the next afternoon, not yet heard in play: the whole
 main menu read out ending "萸㼘. Halloween Event", and "www" said in Sound
 Settings. See "Templates hold placeholder text" and "Half-written text".
+That afternoon the user asked for Fight Money to be named wherever it shows
+as a bare number, the header's total on Alt A and the Missions page's
+rewards: display objects' instance names now say what each text is, and
+Missions reads as a sentence. See "Display objects carry their instance
+names" and "Challenges' Missions". The shop says no price at all ("Stage:
+Ring of Justice"); not yet looked at.
 
 **The session of 2026-09-30 and 10-01, in short.** Asked to speed up long
 lists in the menus, it found the "lag" was silence: Survival's and Trials'

@@ -94,12 +94,13 @@ class FakeMemory:
 NODE_FLAG_WORD = sf.NODE_FLAGS
 
 
-def display_object(mem, parent, x, y, tint, flags=None, children=0, bounds=True):
+def display_object(mem, parent, x, y, tint, flags=None, children=0, bounds=True, name=None):
     """A display object with a render node placing it at (x, y) pixels in its parent.
 
     Without a parent it is a movie's root, flagged as one, unless `flags` says
     otherwise, as for a subtree cut loose from its movie. Its node has bounds,
-    as real nodes do, unless `bounds` is False.
+    as real nodes do, unless `bounds` is False. `name` is its instance name,
+    behind a name handle and a string node as in the game.
     """
     if flags is None:
         flags = sf.MOVIE_ROOT_FLAGS | 1 if parent == 0 else 1
@@ -115,6 +116,13 @@ def display_object(mem, parent, x, y, tint, flags=None, children=0, bounds=True)
     mem.put(data + sf.NODE_CXFORM, "<8f", *tint, 0, 0, 0, 0)
     if bounds:
         mem.put(data + sf.NODE_BOUNDS, "<8f", -40, -20, 4000, 900, -40, -20, 4000, 900)
+    if name is not None:
+        handle, node = mem.alloc(0x30), mem.alloc(0x20)
+        chars = mem.alloc(len(name) + 1)
+        mem.buf[chars - HEAP : chars - HEAP + len(name)] = name.encode("ascii")
+        mem.put(obj + sf.DISPLAY_NAME, "<Q", handle)
+        mem.put(handle + sf.NAME_HANDLE_NAME, "<Q", node)
+        mem.put(node, "<Q", chars)
     return obj
 
 
@@ -3278,6 +3286,68 @@ kept.step(on_story, 7.0)
 check("the controls are kept while the replay lasts and let go after it",
       still is not None and "Change Playback Speed" in still and kept.replay_controls is None
       and sf.in_replay([version]) and not sf.in_replay(on_story), repr((still, kept.replay_controls)))
+
+# Numbers whose meaning is a picture beside them are named by the element
+# holding them: the header's Fight Money total, read from the game's names.
+mem = FakeMemory()
+root = display_object(mem, 0, 0, 0, WHITE, name="menuRoot")
+header = display_object(mem, root, 0, 0, WHITE, name="__id0_")
+text_field(mem, display_object(mem, header, 1731, 65, WHITE, name="moneyLabelElement"), 0, 0, ["128690"])
+text_field(mem, display_object(mem, header, 1387, 84, WHITE, name="lPLabelElement"), 0, 0, ["6178 LP"])
+text_field(mem, display_object(mem, header, 600, 400, WHITE, name="scoreLabel"), 0, 0, ["20320"])
+named = sf.ScaleformText(mem, MODULE)
+read = {it.text: it for it in named.items()}
+check("the header's Fight Money total says what it is",
+      "128690 Fight Money" in read and read["128690 Fight Money"].part == "moneyLabelElement", repr(sorted(read)))
+check("other numbers are left as they are", "20320" in read and "6178 LP" in read, repr(sorted(read)))
+check("an object's instance name is read through its handle",
+      named.object_name(read["6178 LP"].chain[1]) == "lPLabelElement"
+      and named.object_name(read["6178 LP"].chain[0]) is None)
+
+# Challenges' Missions page: each mission a row of named parts, the cursor's
+# row lit, as read live on 2026-10-04.
+def mission(row, y, title, progress, deadline, left, reward, lit):
+    parts = [(title, "target_title", 516, 0), (progress, "progress", 1470, 42),
+             ("START", "start_date_title", 591, 43), ("Oct 1, 2026, 10:00:00 PM", "start_date", 751, 43),
+             ("DEADLINE", "end_date_title", 591, 68), (deadline, "end_date", 751, 68),
+             (left, "remain_date", 1014, 68), ("Reward", "reward_title", 591, 93), (reward, "reward", 751, 93)]
+    out = [sf.TextItem(text, x, y + dy, WHITE, 5, chain=(row * 10 + i, row * 10 + 5 + i, row, 2, 1),
+                       chosen=lit, row=row if lit else 0, part=part)
+           for i, (text, part, x, dy) in enumerate(parts)]
+    sf.name_amounts(out)
+    return out
+
+
+def missions_page(lit, left=" 4:03 remaining"):
+    tabs = [sf.TextItem(t, 157, y, GOLD if t == "Missions" else GREY, 4, chain=(500 + y, 600, 3, 1),
+                        part="labelElement") for t, y in (("Trials", 199), ("Missions", 287))]
+    return tabs + (mission(100, 158, " Perform a normal throw 10 time(s)!", "0/10", "Oct 4, 2026, 9:00:00 PM",
+                           f"({left})", "50", lit == 1)
+                   + mission(200, 310, " Win 1 Battle Lounge match(es)!", "0/1", "Oct 8, 2026, 9:00:00 PM",
+                             "(Days left: 4)", "500", lit == 2))
+
+
+check("a mission's reward is Fight Money", any(it.text == "50 Fight Money" for it in missions_page(1)))
+check("a mission in brief: what to do, progress, reward, time left",
+      mn.phrase(sf.mission_entry(missions_page(1))) ==
+      "Perform a normal throw 10 times! Progress 0 of 10. Reward 50 Fight Money. 4 hours 3 minutes remaining",
+      mn.phrase(sf.mission_entry(missions_page(1))))
+check("a mission in full adds the deadline and when it started",
+      mn.phrase(sf.mission_entry(missions_page(2), brief=False)) ==
+      "Win 1 Battle Lounge match! Progress 0 of 1. Reward 500 Fight Money. 4 days left, deadline October 8, "
+      "2026, 9:00 PM. Started October 1, 2026, 10:00 PM",
+      mn.phrase(sf.mission_entry(missions_page(2), brief=False)))
+check("a mission is no CFN timeline entry", sf.timeline_entry(missions_page(1)) is None)
+check("nothing off the Missions page", sf.mission_entry(missions_page(0)) == [] and sf.mission_row(on_story) is None)
+said = narrate([(0.0, missions_page(0)), (1.0, missions_page(1)), (2.0, missions_page(2)),
+                (3.0, missions_page(2, left=" 4:02 remaining")), (4.0, missions_page(1, left=" 4:02 remaining"))])
+check("each mission is said as the cursor reaches it, and not again as its clock ticks",
+      [s for _, s in said] == [
+          "Missions",
+          "Perform a normal throw 10 times! Progress 0 of 10. Reward 50 Fight Money. 4 hours 3 minutes remaining",
+          "Win 1 Battle Lounge match! Progress 0 of 1. Reward 500 Fight Money. 4 days left",
+          "Perform a normal throw 10 times! Progress 0 of 10. Reward 50 Fight Money. 4 hours 2 minutes remaining"],
+      repr(said))
 
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")

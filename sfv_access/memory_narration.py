@@ -256,6 +256,8 @@ class Narrator:
         # CFN's timeline entry at the last read, and the one last said.
         self.timeline_seen = None
         self.timeline_said = None
+        # The mission row last said on the Missions page, None elsewhere.
+        self.mission_said = None
         # The description line, and when it last changed, so an advert in the
         # main menu's banner can be told from a move.
         self.footer_text: str | None = None
@@ -373,6 +375,24 @@ class Narrator:
             pieces = scaleform.story_chapter_texts(items) | {"Unavailable"}
             if any(" ".join(p.split()) in pieces for p in parts):
                 parts = [chapter] + [p for p in parts if " ".join(p.split()) not in pieces]
+
+        # A mission is said as one sentence, what to do, progress, reward and
+        # time left, where its row's texts came out in columns, labels before
+        # values (2026-10-04). Only as the cursor reaches another mission: the
+        # time left changes every minute, and that is no move.
+        row = scaleform.mission_row(items)
+        if row is None:
+            self.mission_said = None
+        elif parts:
+            pieces = scaleform.mission_texts(items)
+            moved = [p for p in parts if " ".join(p.split()) in pieces]
+            if moved:
+                rest = [p for p in parts if " ".join(p.split()) not in pieces]
+                if row != self.mission_said:
+                    self.mission_said = row
+                    parts = [phrase(scaleform.mission_entry(items))] + rest
+                else:
+                    parts = rest or None
 
         # The result and VS screens arrive in pieces with nothing selected, and
         # saying what changed would read them out one by one. Each gets one
