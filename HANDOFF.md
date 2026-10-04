@@ -154,7 +154,9 @@ quiet in the middle", "Counter hits, and new sounds" and "Crossups"):
   nicely".
 - Crossups: the user's own sound as a crossup lands, in the speaker of
   whoever landed it, once per combo, in the corner too, silent for throws,
-  F7 and Shift F7 for its volume: "Seems to be working".
+  F7 and Shift F7 for its volume: "Seems to be working". On 2026-10-04,
+  after two fixes (Ryu's costume 16, Ryu's forward throw), Ryu's throws
+  silent and his crossups heard: "It sounds good now".
 - F6 and Shift F6 for the counter hit sound's volume (the user had set it to
   15 before it was first played to them). The counter hit sound itself in a
   fight, and the xylophone health beeps in a fight, are not yet reported;
@@ -1216,6 +1218,27 @@ user asked for so each sound can be set on its own. Throws and other hits that s
 one landing while the thrower stands behind the defender would sound too
 (it did; see below).
 
+**Crossups silent, then Ryu's throws (2026-10-04).** The user found crossups
+not working with Ryu. The log said "characters [b'KEN', b'Z00'] do not
+match the records' [b'RYU', b'KEN']": the user's Ryu wore costume 16, whose
+asset is `/Game/Chara/RYU/SkelMesh/16/DataAsset/DA_Z00_Costume_16`, so the
+code in its name matched no record and `_find_pawns` gave up for the whole
+fight. `fight.costume_code` now takes the code from the folder, and the
+recorder uses it too. Then Ryu's forward throw sounded as a crossup. It
+turns the defender 0.93 s before its damage, past `FACING_STEADY`, and
+thrown again as they rose in the corner they faced the wall throughout, so
+no wait would do. The fighter hit has the answer: the int32 at `HIT_KIND`
+(+0x2F4, inside the bytes `_watch_counters` already reads) is -2 from a
+throw's grab and on the reading its damage lands, and 0, 1 or 2 as any
+strike lands (7 throws and 178 strikes, found by comparing the recorder's
+record bytes just before each hit). It holds the last hit's kind until the
+next lands, so it is read on the hit's own reading (`Marks.thrown`); a
+crossup straight after a throw read -2 before it and 1 as it landed. Both
+recordings, and a third after the fix (4 throws, 3 crossups), replay right
+against the game's banners. The turn rule is kept, since Akuma's throws were
+never checked against the mark. The user: "It sounds good now". The
+recordings are `snapshots/hits-training-2026-10-04`, `-04b` and `-04c`.
+
 **Online the beeps were silent (2026-09-29, fixed, not yet heard).** The
 user played Battle Lounge matches that evening and heard no beeps. The
 fight's display online labels the player's own bar alone, "YOU" at (167,
@@ -1988,9 +2011,13 @@ user declined a release for now.
 Not yet heard in play, the first things to check: the counter hit sound and
 the xylophone beeps in a fight; the free-stretch probe's last change
 (98fe0fc, it only finds more); crossups landed by projectiles or ground
-moves, and air throws (the turn rule should keep them quiet); crossups in a
-mirror match are skipped by design, the characters being matched to records
-by the costume's character code. Offered and not taken up, should the user
+moves, and air throws and command throws (whether they set the throw mark,
+-2, is unknown; the turn rule may still catch them); crossups in a mirror
+match are skipped by design, the characters being matched to records by
+the character code of the costume's folder. On 2026-10-04 crossups were
+found silent for Ryu in costume 16 and his forward throw sounding as one;
+both fixed and confirmed that night (see "Crossups silent, then Ryu's
+throws"). Offered and not taken up, should the user
 come back to it: a sound when the fighters swap sides, which would come
 before the hit rather than after. Other banners in Training's Key Display
 column, such as REVERSAL (a string the game has), were not looked at.
@@ -2139,16 +2166,16 @@ the direction: a full bar measures 83 percent on screen), is there too.
    another, as `test_screens.py` does for pixels. The analysis in this session
    already replayed several of them by hand.
 
-4. **Combat.** Deliberately deferred and completely unstarted. Speech cannot
-   follow a round, so this wants continuous audio cues rather than words: pitch
-   for health, stereo position for the distance between fighters, and speech
-   kept for round transitions and a hotkey query. This is where the mod stops
-   being a menu reader and becomes something to fight with. The HUD reader in
-   `sfv_access/hud.py` already gives health and both meters.
+4. **Combat.** Started since this was written: the health beeps, the counter
+   hit sound and the crossup sound, all from the fighters' records and 3D
+   characters (`fight.py`). Still to do: stereo position or pitch for the
+   distance between the fighters, and the sound when they swap sides that
+   was offered and not taken up. Speech cannot follow a round, so these want
+   sounds rather than words, with speech kept for round transitions and a
+   hotkey query.
 
-5. **Move stage select to memory.** It works off the screen, so unlike
-   character select it needs the game in front. There is almost certainly a
-   stage code in memory to match, as with characters.
+Stage select, once item 5 here, has read from memory since 2026-09-13 (see
+"Stage select has nothing selected").
 
 Deliberately not on this list: UE4SS, and finishing the character names. The
 names are done, from the game's own files. UE4SS is written up above and is one
@@ -2801,6 +2828,11 @@ console window: what it prints goes to `snapshots/console-log.txt`, and what
 it reads and says to `scaleform-log.txt` and `spoken-log.txt` as before. To
 have the user run a change, ask them to press F10 and start `Start SFV
 Access.bat` (the game can stay open), or quit the game and launch it again.
+Or restart it yourself and save them the round trip, as on 2026-10-04: stop
+both `run.py` pythonw processes, then from PowerShell `Start-Process` the
+venv's pythonw on a short script that loads `start_with_game.pyw` and calls
+`start_mod(with_game=True)`; it comes back with the console log and closes
+with the game as before.
 Day to day:
 
 ```bash
