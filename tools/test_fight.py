@@ -97,10 +97,11 @@ check("two people on one machine, or nobody, leave the side unknown",
 MARKER = 0x7FF6_2C51_680
 
 
-def record_start(counter=0, crush=0, marker=MARKER, health=1000):
+def record_start(counter=0, crush=0, marker=MARKER, health=1000, kind=0):
     raw = bytearray(fight.MARKS)
     struct.pack_into("<Q", raw, 0, marker)
     struct.pack_into("<i", raw, fight.HEALTH, health << 16)
+    struct.pack_into("<i", raw, fight.HIT_KIND, kind)
     raw[fight.COUNTER], raw[fight.CRUSH] = counter, crush
     return bytes(raw)
 
@@ -110,6 +111,10 @@ check("a fighter reeling from a counter hit is marked so, with their health",
 check("a crush counter is marked as both",
       fight.counter_marks(record_start(1, 1), MARKER) == fight.Marks(1000, True, True))
 check("otherwise neither", fight.counter_marks(record_start(), MARKER) == fight.Marks(1000, False, False))
+check("a fighter taking a throw is marked thrown, as Ryu's throws set -2 (2026-10-04)",
+      fight.counter_marks(record_start(kind=-2, health=870), MARKER) == fight.Marks(870, False, False, True))
+check("a strike of any kind is not a throw",
+      not any(fight.counter_marks(record_start(kind=k), MARKER).thrown for k in (0, 1, 2)))
 check("memory that is no longer a record, or too little of it, is no reading",
       fight.counter_marks(record_start(1, marker=MARKER + 8), MARKER) is None
       and fight.counter_marks(record_start(1)[:-1], MARKER) is None and fight.counter_marks(None, MARKER) is None)

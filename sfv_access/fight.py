@@ -75,6 +75,15 @@ alone is a hit from behind. Every throw recorded (5 forward, 5 back) turned
 the defender between 15 and 618 ms before the damage, and no crossup had the
 defender turn in the 0.6 s before it, so a hit is a crossup only if the
 defender has faced the same way for `FACING_STEADY` (`Turns`).
+
+That was not enough for Ryu (2026-10-04): his forward throw turns the
+defender 0.93 s before its damage, and thrown again as they rose in the
+corner they faced the wall the whole time. The record says it outright.
+The int32 at `HIT_KIND` in the fighter hit holds -2 from a throw's grab and
+on the reading its damage lands, in all 7 throws recorded that night, and 0,
+1 or 2 as every one of 178 strikes landed, crossups included. It keeps the
+last hit's kind until the next lands, so read it on the hit's own reading:
+a crossup straight after a throw read -2 before it and 1 as it landed.
 """
 
 from __future__ import annotations
@@ -90,6 +99,7 @@ HEALTH, HEALTH_MAX = 0xD0, 0xD4
 CRITICAL, CRITICAL_MAX = 0xDC, 0xE0
 V_GAUGE, V_GAUGE_MAX = 0xF4, 0xF8
 BLOCK = V_GAUGE_MAX + 4 - HEALTH      # one read covers them all
+HIT_KIND = 0x2F4                      # int32, the kind of hit last taken, set as it lands: 0 to 2 a strike, -2 a throw
 COUNTER, CRUSH = 0x2F8, 0x2FC         # set while a counter hit, and a crush counter, has its target reeling
 MARKS = CRUSH + 1                     # read from the record's start, its type marker with them
 PAWN_CLASS = "KBP_BattlePawn_C"       # a fighter's 3D character, and two spare ones without a costume
@@ -146,17 +156,20 @@ def gauges_from(raw: bytes | None) -> Gauges | None:
 
 @dataclass(frozen=True)
 class Marks:
-    """A fighter's health and whether they are reeling from a counter hit and a crush counter."""
+    """A fighter's health, whether they are reeling from a counter hit and a
+    crush counter, and whether the hit they last took was a throw."""
     health: int
     counter: bool
     crush: bool
+    thrown: bool = False
 
 
 def counter_marks(raw: bytes | None, marker: int) -> Marks | None:
     """A fighter's `Marks`, from the bytes read at their record's start; None if it is no longer a record."""
     if not raw or len(raw) < MARKS or struct.unpack_from("<Q", raw)[0] != marker:
         return None
-    return Marks(_whole(raw, HEALTH), raw[COUNTER] == 1, raw[CRUSH] == 1)
+    thrown = struct.unpack_from("<i", raw, HIT_KIND)[0] < 0
+    return Marks(_whole(raw, HEALTH), raw[COUNTER] == 1, raw[CRUSH] == 1, thrown)
 
 
 def behind(attacker_x: float, defender_x: float, defender_yaw: float) -> bool:

@@ -1061,8 +1061,8 @@ class App:
         A crossup has no mark: a hit is one when it opens an exchange and
         lands from behind (`fight.crossup`), judged by where the fighters stood
         at this reading and the one before, on a defender who has not just been
-        turned round, as a throw does (`fight.Turns`). Each has its own
-        volume, F6 and F7.
+        turned round (`fight.Turns`) and whose record does not mark the hit a
+        throw (`Marks.thrown`). Each has its own volume, F6 and F7.
         """
         before: list[fight.Marks] | None = None
         placed_before = None   # where the fighters stood at the last reading, for `fight.crossup`
@@ -1092,7 +1092,8 @@ class App:
                         opening = now - hurt_at[side] > CROSSUP_QUIET
                         hurt_at[side] = now
                         crossup_volume = buttons.crossup_volume()
-                        if (opening and crossup_volume > 0 and turns.steady(side, now)
+                        if (opening and crossup_volume > 0 and not now_marks.thrown
+                                and turns.steady(side, now)
                                 and fight.crossup(side, placed_before, placed)):
                             self._beep(beeps.crossup_sound(1 - side, crossup_volume))
             before, placed_before = marks, placed
