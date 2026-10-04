@@ -158,9 +158,11 @@ quiet in the middle", "Counter hits, and new sounds" and "Crossups"):
   after two fixes (Ryu's costume 16, Ryu's forward throw), Ryu's throws
   silent and his crossups heard: "It sounds good now".
 - F6 and Shift F6 for the counter hit sound's volume (the user had set it to
-  15 before it was first played to them). The counter hit sound itself in a
-  fight, and the xylophone health beeps in a fight, are not yet reported;
-  both were chosen by ear from demos.
+  15 before it was first played to them). The counter hit sound and the
+  xylophone health beeps in a fight, both chosen by ear from demos, were
+  confirmed on 2026-10-04: "I can hear the counter hit and health bar
+  sounds fine", in Training, in matches against the CPU, and "in a live
+  match as well".
 
 Written and checked against the game or a recording, but not yet heard in
 play: Controller Settings with both players' screens open in Versus. Heard in
@@ -1235,8 +1237,9 @@ record bytes just before each hit). It holds the last hit's kind until the
 next lands, so it is read on the hit's own reading (`Marks.thrown`); a
 crossup straight after a throw read -2 before it and 1 as it landed. Both
 recordings, and a third after the fix (4 throws, 3 crossups), replay right
-against the game's banners. The turn rule is kept, since Akuma's throws were
-never checked against the mark. The user: "It sounds good now". The
+against the game's banners. The turn rule is kept, though three of Akuma's
+throws, recorded later that night, read -2 too (`hits-throws-2026-10-04b`);
+command throws and air throws have not been recorded. The user: "It sounds good now". The
 recordings are `snapshots/hits-training-2026-10-04`, `-04b` and `-04c`.
 Next Zeku's V-Trigger sounded on a cornered, juggled Akira, with no banner:
 its second hit came 1.1 s after the first, past the one-second timer that
@@ -2018,8 +2021,7 @@ request; its What's new entry, dated 1 October, covers everything since the
 29 September zip, the online beeps fix included. It is not on GitHub: the
 user declined a release for now.
 
-Not yet heard in play, the first things to check: the counter hit sound and
-the xylophone beeps in a fight; the free-stretch probe's last change
+Not yet heard in play, the first things to check: the free-stretch probe's last change
 (98fe0fc, it only finds more); crossups landed by projectiles or ground
 moves, and air throws and command throws (whether they set the throw mark,
 -2, is unknown; the turn rule may still catch them); crossups in a mirror
