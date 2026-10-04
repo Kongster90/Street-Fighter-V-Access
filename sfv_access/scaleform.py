@@ -84,6 +84,7 @@ TEXT_PARAGRAPHS = 0x18       # array of Paragraph*
 TEXT_PARAGRAPH_COUNT = 0x20
 PARAGRAPH_CHARS = 0x00       # UTF-16 text, then its length counting the terminator
 PARAGRAPH_SIZE = 0x08
+PARAGRAPH_ENDS = ("\0", "\r")
 PARAGRAPH_RUNS = 0x20        # format runs: start, length, TextFormat*, each 0x18 bytes
 PARAGRAPH_RUN_COUNT = 0x28
 RUN_STRIDE = 0x18
@@ -159,10 +160,16 @@ OPAQUE_LABEL = 0.5
 # way while it shows. So they are recognised by what they say.
 PLACEHOLDER_MIN_LENGTH = 8
 PLACEHOLDER_W_SHARE = 0.8
+# The description line holds "www" for a read as it changes, and with nothing
+# selected that change was said: "www" in Sound Settings (2026-10-03), and in
+# Training's pause menu. Nothing but lower-case w is a placeholder however short.
+PLACEHOLDER_SHORT = 3
 
 
 def is_placeholder(text: str) -> bool:
     letters = [c for c in text if not c.isspace()]
+    if len(letters) >= PLACEHOLDER_SHORT and set(letters) == {"w"}:
+        return True
     if len(letters) < PLACEHOLDER_MIN_LENGTH:
         return False
     return sum(c in "wW" for c in letters) >= PLACEHOLDER_W_SHARE * len(letters)
@@ -3636,6 +3643,14 @@ class ScaleformText:
             if not raw:
                 continue
             text = raw.decode("utf-16-le", "replace")
+            # A paragraph ends in its terminator, a null or a carriage return,
+            # with no null before it: all 195 in a live read did. One read
+            # while the game writes it holds stale heap pointers instead,
+            # which decode as stray CJK with nulls among them, "萸㼘" before
+            # "Halloween Event" on the main menu's banner (2026-10-03), the
+            # whole menu read as its panel. The field waits for the next read.
+            if text[size - 1 : size] not in PARAGRAPH_ENDS or "\0" in text[: size - 1]:
+                return None
             runs, run_count = struct.unpack_from("<QQ", head, PARAGRAPH_RUNS)
             if runs and 1 < run_count <= min(size + 1, MAX_RUNS):
                 text = self._with_pictures(text, runs, run_count)

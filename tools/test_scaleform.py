@@ -2203,6 +2203,39 @@ check("changing a value says only the value", sf.landed_on(row_kenji, row_suit) 
 check("W placeholders are recognised", sf.is_placeholder("WWWWWWWWyWWWWWWWW")
       and sf.is_placeholder("WWWWWWWWWWWWWWWW\n") and not sf.is_placeholder("WWE NETWORK")
       and not sf.is_placeholder("Wow"))
+check("the description line's short placeholder is recognised", sf.is_placeholder("www")
+      and not sf.is_placeholder("ww") and not sf.is_placeholder("WWW") and not sf.is_placeholder("wow"))
+sound = [item("Sound Settings", 157, 199), item("www", 110, 992)]
+check("the description line's placeholder is not said",
+      sf.landed_on([item("Sound Settings", 157, 199), item("Adjust volume settings.", 110, 992)],
+                   [it for it in sound if it.shown]) == [])
+
+# A paragraph read while the game writes it holds stale heap pointers: it must
+# end in its terminator, with no null before it, or the field waits a read.
+mem = FakeMemory()
+root = display_object(mem, 0, 0, 0, WHITE)
+half_done = text_field(mem, root, 799, 191, ["Halloween Event"])
+cut_short = text_field(mem, root, 799, 300, ["Halloween Event"])
+nulls = text_field(mem, root, 799, 400, ["Sep 30, 2026 - Oct 31, 2026"])
+whole = text_field(mem, root, 799, 452, ["Fighting Chance\r"])
+def paragraph_chars(docview):
+    styled = mem.ptr(docview + sf.DOCVIEW_TEXT)
+    para = mem.ptr(mem.ptr(styled + sf.TEXT_PARAGRAPHS))
+    return para, mem.ptr(para + sf.PARAGRAPH_CHARS)
+para, chars = paragraph_chars(half_done)
+mem.buf[chars - HEAP : chars - HEAP + 4] = "萸㼘".encode("utf-16-le")
+mem.put(para + sf.PARAGRAPH_SIZE, "<Q", 2)
+para, chars = paragraph_chars(cut_short)
+mem.put(para + sf.PARAGRAPH_SIZE, "<Q", 5)
+para, chars = paragraph_chars(nulls)
+mem.buf[chars - HEAP : chars - HEAP + 8] = struct.pack("<Q", 0x000001B13F188458)
+para, chars = paragraph_chars(whole)
+mem.put(para + sf.PARAGRAPH_SIZE, "<Q", len("Fighting Chance\r"))   # as "ZANGIEF\r" counts
+reader = sf.ScaleformText(mem, MODULE)
+check("a paragraph without its terminator is refused",
+      reader.field_text(half_done) is None and reader.field_text(cut_short) is None)
+check("a paragraph with a null inside it is refused", reader.field_text(nulls) is None)
+check("a paragraph ending in a carriage return is kept", reader.field_text(whole) == "Fighting Chance")
 
 # The choice rule has to stay off things that merely look like two buttons.
 mem = FakeMemory()

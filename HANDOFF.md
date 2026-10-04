@@ -646,7 +646,21 @@ called it "working pretty well"; with the second, "working nicely"
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but
 their render state looks exactly like the question's, so they are recognised
-by content: `is_placeholder`.
+by content: `is_placeholder`. The description line at (110, 992) holds
+"www" for a read as it changes; with nothing selected the change was said,
+"www" in Sound Settings on 2026-10-03, so nothing but lower-case w, three or
+more, is a placeholder too (`PLACEHOLDER_SHORT`).
+
+**Half-written text.** A read can catch a paragraph while the game writes it:
+its length set, its buffer still stale heap pointers, which decode as stray
+CJK with nulls among them ("萸㼘", "淸怜Ʊ\x00נ旱", "葘㼘Ʊ\x00... - Oct 31,
+2026", eight in two days of logs, mostly the main menu's banner date line
+and Training's attack data). Twice the stray text sat in a new group on the
+banner and the whole main menu was read as its panel, as a prompt's question
+is. Every real paragraph in a live read (195) ended in its terminator, a
+null or a carriage return, inside its counted length, with no null before
+it; `field_text` now drops a field whose paragraph does not, and it reads
+whole a read later.
 
 **The render node's visible bit only counts on parents.** It is clear on the
 Exit prompt's question while the question is on screen, and dropping the
@@ -2006,10 +2020,10 @@ one-second timer (Zeku's V-Trigger). See "Crossups silent, then Ryu's
 throws". The counter hit sound and the xylophone beeps were confirmed in
 play against the CPU. Also new: `tools/call_user.py`, the way to ask the
 user to act (see "Working with this person"), and restarting the mod
-yourself (see "Running things"). Seen in the spoken log of 2026-10-03 and
-not yet looked at: the main menu's summary ending "萸㼘. Halloween Event",
-two garbled characters before a seasonal entry, and "www" said in Sound
-Settings among the volume levels.
+yourself (see "Running things"). Two faults from the spoken log of
+2026-10-03 were fixed the next afternoon, not yet heard in play: the whole
+main menu read out ending "萸㼘. Halloween Event", and "www" said in Sound
+Settings. See "Templates hold placeholder text" and "Half-written text".
 
 **The session of 2026-09-30 and 10-01, in short.** Asked to speed up long
 lists in the menus, it found the "lag" was silence: Survival's and Trials'
