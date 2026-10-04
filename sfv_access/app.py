@@ -95,10 +95,6 @@ FIGHT_RETRY = 3.0
 # How often a fight's counter hit marks are looked at. Two small reads; the
 # sound is for following up on the hit, so it should come as it lands.
 COUNTER_POLL = 0.01
-# A crossup is said for the hit that opens an exchange: after one, the
-# defender reels facing away for the rest of the combo, and every hit of it
-# lands from behind. A hit this long after the defender's last counts as one.
-CROSSUP_QUIET = 1.0
 # How often the game's window is looked up to find where its picture is.
 # Looking costs a walk over every window, and the window rarely moves.
 PICTURE_RECHECK = 1.0
@@ -1058,8 +1054,10 @@ class App:
         marks read, since `_watch_fight` looks only every tenth of a second
         and the sound is for following up on the hit. A crush counter is left
         to the game's own sound, at the user's request. See `fight.Fight.counters`.
-        A crossup has no mark: a hit is one when it opens an exchange and
-        lands from behind (`fight.crossup`), judged by where the fighters stood
+        A crossup has no mark: a hit is one when it opens a combo (`Marks.combo`
+        is 1; after one, the defender reels facing away for the rest of the
+        combo, and every hit of it lands from behind) and lands from behind
+        (`fight.crossup`), judged by where the fighters stood
         at this reading and the one before, on a defender who has not just been
         turned round (`fight.Turns`) and whose record does not mark the hit a
         throw (`Marks.thrown`). Each has its own volume, F6 and F7.
@@ -1067,7 +1065,6 @@ class App:
         before: list[fight.Marks] | None = None
         placed_before = None   # where the fighters stood at the last reading, for `fight.crossup`
         turns = fight.Turns()  # when each last turned round, which a throw makes them do
-        hurt_at = [float("-inf"), float("-inf")]
         while not self._stop.wait(COUNTER_POLL):
             items = self.session.items if self.use_memory and self.session.available else None
             marks = None
@@ -1089,10 +1086,8 @@ class App:
                     if now_marks.counter and not was.counter and not now_marks.crush and volume > 0:
                         self._beep(beeps.counter_sound(1 - side, volume))
                     if now_marks.health < was.health:
-                        opening = now - hurt_at[side] > CROSSUP_QUIET
-                        hurt_at[side] = now
                         crossup_volume = buttons.crossup_volume()
-                        if (opening and crossup_volume > 0 and not now_marks.thrown
+                        if (now_marks.combo == 1 and crossup_volume > 0 and not now_marks.thrown
                                 and turns.steady(side, now)
                                 and fight.crossup(side, placed_before, placed)):
                             self._beep(beeps.crossup_sound(1 - side, crossup_volume))

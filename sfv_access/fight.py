@@ -84,6 +84,15 @@ on the reading its damage lands, in all 7 throws recorded that night, and 0,
 1 or 2 as every one of 178 strikes landed, crossups included. It keeps the
 last hit's kind until the next lands, so read it on the hit's own reading:
 a crossup straight after a throw read -2 before it and 1 as it landed.
+
+A crossup is sounded once a combo, on the hit that opens it, since after a
+crossup every hit lands on a defender facing away. That was a hit a second
+after the defender's last, until Zeku's V-Trigger (2026-10-04) juggled a
+cornered Akira and landed its second hit 1.1 s after the first, level with
+her at the wall, with no banner. The record counts the combo: the int32 at
+`COMBO` is 1 as a combo's first hit lands, 2 for the next and so on, and 0
+once it is over or for a blocked hit's chip. Replayed over every recording
+that night it keeps all of Ryu's crossups and silences Zeku's.
 """
 
 from __future__ import annotations
@@ -99,6 +108,7 @@ HEALTH, HEALTH_MAX = 0xD0, 0xD4
 CRITICAL, CRITICAL_MAX = 0xDC, 0xE0
 V_GAUGE, V_GAUGE_MAX = 0xF4, 0xF8
 BLOCK = V_GAUGE_MAX + 4 - HEALTH      # one read covers them all
+COMBO = 0x180                         # int32, hits of the current combo taken, set as each lands, 0 once it ends
 HIT_KIND = 0x2F4                      # int32, the kind of hit last taken, set as it lands: 0 to 2 a strike, -2 a throw
 COUNTER, CRUSH = 0x2F8, 0x2FC         # set while a counter hit, and a crush counter, has its target reeling
 MARKS = CRUSH + 1                     # read from the record's start, its type marker with them
@@ -157,11 +167,13 @@ def gauges_from(raw: bytes | None) -> Gauges | None:
 @dataclass(frozen=True)
 class Marks:
     """A fighter's health, whether they are reeling from a counter hit and a
-    crush counter, and whether the hit they last took was a throw."""
+    crush counter, whether the hit they last took was a throw, and how many
+    hits of a combo they have taken (0 out of one)."""
     health: int
     counter: bool
     crush: bool
     thrown: bool = False
+    combo: int = 0
 
 
 def counter_marks(raw: bytes | None, marker: int) -> Marks | None:
@@ -169,7 +181,8 @@ def counter_marks(raw: bytes | None, marker: int) -> Marks | None:
     if not raw or len(raw) < MARKS or struct.unpack_from("<Q", raw)[0] != marker:
         return None
     thrown = struct.unpack_from("<i", raw, HIT_KIND)[0] < 0
-    return Marks(_whole(raw, HEALTH), raw[COUNTER] == 1, raw[CRUSH] == 1, thrown)
+    combo = struct.unpack_from("<i", raw, COMBO)[0]
+    return Marks(_whole(raw, HEALTH), raw[COUNTER] == 1, raw[CRUSH] == 1, thrown, combo)
 
 
 def behind(attacker_x: float, defender_x: float, defender_yaw: float) -> bool:

@@ -1238,6 +1238,16 @@ recordings, and a third after the fix (4 throws, 3 crossups), replay right
 against the game's banners. The turn rule is kept, since Akuma's throws were
 never checked against the mark. The user: "It sounds good now". The
 recordings are `snapshots/hits-training-2026-10-04`, `-04b` and `-04c`.
+Next Zeku's V-Trigger sounded on a cornered, juggled Akira, with no banner:
+its second hit came 1.1 s after the first, past the one-second timer that
+judged a hit to open an exchange, with Zeku level with her at the wall. The
+timer is gone; the fighter hit counts the combo (`COMBO`, +0x180: 1 on a
+combo's first hit, then 2, 3, ..., 0 once over or for chip on a block), and
+only a combo's first hit can sound (`Marks.combo`). Replayed over all six
+of that night's recordings it changed nothing for Ryu and silenced Zeku's
+(`snapshots/hits-throws-2026-10-04c`, hits 14 to 42). The recorder also
+learned to follow one fight into the next (it watched the first fight's
+freed records), by the records' marker.
 
 **Online the beeps were silent (2026-09-29, fixed, not yet heard).** The
 user played Battle Lounge matches that evening and heard no beeps. The

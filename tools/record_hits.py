@@ -94,6 +94,12 @@ def record(out: Path) -> None:
                 time.sleep(1)
                 continue
             last_health = None
+        # A new fight makes new records and takes the marker off the old ones,
+        # whose health can still be read: look again rather than watch them.
+        marker = s.module_base + fight.VTABLE_RVA
+        if any(s.pm.ptr(r) != marker for r in records):
+            records = None
+            continue
         now = time.monotonic()
         health = []
         for r in records:
@@ -104,8 +110,14 @@ def record(out: Path) -> None:
             continue
         sample = []
         for _code, location, rotation in characters:
-            x, _y, z = struct.unpack("<3f", s.pm.read(location, 12))
+            place = s.pm.read(location, 12)
+            if place is None:   # the fight is over and its characters freed: wait for the next
+                break
+            x, _y, z = struct.unpack("<3f", place)
             sample += [x, s.pm.f32(rotation + 4), z]
+        if len(sample) != 3 * len(characters):
+            records = None
+            continue
         heads = b"".join(s.pm.read(r, HEAD) or bytes(HEAD) for r in records)
         ring.append((now, sample, heads))
         while ring and now - ring[0][0] > PRE + POST + 0.2:
