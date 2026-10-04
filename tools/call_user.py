@@ -1,10 +1,10 @@
 """Get the user's attention and say what is needed, for when they must act.
 
-A two-second beep through the speakers, then the message through Prism, so
+A one-second beep through the speakers, then the message through Prism, so
 NVDA says it, repeated a few times in case they were away. The user asked for
 exactly this whenever they need to press a key or do something in the game,
-and after hearing it shortened the beep from five seconds and lowered it an
-octave, to 440 Hz.
+and after hearing it shortened the beep from five seconds to one and lowered
+it an octave, to 440 Hz.
 If nothing happens afterwards, stop and ask in the chat whether they did it.
 
     .venv\\Scripts\\python.exe tools\\call_user.py "Press Alt S in the game, please."
@@ -34,7 +34,7 @@ def main() -> None:
 
     voice = PrismVoice()
     print(f"speaking through {voice.name}")
-    winsound.Beep(440, 2000)
+    winsound.Beep(440, 1000)
     for i in range(args.times):
         if i:
             time.sleep(args.gap)

@@ -2164,7 +2164,7 @@ than several, since every round trip costs them a pass through the game.
 
 They listen to NVDA rather than watch the chat, so when they need to press a
 key or do something in the game, call them: `tools/call_user.py "<what you
-need>"` beeps for two seconds and says it through Prism three times. If
+need>"` beeps for a second and says it through Prism three times. If
 nothing happens after that, stop and ask in the chat whether they did it, to
 tell a failed action from their having stepped away (asked for 2026-10-04).
 
