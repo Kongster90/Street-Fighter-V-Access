@@ -1600,10 +1600,17 @@ TRIAL_TILE = "trialNo"
 TRIAL_PANEL_NUMBER = "trial"
 TRIAL_PANEL_STEP = "label"
 TRIAL_PANEL_DEPTH = 2     # the panel above "#03": its element, then the panel
+# A tile's "clearIcon" is shown once that trial is cleared: on 01 to 06 of
+# Urien's, whose list said 6/10, and hidden on 07 to 10. It is the tile
+# number's note, said straight after it.
+TRIAL_TILE_DEPTH = 2      # the tile above its number: the number's element, then the tile
+TRIAL_CLEAR_ICON = "clearIcon"
+TRIAL_CLEARED = "Cleared"
+TRIAL_NOT_CLEARED = "Not cleared"
 
 
 def trial_preview(items: list[TextItem]) -> tuple[str, str | None] | None:
-    """The trial tile the cursor is on, and "03. Jumping Hard Punch, HADOKEN" once its combo shows.
+    """The trial tile the cursor is on, and "03. Cleared. Jumping Hard Punch, HADOKEN" once its combo shows.
 
     None off the trial list; the sentence None while the panel still shows
     another trial or its steps have yet to come.
@@ -1622,7 +1629,7 @@ def trial_preview(items: list[TextItem]) -> tuple[str, str | None] | None:
              if it.part == TRIAL_PANEL_STEP and panel in it.chain and it.text.strip()]
     if not steps:
         return number, None
-    return number, f"{number}. {', '.join(steps)}"
+    return number, phrase([number, tile.note, ", ".join(steps)])
 
 
 # --------------------------------------------------------- pictures in text
@@ -4102,6 +4109,17 @@ class ScaleformText:
             if stage is not None:
                 stage.chosen = True
 
+    def _note_trial_cleared(self, items: list[TextItem]) -> None:
+        """Whether the trial tile the cursor is on is cleared, as its number's note."""
+        for it in items:
+            if not (it.shown and it.selected and it.part == TRIAL_TILE and len(it.chain) > TRIAL_TILE_DEPTH):
+                continue
+            icon = next((k for k in self.children(it.chain[TRIAL_TILE_DEPTH])
+                         if self.object_name(k) == TRIAL_CLEAR_ICON), None)
+            node = self._node(icon) if icon else None
+            if node is not None:
+                it.note = TRIAL_CLEARED if node[2] & NODE_VISIBLE else TRIAL_NOT_CLEARED
+
     def _mark_highlighted_rows(self, shown: list[TextItem], groups) -> None:
         """Mark the text on a list row whose highlight bar is on, when the list has no gold.
 
@@ -4756,6 +4774,7 @@ class ScaleformText:
         self.mark_choices(out)
         mark_message_log(out)
         self._mark_sliders(out)
+        self._note_trial_cleared(out)
         out.sort(key=lambda it: (round(it.y), it.x))
         if quick:
             selected = tuple(it.text for it in out if it.selected)

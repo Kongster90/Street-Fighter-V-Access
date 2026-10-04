@@ -3412,6 +3412,17 @@ check("each trial is said with its combo once it shows, the number alone if it n
                                "03. Jumping Hard Punch, Standing Medium Punch, Crouching Medium Kick, HADOKEN",
                                "02"], repr(said))
 
+urien_07 = trial_list(7, 7, ["Crouching Light Punch", "CHARIOT TACKLE"])
+for it in urien_07:
+    if it.part == "trialNo" and it.text == "07":
+        it.note = sf.TRIAL_NOT_CLEARED
+check("a trial not yet cleared says so after its number",
+      sf.trial_preview(urien_07) == ("07", "07. Not cleared. Crouching Light Punch, CHARIOT TACKLE"),
+      repr(sf.trial_preview(urien_07)))
+check("and its note is not said twice on a move",
+      [s for _, s in narrate([(0.0, trial_list(1, 1, ryu_01)), (1.0, urien_07)])][1:]
+      == ["07. Not cleared. Crouching Light Punch, CHARIOT TACKLE"])
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

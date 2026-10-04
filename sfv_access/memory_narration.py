@@ -411,9 +411,11 @@ class Narrator:
             number, sentence = preview
             if number != self.trial_number:
                 self.trial_number, self.trial_since, self.trial_said = number, now, None
-            parts = [p for p in (parts or []) if p.strip() != number] or None
+            # The number and its note, as a move would say them, come with the combo.
+            notes = {it.note for it in items if it.selected and it.part == scaleform.TRIAL_TILE}
+            parts = [p for p in (parts or []) if p.strip() != number and p.strip() not in notes] or None
             if sentence is None and self.trial_said is None and now - self.trial_since >= TRIAL_PREVIEW_WAIT:
-                sentence = number
+                sentence = phrase([number] + sorted(notes - {""}))
             if sentence is not None and sentence != self.trial_said:
                 self.trial_said = sentence
                 parts = [sentence] + (parts or [])
