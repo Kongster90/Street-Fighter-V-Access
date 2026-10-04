@@ -3387,6 +3387,31 @@ price = [sf.TextItem("70000", 1334, 444, WHITE, 5, chain=(1, 2, 3, 4), part="mon
 sf.name_amounts(price)
 check("a shop price is Fight Money", price[0].text == "70000 Fight Money", price[0].text)
 
+# Trials' list of a fighter's trials, as logged on 2026-10-04: tiles 01 to 10,
+# the panel's "#03" and the combo's steps, which come a read after the number.
+def trial_list(lit, panel, steps):
+    tiles = [sf.TextItem(f"{n:02d}", 500 + 202 * ((n - 1) % 2), 165 + 154 * ((n - 1) // 2),
+                         GOLD if n == lit else GREY, 6, chain=(700 + n, 800 + n, 900 + n, 1000, 1001),
+                         part="trialNo") for n in range(1, 11)]
+    head = [sf.TextItem("RYU", 1190, 828, WHITE, 5, chain=(1100, 1101, 1200, 1001), part="character_name"),
+            sf.TextItem(f"#{panel:02d}", 1620, 828, WHITE, 5, chain=(1110, 1111, 1200, 1001), part="trial")]
+    rows = [sf.TextItem(text, 1019, 169 + 42 * i, WHITE, 8, chain=(1300 + i, 1400 + i, 1500 + i, 1600, 1700, 1200, 1001),
+                        part="label") for i, text in enumerate(steps)]
+    return tiles + head + rows
+
+
+ryu_01 = ["Jumping Hard Punch", "JODAN SANRENGEKI"]
+ryu_03 = ["Jumping Hard Punch", "Standing Medium Punch", "Crouching Medium Kick", "HADOKEN"]
+check("a trial tile with its combo", sf.trial_preview(trial_list(1, 1, ryu_01)) ==
+      ("01", "01. Jumping Hard Punch, JODAN SANRENGEKI"))
+check("not while the panel shows another trial's", sf.trial_preview(trial_list(3, 1, ryu_01)) == ("03", None))
+said = narrate([(0.0, trial_list(1, 1, ryu_01)), (1.0, trial_list(3, 3, [])), (1.1, trial_list(3, 3, ryu_03)),
+                (2.0, trial_list(3, 3, ryu_03)), (3.0, trial_list(2, 2, [])), (4.0, trial_list(2, 2, []))])
+check("each trial is said with its combo once it shows, the number alone if it never does",
+      [s for _, s in said] == ["01. Jumping Hard Punch, JODAN SANRENGEKI",
+                               "03. Jumping Hard Punch, Standing Medium Punch, Crouching Medium Kick, HADOKEN",
+                               "02"], repr(said))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

@@ -830,6 +830,18 @@ Commands draws most inputs as button pictures with no text: "(STANDING) M
 H" and steps made only of pictures are absent; that is now solved, see the
 next section. Confirmed in play on 2026-09-14 in both displays.
 
+**A fighter's list of trials.** Choosing a fighter in Trials shows tiles 01
+to 10, gold on the cursor's, and a panel with the fighter's name, "#03" and
+that trial's combo, a step a row. Only the number was said; the user asked
+on 2026-10-04 whether the combo was there. The parts are named ("trialNo",
+"trial" for "#03", "label" for each step, all under the panel "summary"),
+and `trial_preview` gives "03. Jumping Hard Punch, Standing Medium Punch,
+Crouching Medium Kick, HADOKEN" once the panel shows the tile's number and
+its steps, which come a read or two after the number (`TRIAL_PREVIEW_WAIT`
+before the number is said alone). Alt R says the same. Each tile also has a
+"clearIcon", visible on all ten of Ryu's; whether it means cleared is
+unknown without an uncleared trial to compare. Not yet heard in play.
+
 **Pictures inside text are named.** The command display's pictures are
 inline images in the text field, each in place of a space character, not
 separate display objects. A paragraph (the pointer in StyledText's array)

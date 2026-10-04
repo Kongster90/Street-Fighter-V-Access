@@ -529,6 +529,7 @@ class App:
             profile_page = scaleform.profile_page_details(items)
             timeline = scaleform.timeline_entry(items)
             mission = scaleform.mission_entry(items, brief=False)
+            trial = scaleform.trial_preview(items)
             if message and entry is None:
                 # What the message says, then when it arrived.
                 said = memory_narration.phrase([message[0], message[1]])
@@ -541,6 +542,9 @@ class App:
             elif profile_page and entry is None:
                 # Any other Fighter Profile page: its name, then its figures.
                 said = memory_narration.phrase(profile_page)
+            elif trial and trial[1] and entry is None:
+                # A trial tile: its number and the combo beside it.
+                said = trial[1]
             elif mission and entry is None:
                 # A mission in full, then the description line, which names
                 # the modes it counts in.

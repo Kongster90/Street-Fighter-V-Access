@@ -1589,6 +1589,42 @@ def trial_restarted(before: list[TextItem], after: list[TextItem]) -> bool:
     return on_try_again and not any(it.shown and it.text.strip() == TRIAL_TRY_AGAIN for it in after)
 
 
+# Choosing a fighter in Trials shows their trials as numbered tiles, 01 to 10,
+# and beside them a panel with the fighter's name, "#03", and the combo of the
+# tile the cursor is on, one step a row. Only the number was said (the user
+# asked on 2026-10-04). The parts are named: "trialNo" each tile's number,
+# "trial" the panel's "#03", "label" each step, all steps under the panel
+# ("summary") that holds "#03". The steps arrive a read after the number, so
+# the combo is said once the panel shows the tile's number and its steps.
+TRIAL_TILE = "trialNo"
+TRIAL_PANEL_NUMBER = "trial"
+TRIAL_PANEL_STEP = "label"
+TRIAL_PANEL_DEPTH = 2     # the panel above "#03": its element, then the panel
+
+
+def trial_preview(items: list[TextItem]) -> tuple[str, str | None] | None:
+    """The trial tile the cursor is on, and "03. Jumping Hard Punch, HADOKEN" once its combo shows.
+
+    None off the trial list; the sentence None while the panel still shows
+    another trial or its steps have yet to come.
+    """
+    shown = [it for it in items if it.shown]
+    tile = next((it for it in shown if it.selected and it.part == TRIAL_TILE), None)
+    if tile is None:
+        return None
+    number = tile.text.strip()
+    heading = next((it for it in shown if it.part == TRIAL_PANEL_NUMBER
+                    and it.text.strip().lstrip("#") == number and len(it.chain) > TRIAL_PANEL_DEPTH), None)
+    if heading is None:
+        return number, None
+    panel = heading.chain[TRIAL_PANEL_DEPTH]
+    steps = [" ".join(it.text.split()) for it in sorted(shown, key=lambda it: (round(it.y), it.x))
+             if it.part == TRIAL_PANEL_STEP and panel in it.chain and it.text.strip()]
+    if not steps:
+        return number, None
+    return number, f"{number}. {', '.join(steps)}"
+
+
 # --------------------------------------------------------- pictures in text
 #
 # Command displays draw inputs as pictures inside the text, each in place of a

@@ -41,6 +41,9 @@ SUMMARY_SETTLE = 0.4
 # A trial's steps are said again on a restart, but not twice for one: the
 # restart notice can come and go while it shows.
 TRIAL_RESTART_GAP = 3.0
+# A trial tile's combo shows a read or two after the number moves (half a
+# second at the most in the log); past this the number is said alone.
+TRIAL_PREVIEW_WAIT = 0.8
 # How long both of Training's frame counters must stand at 0 before an attack's
 # result is said. Between a combo's hits the other side's counter never rests.
 ATTACK_SETTLE = 0.25
@@ -258,6 +261,10 @@ class Narrator:
         self.timeline_said = None
         # The mission row last said on the Missions page, None elsewhere.
         self.mission_said = None
+        # The trial tile the cursor is on, since when, and what was said for it.
+        self.trial_number: str | None = None
+        self.trial_since = 0.0
+        self.trial_said: str | None = None
         # The description line, and when it last changed, so an advert in the
         # main menu's banner can be told from a move.
         self.footer_text: str | None = None
@@ -393,6 +400,24 @@ class Narrator:
                     parts = [phrase(scaleform.mission_entry(items))] + rest
                 else:
                     parts = rest or None
+
+        # A trial tile is said with its combo, which the panel beside the tiles
+        # shows a read after the number moves: "03. Jumping Hard Punch, ...".
+        # The number alone only if the combo is slow to come.
+        preview = scaleform.trial_preview(items)
+        if preview is None:
+            self.trial_number = self.trial_said = None
+        else:
+            number, sentence = preview
+            if number != self.trial_number:
+                self.trial_number, self.trial_since, self.trial_said = number, now, None
+            parts = [p for p in (parts or []) if p.strip() != number] or None
+            if sentence is None and self.trial_said is None and now - self.trial_since >= TRIAL_PREVIEW_WAIT:
+                sentence = number
+            if sentence is not None and sentence != self.trial_said:
+                self.trial_said = sentence
+                parts = [sentence] + (parts or [])
+                self.said = ""
 
         # The result and VS screens arrive in pieces with nothing selected, and
         # saying what changed would read them out one by one. Each gets one
