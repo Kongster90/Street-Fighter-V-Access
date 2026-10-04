@@ -35,7 +35,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from sfv_access import capture, fight, game, live, unreal  # noqa: E402
+from sfv_access import capture, fight, game, live  # noqa: E402
 
 TIME_LIMIT = 25 * 60
 PRE, POST = 1.2, 0.6
@@ -53,10 +53,8 @@ def find_characters(s, codes):
         root = s.pm.ptr(obj + props["RootComponent"].offset)
         if not costume or not root:
             continue
-        name = unreal.object_name(s.pm, s.names, costume, s.objects.layout) or ""
-        code = name.split("_")[1] if name.startswith("DA_") else ""
         component = s.all_properties(root)
-        out.append((code, root + component["RelativeLocation"].offset, root + component["RelativeRotation"].offset))
+        out.append(((fight.costume_code(s, costume) or b"").decode(), root + component["RelativeLocation"].offset, root + component["RelativeRotation"].offset))
     return out
 
 

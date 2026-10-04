@@ -53,8 +53,11 @@ records, not in the 64 KB block they sit in, and the banner Training shows
 worked out instead, as the game must: at the moment a hit lands, the attacker
 is on the side the defender faces away from. Where each fighter is and which
 way they face come from their 3D characters (`PAWN_CLASS`), the two with a
-costume, matched to the records by the character code in the costume's name
-("DA_KEN_Costume_01"): the root component's location X, and its yaw, -90
+costume, matched to the records by the character code in the folder the
+costume sits in ("/Game/Chara/KEN/SkelMesh/01/DataAsset/DA_KEN_Costume_01";
+not its name, since Ryu's costume 16 is "DA_Z00_Costume_16", which left
+crossups silent for that fight on 2026-10-04): the root component's
+location X, and its yaw, -90
 facing towards +X and +90 towards -X. The defender does not turn until after
 the hit, so the hit's own frame is the one to judge by, with two catches
 found in the corner. There the attacker cannot get past a cornered
@@ -77,6 +80,7 @@ defender has faced the same way for `FACING_STEADY` (`Turns`).
 from __future__ import annotations
 
 import ctypes
+import re
 import struct
 import threading
 from dataclasses import dataclass
@@ -207,6 +211,17 @@ def code(raw: bytes | None) -> bytes | None:
     """A character code from the bytes it starts, "Z30", or None if it does not look like one."""
     text = (raw or b"").split(b"\0")[0]
     return text if 2 <= len(text) <= 4 and text.isalnum() else None
+
+
+def costume_code(session, costume: int) -> bytes | None:
+    """The character a costume asset belongs to, b"RYU" from its folder,
+    "/Game/Chara/RYU/SkelMesh/16/DataAsset/DA_Z00_Costume_16"; its name can
+    carry another code."""
+    from . import unreal
+
+    path = unreal.full_object_path(session.pm, session.names, costume, session.objects.layout)
+    found = re.search(r"/Game/Chara/([^/.]+)/", path)
+    return found.group(1).encode() if found else None
 
 
 def order_by_character(records: list[int], record_codes: dict[int, bytes | None],
@@ -353,9 +368,7 @@ class Fight:
 
     def _find_pawns(self, session, codes: list[bytes | None]) -> list[tuple[int, int]] | None:
         """Player 1's and player 2's characters' location and rotation addresses,
-        by the character code in each costume's name; None for a mirror match."""
-        from . import unreal
-
+        by the character code of each costume's folder; None for a mirror match."""
         if len(codes) != 2 or None in codes or codes[0] == codes[1]:
             return None
         by_code = {}
@@ -366,13 +379,12 @@ class Fight:
                 root = session.pm.ptr(obj + props["RootComponent"].offset)
                 if not costume or not root:
                     continue
-                name = unreal.object_name(session.pm, session.names, costume, session.objects.layout) or ""
-                parts = name.split("_")
-                if len(parts) < 3 or parts[0] != "DA":
+                character = costume_code(session, costume)
+                if character is None:
                     continue
                 component = session.all_properties(root)
-                by_code[parts[1].encode()] = (root + component["RelativeLocation"].offset,
-                                              root + component["RelativeRotation"].offset)
+                by_code[character] = (root + component["RelativeLocation"].offset,
+                                      root + component["RelativeRotation"].offset)
         except Exception as exc:
             self._note(f"fight: characters not found: {exc!r}")
             return None
