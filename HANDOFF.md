@@ -2855,7 +2855,9 @@ lit item, and the narrator says it after `CHARM_DESCRIBE_AFTER` (1 s) on one
 item, through the Battle Items mechanism; Alt R gives item and description.
 Only while "Good Luck Charms" is gold in the Gallery's menu; the shop's
 lists, built the same, are left alone unless asked for. Items drawn in 0.6
-grey (Urien's Loincloth) are unexplained. Checked live; not yet heard.
+grey (Urien's Loincloth) read with "Unavailable", meaning unexplained (not
+won yet, or used up). Heard in play the same night: "it's all speaking
+well".
 
 **Alt C, the screen's buttons.** Asked for on 2026-10-05: hints are button
 pictures before words, never said on moves, so square in Costume Settings
