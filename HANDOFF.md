@@ -3081,9 +3081,14 @@ same: "NASH" with the user as Nash on the left, "RYU" with them as Necalli on
 the right ("YOU" over the right bar), their Fighter ID in Survival. Two
 wrong readings of that part each swapped every sound before the third: the
 right-hand fighter, then the side "YOU" stands over. `Fight` takes `names`
-(`scaleform.fight_names`, player 1's if a fighter's name) and orders the
-records by it when the settings cannot (`fight.name_code`, from
-character_names.json); an order already settled by character for the same
+(`scaleform.fight_player_one`, whatever it says) and orders the records by
+it when the settings cannot (`fight.order_by_name`): a fighter's name
+(`fight.name_code`, from character_names.json) picks that fighter's record,
+and a name that is no fighter's, as the story soldier "AS-M" in a fight that
+went silent, picks the one record whose character is no regular fighter's
+(the 46 codes in character_names.json), the player being the other; a
+Fighter ID over two regular fighters settles nothing. An order already
+settled by character for the same
 two records comes first, since a story fight's settings name the characters
 at its start and empty out seconds later. Records NSH and the story's own M.
 Bison, VEM, read certain; VEM is in no names file, so crossups, which match

@@ -146,7 +146,7 @@ class App:
         self.survival_health = memory_narration.SurvivalHealth(note=self.session.note)
         # The fight's gauges for Alt H, read from the fighters' records, and
         # which side is the player's.
-        self.fight = fight.Fight(note=self.session.note, names=lambda: scaleform.fight_names(
+        self.fight = fight.Fight(note=self.session.note, names=lambda: scaleform.fight_player_one(
             self.session.items if self.session.available else None))
         # Beeps as each fighter's health drops past a level, player 1 on the left.
         self.health_levels = [beeps.Levels(), beeps.Levels()]

@@ -280,16 +280,40 @@ def order_by_character(records: list[int], record_codes: dict[int, bytes | None]
 _codes_by_name: dict[str, bytes] | None = None
 
 
-def name_code(name: str | None) -> bytes | None:
-    """A fighter's character code from their name, b"NSH" for "NASH", or None."""
+def _codes_by_name_table() -> dict[str, bytes]:
+    """Every regular fighter's name and character code, from character_names.json."""
     global _codes_by_name
-    if not name:
-        return None
     if _codes_by_name is None:
         from . import live
 
         _codes_by_name = {said: found.encode() for found, said in live.load_name_file().get("names", {}).items()}
-    return _codes_by_name.get(name)
+    return _codes_by_name
+
+
+def name_code(name: str | None) -> bytes | None:
+    """A fighter's character code from their name, b"NSH" for "NASH", or None."""
+    return _codes_by_name_table().get(name) if name else None
+
+
+def order_by_name(records: list[int], record_codes: dict[int, bytes | None],
+                  player_one: str | None) -> list[int] | None:
+    """The two records with player 1's first, by the name the display gives player 1, or None.
+
+    A fighter's name picks their record. A name that is no fighter's, as a
+    story soldier's "AS-M", picks the record whose character is no regular
+    fighter's, provided the other one is (the player's, on the right); a
+    Fighter ID, as Survival's, over two regular fighters settles nothing.
+    """
+    if len(records) != 2 or not player_one:
+        return None
+    wanted = name_code(player_one)
+    if wanted is not None:
+        return order_by_character(records, record_codes, [wanted, None])
+    regular = set(_codes_by_name_table().values())
+    known = [r for r in records if record_codes.get(r) in regular]
+    if len(known) != 1:
+        return None
+    return [next(r for r in records if r != known[0]), known[0]]
 
 
 def order(records: list[int], links: dict[int, int]) -> tuple[list[int], str]:
@@ -316,10 +340,10 @@ class Fight:
     def __init__(self, note=None, names=None) -> None:
         self.records: list[int] | None = None
         self._note = note or (lambda text: None)
-        # The fighters' names over the health bars, (left, right), either None:
-        # what settles player 1's record when the battle's settings name no
-        # characters, as in story mode's fights.
-        self._names = names or (lambda: (None, None))
+        # The name the fight display gives player 1, or None: what settles
+        # player 1's record when the battle's settings name no characters, as
+        # in story mode's fights.
+        self._names = names or (lambda: None)
         self._last_how = ""
         self._last_side = ""
         # The last order settled by character, player 1's record first, and
@@ -359,7 +383,7 @@ class Fight:
                 # Story mode's fights leave the settings' characters empty
                 # ("characters None, None" on 2026-10-04, no sound in a fight
                 # against Nash); the display names the opponent, "NASH".
-                by_names = order_by_character(self.records, codes, [name_code(n) for n in self._names()])
+                by_names = order_by_name(self.records, codes, self._names())
             player_codes = [c for _k, c in players]
             mirror = len(player_codes) == 2 and player_codes[0] is not None and player_codes[0] == player_codes[1]
             self.certain = by_character is not None or mirror
@@ -373,7 +397,7 @@ class Fight:
                 ordered, how = self._decided, "character, as before"
                 self.certain = True
             elif by_names is not None:
-                ordered, how = by_names, "the name over player 1's health bar"
+                ordered, how = by_names, f"player 1's name on the display, {self._names()!r}"
                 self._decided = by_names
                 self.certain = True
             else:

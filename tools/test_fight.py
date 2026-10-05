@@ -158,10 +158,15 @@ check("a fighter's name gives their code", fight.name_code("NASH") == b"NSH" and
 story_records = [0x2000, 0x1000]
 story_codes = {0x2000: b"VEM", 0x1000: b"NSH"}
 check("Nash named as player 1 puts Nash's record first",
-      fight.order_by_character(story_records, story_codes, [fight.name_code("NASH"), None]) == [0x1000, 0x2000])
+      fight.order_by_name(story_records, story_codes, "NASH") == [0x1000, 0x2000])
 check("and Ryu named as player 1, the player Necalli on the right, puts Ryu's first",
-      fight.order_by_character([0x3000, 0x4000], {0x3000: b"NCL", 0x4000: b"RYU"},
-                               [fight.name_code("RYU"), None]) == [0x4000, 0x3000])
+      fight.order_by_name([0x3000, 0x4000], {0x3000: b"NCL", 0x4000: b"RYU"}, "RYU") == [0x4000, 0x3000])
+check("a story soldier named as player 1 is the one record of no regular fighter",
+      fight.order_by_name([0x5000, 0x6000], {0x5000: b"KRN", 0x6000: b"ASM"}, "AS-M") == [0x6000, 0x5000])
+check("a Fighter ID over two regular fighters settles nothing, nor two story-only ones",
+      fight.order_by_name([0x5000, 0x6000], {0x5000: b"KRN", 0x6000: b"RYU"}, "Konggster") is None
+      and fight.order_by_name([0x5000, 0x6000], {0x5000: b"VEM", 0x6000: b"ASM"}, "AS-M") is None
+      and fight.order_by_name([0x5000, 0x6000], {0x5000: b"KRN", 0x6000: b"RYU"}, None) is None)
 
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")

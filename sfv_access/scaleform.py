@@ -1390,17 +1390,18 @@ def fight_running(items: list[TextItem]) -> bool:
 
 # The fight display's name for player 1's fighter, the left-hand one: "NASH"
 # with the user as Nash on the left, "RYU" with them as Necalli on the right
-# against Ryu, the Fighter ID in Survival ("Konggster"). The part is called
-# "player_name_right" all the same (2026-10-04), and taken first for the
-# right-hand fighter, then for the side "YOU" stands over, it swapped the
-# sounds each time. Only a fighter's name counts.
+# against Ryu, a story soldier's "AS-M", the Fighter ID in Survival
+# ("Konggster"). The part is called "player_name_right" all the same
+# (2026-10-04), and taken first for the right-hand fighter, then for the side
+# "YOU" stands over, it swapped the sounds each time. `fight.order_by_name`
+# makes what it can of the name.
 FIGHT_PLAYER_ONE_NAME = "player_name_right"
 
 
-def fight_names(items: list[TextItem] | None) -> tuple[str | None, str | None]:
-    """The fighters known by name on the left and right, either None: player 1's, if named."""
+def fight_player_one(items: list[TextItem] | None) -> str | None:
+    """The name the fight display gives player 1, whatever it is, or None."""
     name = next((it.text.strip() for it in items or () if it.shown and it.part == FIGHT_PLAYER_ONE_NAME), None)
-    return (name, None) if name in fighter_names() else (None, None)
+    return name or None
 
 
 def on_versus_screen(items: list[TextItem]) -> bool:
