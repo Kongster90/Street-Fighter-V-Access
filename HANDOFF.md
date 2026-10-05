@@ -409,7 +409,8 @@ drawn at 0.36 grey against 0.27. `logged_in` goes by the total;
 `name_login` makes the icon "Logged in" or "Login. Not logged in", in the
 narrator after the banner's advert check and on Alt R, and leaves "LOGIN"
 alone when there is no header to tell by. Offline the total is said as
-"Fight Money unavailable offline".
+"Fight Money unavailable offline". Heard both ways the same day, offline and
+after logging in again: "it works as it should now".
 
 **Not everything selectable is text.** The main menu's icon row, Options,
 Gallery, Message Log, Login and Exit, lights no text when selected, so a
