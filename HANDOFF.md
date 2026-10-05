@@ -2178,6 +2178,20 @@ middle"); the Login icon saying "Logged in" or "Login. Not logged in"
 ("Fighting Chance"). Last, F9 was removed and then the whole screen reader
 (see "What the project is"): the mod now reads only from memory.
 
+The same session ran on past midnight into 2026-10-05, every item heard
+working by the user: fight sounds in replays and in story fights ("Fight
+sounds in replays", "Fight sounds in story mode"); CFN's tabs walked and
+found reading, its Tournament tab given row sentences and its details panel
+("CFN's Tournament tab"); Character Story played through with subtitles;
+Alt T's third setting, speaker names only; General Story's scenes and their
+ribbons, the game's own subtitle switch said, a story scene's controls said
+on starting and on Alt R; the chapter list's scrolled-to row; story Costume
+Settings naming each fighter; Alt C for any screen's button hints; and quick
+reads sweeping only the block sizes text lives in (190 ms to 35 late in a
+long session). See the sections named and "General Story's scenes" under
+"Character Story's chapters". The user's view at the end: "this seems to be
+almost finished".
+
 **The session of 2026-09-30 and 10-01, in short.** Asked to speed up long
 lists in the menus, it found the "lag" was silence: Survival's and Trials'
 fighter lists keep the cell scrolled to at alpha zero (`_show_list_cursor`),
