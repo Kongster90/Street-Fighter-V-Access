@@ -3020,8 +3020,14 @@ and ranks sit lower ("player_name_left", "player_name_right", y 122).
 only by the sound loops; Alt G says "in a replay", and Alt H names the sides
 "Player 1" and "Player 2" there (`fight.REPLAY_SIDES`), neither being the
 player. Replay Settings in its pause menu has Key Display, Attack Data and HUD
-Display (Normal, Hide Gauges, Hide All); the user had gauges hidden. Not yet
-heard in play.
+Display (Normal, Hide Gauges, Hide All); the user had gauges hidden. Heard
+in a replay the same evening: "everything sounds good, sounds were coming
+from the correct sides".
+
+**The menus inside CFN's tabs** were walked by the user on 2026-10-04 with a
+recorder running (`snapshots/cfn-2026-10-04`): "everything seems to be
+working", so nothing was changed there. What follows was the plan from
+2026-09-22, kept for what it says to expect.
 
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:
