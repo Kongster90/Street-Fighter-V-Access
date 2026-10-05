@@ -2790,6 +2790,19 @@ unsaid. `game_subtitles` reads the hint, and the narrator says "Game
 subtitles off" or "on" when it changes while the mod's subtitles are on or
 names only; not on first sight of the hint.
 
+The user then asked what other buttons do anything in a story scene, and for
+them on Alt R and on starting a story. `story_scene_controls` reads the
+scene's hint (a shown text whose buttons include "Skip" and a "Subtitles"
+label) into words in the Alt B style, "Options, Skip. L1, Select Scene.
+square, Hide Subtitles"; the narrator says "Scene controls. ..." the first
+time each kind of scene's hint shows (the labels but the subtitles one, so
+General Story's and Character Story's "Skip, History, Hide Subtitles, Next
+Line" each once), again after the main menu, and keeps it while the scene
+lasts (`Narrator.story_controls`, dropped once anything is selected) for Alt
+R, which says the line showing and then the controls. Character Story's
+buttons are unseen; they come from its hint's pictures. Its History screen
+has not been looked at. Not yet heard in play.
+
 **Sliders drawn as cells.** Options, Screen Settings, Screen Brightness read as
 its label alone (2026-09-17): no text gives its level, unlike Sound Settings'
 volumes. Found by dumping every display object under its row before and after

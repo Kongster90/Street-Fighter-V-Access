@@ -259,6 +259,10 @@ class Narrator:
         self.subtitle_said: tuple[str, str] | None = None
         # Whether the game itself draws subtitles, as its hint last said.
         self.game_subtitles: bool | None = None
+        # A story scene's controls in words while in one, and the kind of
+        # scene whose controls were last said; see `step`.
+        self.story_controls: str | None = None
+        self.story_controls_said: tuple[str, ...] | None = None
         # A replay's controls in words, as last seen while the replay lasts,
         # and whether this replay has had them said.
         self.replay_controls: str | None = None
@@ -705,6 +709,21 @@ class Narrator:
         # the player has them on; never otherwise, whatever else would name them.
         # With speaker names only, the speaker alone, again for each line; a
         # line with no speaker, as General Story's, says nothing then.
+        # A story scene's controls, said once on starting each kind of story
+        # (General Story's and Character Story's differ), again after the
+        # main menu, and kept for the read key while the scene lasts.
+        scene = scaleform.story_scene_controls(items)
+        if scene is not None:
+            kind, self.story_controls = scene
+            if kind != self.story_controls_said:
+                self.story_controls_said = kind
+                parts = [f"{scaleform.STORY_CONTROLS}. {self.story_controls}"] + (parts or [])
+                self.said = ""
+        elif any(it.selected for it in items):
+            self.story_controls = None
+        if scaleform.main_menu_selected(items):
+            self.story_controls_said = None
+
         mode = {True: "on", False: "off"}.get(self.subtitles, self.subtitles)
         # The game's own subtitles, which square shows and hides: without
         # them nothing is drawn to read, so their switching is said while the

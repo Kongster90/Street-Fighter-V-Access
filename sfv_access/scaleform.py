@@ -1420,6 +1420,28 @@ def game_subtitles(items: list[TextItem]) -> bool | None:
     return hints.pop() if len(hints) == 1 else None
 
 
+# A story scene's controls, from that hint: General Story's "Skip", "Select
+# Scene" and "Hide Subtitles" (Start, LB, square), Character Story's "Skip",
+# "History", "Hide Subtitles" and "Next Line". The user asked on 2026-10-04 to
+# hear them on starting either story and on Alt R in a scene.
+STORY_SKIP = "Skip"
+STORY_CONTROLS = "Scene controls"
+
+
+def story_scene_controls(items: list[TextItem]) -> tuple[tuple[str, ...], str] | None:
+    """A story scene's controls while its hint shows: what kind of scene, and its buttons in words.
+
+    The kind is the hint's labels but the subtitles one, which says Hide or
+    Show as the game's subtitles are switched.
+    """
+    for it in items:
+        labels = [label for _number, label in it.buttons]
+        if it.shown and STORY_SKIP in labels and any("Subtitles" in label for label in labels):
+            kind = tuple(label for label in labels if "Subtitles" not in label)
+            return kind, button_hint_words(it)
+    return None
+
+
 def on_versus_screen(items: list[TextItem]) -> bool:
     """The VS screen before a fight, whether or not both fighters show yet."""
     return _versus_panel([it for it in items if it.shown]) is not None

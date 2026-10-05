@@ -307,6 +307,9 @@ class App:
                        or scaleform.tournament_entry(items, brief=False))
             trial = scaleform.trial_preview(items)
             purchase = scaleform.purchase_details(items)
+            scene = scaleform.story_scene_controls(items)
+            scene_controls = scene[1] if scene else (
+                self.narrator.story_controls if not any(it.selected for it in items) else None)
             if message and entry is None:
                 # What the message says, then when it arrived.
                 said = memory_narration.phrase([message[0], message[1]])
@@ -319,6 +322,11 @@ class App:
             elif profile_page and entry is None:
                 # Any other Fighter Profile page: its name, then its figures.
                 said = memory_narration.phrase(profile_page)
+            elif scene_controls and entry is None:
+                # A story scene: the line showing, then the scene's buttons.
+                line = scaleform.subtitle(items)
+                said = memory_narration.phrase(([memory_narration.phrase(list(line))] if line else [])
+                                               + [f"{scaleform.STORY_CONTROLS}. {scene_controls}"])
             elif purchase and entry is None:
                 # The shop's purchase prompt: question, price, balances, button.
                 said = memory_narration.phrase(purchase[0] + [purchase[1]])

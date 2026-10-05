@@ -3670,6 +3670,34 @@ check("their switching is said while the mod's subtitles are on, not on first si
       == ["Game subtitles off", "Game subtitles on"])
 check("and not at all with them off", narrate(switching) == [])
 
+# A story scene's controls, said once on starting each kind of story.
+def general_hint(word="Hide"):
+    return [sf.TextItem(f"  Skip   Select Scene   {word} Subtitles", 1222, 1012, WHITE, 4, chain=(7100, 7101, 7109),
+                        buttons=((14, "Skip"), (8, "Select Scene"), (4, f"{word} Subtitles")))]
+
+
+def character_hint():
+    return [sf.TextItem("  Skip   History   Hide Subtitles   Next Line", 1222, 1012, WHITE, 4, chain=(7110, 7111, 7119),
+                        buttons=((14, "Skip"), (9, "History"), (4, "Hide Subtitles"), (6, "Next Line")))]
+
+
+real_name = sf.buttons.name
+sf.buttons.name = {14: "Options", 8: "L1", 9: "R1", 4: "square", 6: "cross"}.get
+try:
+    check("a scene's controls in words", sf.story_scene_controls(general_hint()) ==
+          (("Skip", "Select Scene"), "Options, Skip. L1, Select Scene. square, Hide Subtitles"))
+    told = mn.Narrator()
+    heard = [x for now, reading in [(0.0, general_hint()), (1.0, []), (2.0, general_hint("Show")), (3.0, []),
+                                    (4.0, character_hint()), (5.0, []), (6.0, general_hint())]
+             if (x := told.step(reading, now))]
+    check("said once a kind of story, Character Story's after General Story's",
+          heard == ["Scene controls. Options, Skip. L1, Select Scene. square, Hide Subtitles",
+                    "Scene controls. Options, Skip. R1, History. square, Hide Subtitles. cross, Next Line",
+                    "Scene controls. Options, Skip. L1, Select Scene. square, Hide Subtitles"], repr(heard))
+    check("and kept for the read key while the scene lasts", told.story_controls is not None)
+finally:
+    sf.buttons.name = real_name
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)
