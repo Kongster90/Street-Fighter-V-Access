@@ -2840,9 +2840,16 @@ it to the words under the same holder. Alt C was free on this machine
 play.
 
 Measured the same night, late in a seven-hour session: a quick read took
-190 ms against about 40 at its start, the sweep going through 2,900 blocks
-(616 on 2026-09-30); the same with the lone-picture check off. "Reads slow as
-a session goes on" still stands, and is worth doing.
+190 ms against about 40 at its start, the sweep going through 2,924 blocks
+and 661 MB (616 blocks on 2026-09-30). 2,253 of them were 0x41000 and held
+no text: every text field was in a 0x11000, 0x21000 or 0x31000 block, as
+the "quick read found nothing" lines had always said ("sizes []"). Quick
+reads now sweep only the sizes text has been found in
+(`TEXT_BLOCK_SIZES`, `ScaleformText.quick_pages`): 645 blocks, 49 MB, a
+quick read 35 ms, the same 21 texts as a full search. A full search that
+finds text in another size adds it (`_learn_block_sizes`) and the screen log
+says "text found in blocks of a new size, now swept". The user agreed to it
+after hearing the trade.
 
 **Sliders drawn as cells.** Options, Screen Settings, Screen Brightness read as
 its label alone (2026-09-17): no text gives its level, unlike Sound Settings'

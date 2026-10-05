@@ -50,6 +50,7 @@ that never shows on the main menu is hidden by the container above it.
 
 from __future__ import annotations
 
+import bisect
 import ctypes
 import functools
 import json
@@ -199,6 +200,13 @@ HEAP_PAGE_LIMIT = 0x100000
 # that shape, and there are only several hundred, about 70 MB against 360 MB
 # for every page, so a quick read sweeps those alone.
 SCALEFORM_CHUNK = 0x10000
+# The block sizes text fields have been seen in. Late in a seven-hour session
+# on 2026-10-05 the blocks had grown to 2,924 (661 MB), 2,253 of them 0x41000
+# and none of those holding text: every text field was in a 0x11000, 0x21000
+# or 0x31000 block. Sweeping those alone took 18 ms against 184, so quick
+# reads sweep only the sizes text has been found in; a full search finding
+# text in another size adds it (`ScaleformText._learn_block_sizes`).
+TEXT_BLOCK_SIZES = frozenset({0x11000, 0x21000, 0x31000})
 SCALEFORM_EXTRA = 0x1000
 
 
@@ -4139,6 +4147,10 @@ class ScaleformText:
         self._pass = threading.local()
         # Instance names by object and name handle; see `object_name`.
         self._names: dict[tuple[int, int], str | None] = {}
+        # The block sizes quick reads sweep, and those learnt from a full
+        # search during this session, for the log; see `TEXT_BLOCK_SIZES`.
+        self.text_block_sizes: set[int] = set(TEXT_BLOCK_SIZES)
+        self.learned_block_sizes: set[int] = set()
         # Set when a quick read finds the selection changed, to walk for
         # blocks without waiting out PAGE_REFRESH; and that selection.
         self._refresh_now = threading.Event()
@@ -4193,6 +4205,23 @@ class ScaleformText:
         with self._pages_lock:
             self._scaleform_pages, self._gaps = pages, gaps
             self.pages_refreshed_at = time.monotonic()
+
+    def quick_pages(self) -> list:
+        """Scaleform's blocks of the sizes text has been found in, for a quick read to sweep."""
+        return [page for page in self._scaleform_pages or [] if page.size in self.text_block_sizes]
+
+    def _learn_block_sizes(self, pages: list, docviews: list[int]) -> None:
+        """Note any block size a full search found text in that quick reads leave out."""
+        ordered = sorted((page for page in pages if _block_shaped(page.size)), key=lambda page: page.base)
+        starts = [page.base for page in ordered]
+        for docview in docviews:
+            at = bisect.bisect_right(starts, docview) - 1
+            if at < 0 or docview >= ordered[at].base + ordered[at].size:
+                continue
+            size = ordered[at].size
+            if size not in self.text_block_sizes:
+                self.text_block_sizes.add(size)
+                self.learned_block_sizes.add(size)
 
     def _probe_gaps(self) -> None:
         """Take up blocks Scaleform has made since the last walk, from where they must be.
@@ -5271,9 +5300,11 @@ class ScaleformText:
             if self._scaleform_pages is None:
                 self.refresh_pages()
             self._probe_gaps()
-            docviews = self.docviews(self._scaleform_pages + self.extra_pages)
+            docviews = self.docviews(self.quick_pages() + self.extra_pages)
         else:
-            docviews = self.docviews(self.heap_pages() + self.extra_pages)
+            pages = self.heap_pages()
+            docviews = self.docviews(pages + self.extra_pages)
+            self._learn_block_sizes(pages, docviews)
         roots_before = set(self._roots)
         every = []
         for dv in docviews:

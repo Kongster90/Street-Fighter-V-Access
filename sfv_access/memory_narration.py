@@ -1088,6 +1088,7 @@ class Session:
         self.attached_now = False   # set when a read has just attached or reattached
         self.last_read = "no read yet"   # what the last read did, for the hang log
         self._pictures_noted: set[str] = set()
+        self._sizes_noted: set[int] = set()
         self._arcade_marker: str | None = None
         self._arcade_seen_at = 0.0
         self._arcade_notes = 0
@@ -1188,6 +1189,11 @@ class Session:
         self.items = items
         if self._log_screens:
             self._log_screen(items, now)
+            new_sizes = self.reader.learned_block_sizes - self._sizes_noted
+            if new_sizes:
+                # Text in a block of a size quick reads had left out: swept from now on.
+                self._sizes_noted |= new_sizes
+                self.note(f"text found in blocks of a new size, now swept: {sorted(hex(s) for s in new_sizes)}")
             new_pictures = self.reader.unknown_pictures - self._pictures_noted
             if new_pictures:
                 # Command pictures with no words yet: the name says what to add
@@ -1258,7 +1264,7 @@ class Session:
         if not full:
             self._start_wide_sweep(now)
             return []
-        known = {page.base for page in self.reader._scaleform_pages or []}
+        known = {page.base for page in self.reader.quick_pages()}
         pages = sorted(self.reader.heap_pages(), key=lambda page: page.base)
         starts = [page.base for page in pages]
         missing = set()

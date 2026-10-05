@@ -3773,6 +3773,19 @@ lone_reader._lend_lone_buttons(lone_items)
 check("a lone button picture becomes the button of the words beside it",
       lone_items[1].buttons == ((14, "Fight Request OFF"),), repr(lone_items[1].buttons))
 
+# Quick reads sweep only the block sizes text has been found in; a full search
+# finding text in another size adds it (2026-10-05).
+big = FakeMemory(size=0x41000)
+big_root = display_object(big, 0, 0, 0, WHITE)
+text_field(big, display_object(big, big_root, 100, 100, WHITE), 0, 0, ["In a big block"])
+big_reader = sf.ScaleformText(big, MODULE)
+first_quick = [it.text for it in big_reader.items(quick=True)]
+full_read = [it.text for it in big_reader.items()]
+then_quick = [it.text for it in big_reader.items(quick=True)]
+check("a block of a size never holding text is left out of quick reads until a full search finds text there",
+      first_quick == [] and full_read == ["In a big block"] and then_quick == ["In a big block"]
+      and big_reader.learned_block_sizes == {0x41000}, repr((first_quick, full_read, then_quick)))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)
