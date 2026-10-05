@@ -3038,9 +3038,9 @@ Details", sits over the list with nothing selected: its header rows
 ("ownerElement" for Host) and label and value rows ("labelLeft",
 "labelRight") under "[Precondition]", "[Rule Settings]" and "[Available
 Stages]" (pictures only, so that heading is left out). `tournament_details`
-says it once through `screen_summary`, Alt R again. Read live on the user's
-screen; not yet heard in play. Whether the panel scrolls, and what "Available
-Stages" holds, are unknown.
+says it once through `screen_summary`, Alt R again. Heard in play the same
+evening, list and panel: "Seems to work now". Whether the panel scrolls, and
+what "Available Stages" holds, are unknown.
 
 **The menus inside CFN's tabs** were walked by the user on 2026-10-04 with a
 recorder running (`snapshots/cfn-2026-10-04`): "everything seems to be
