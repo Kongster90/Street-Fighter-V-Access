@@ -1856,7 +1856,7 @@ and Alt R gives the one the cursor is on with its description
 become "Fortune Tickets 10", "Owned 15", "Amount Owned after Purchase 5", so
 "Fight Money" goes only after the amounts when the first label is "Price".
 Heard live on 2026-10-04 up to the prize list; the moves through the prizes
-were silent until fixed that evening.
+were silent until fixed that evening, then heard working: "it all works".
 
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
