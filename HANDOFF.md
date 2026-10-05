@@ -2810,8 +2810,8 @@ gold at alpha zero under its row's node. `_show_list_cursor` no longer wants
 fighters' names: a gold text faded only by an object above it counts as
 showing when at least `SCROLLED_LIST_ROWS` (4) other rows or cells under
 that object's parent or the one above show text; the fighter list tests
-hold, three cells being too few as before. Checked live on the row; not yet
-heard in play.
+hold, three cells being too few as before. Heard in play the same night:
+"it's working".
 
 **Sliders drawn as cells.** Options, Screen Settings, Screen Brightness read as
 its label alone (2026-09-17): no text gives its level, unlike Sound Settings'
