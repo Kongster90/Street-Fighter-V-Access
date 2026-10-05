@@ -366,15 +366,15 @@ class Fight:
             if by_character is not None:
                 ordered, how = by_character, "character"
                 self._decided = by_character
-            elif by_names is not None:
-                ordered, how = by_names, "the names over the health bars"
-                self._decided = by_names
-                self.certain = True
             elif self._decided is not None and set(self._decided) == set(self.records):
-                # The same two records, settled by character already: the
-                # settings are rewritten between Survival's stages, and for a
-                # moment read as nothing.
+                # The same two records, settled already: the settings are
+                # rewritten between Survival's stages, and for a moment read
+                # as nothing, and a story fight's empty out after its start.
                 ordered, how = self._decided, "character, as before"
+                self.certain = True
+            elif by_names is not None:
+                ordered, how = by_names, "the name over player 1's health bar"
+                self._decided = by_names
                 self.certain = True
             else:
                 ordered, how = order(self.records, self._links(session))

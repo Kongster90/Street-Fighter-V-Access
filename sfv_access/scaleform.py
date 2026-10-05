@@ -1388,30 +1388,19 @@ def fight_running(items: list[TextItem]) -> bool:
     return fight_on_screen(items) or in_replay(items)
 
 
-# The fight display's name for the player's own fighter: "NASH" in story mode,
-# the Fighter ID in Survival ("Konggster"). The part is called
-# "player_name_right" but holds the player's side whichever it is: against
-# M. Bison as Nash, "YOU" over the left bar, it said NASH, and taken for the
-# right-hand fighter it swapped every sound (2026-10-04). So the name goes to
-# the side "YOU" stands over, and only a fighter's name counts.
-FIGHT_PLAYER_NAME = "player_name_right"
+# The fight display's name for player 1's fighter, the left-hand one: "NASH"
+# with the user as Nash on the left, "RYU" with them as Necalli on the right
+# against Ryu, the Fighter ID in Survival ("Konggster"). The part is called
+# "player_name_right" all the same (2026-10-04), and taken first for the
+# right-hand fighter, then for the side "YOU" stands over, it swapped the
+# sounds each time. Only a fighter's name counts.
+FIGHT_PLAYER_ONE_NAME = "player_name_right"
 
 
 def fight_names(items: list[TextItem] | None) -> tuple[str | None, str | None]:
-    """The fighters known by name on the left and right, from the player's own, either None."""
-    shown = [it for it in items or () if it.shown]
-    name = next((it.text.strip() for it in shown if it.part == FIGHT_PLAYER_NAME), None)
-    if name not in fighter_names():
-        return None, None
-    you = [it for it in shown if it.text.strip() == ONLINE_FIGHT_LABEL
-           and FIGHT_LABEL_ROW[0] <= it.y <= FIGHT_LABEL_ROW[1]]
-    if len(you) != 1:
-        return None, None
-    if you[0].x < FIGHT_LABEL_LEFT:
-        return name, None
-    if you[0].x > FIGHT_LABEL_RIGHT:
-        return None, name
-    return None, None
+    """The fighters known by name on the left and right, either None: player 1's, if named."""
+    name = next((it.text.strip() for it in items or () if it.shown and it.part == FIGHT_PLAYER_ONE_NAME), None)
+    return (name, None) if name in fighter_names() else (None, None)
 
 
 def on_versus_screen(items: list[TextItem]) -> bool:

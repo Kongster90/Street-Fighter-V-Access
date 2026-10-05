@@ -3075,17 +3075,19 @@ fights (2026-10-04). The fight display was known ("YOU" over the left bar),
 the records found, but the battle's settings name no characters in story
 mode ("characters None, None did not settle it"), so player 1's record was
 only guessed by memory order and `certain` stayed false, which keeps the
-sounds off rather than risk the wrong side. The display names the player's
-own fighter ("NASH", in a part called "player_name_right", which holds the
-player's side whichever it is: Survival puts the Fighter ID there), so
-`Fight` now takes `names` (`scaleform.fight_names`: that name, if a
-fighter's, given to the side "YOU" stands over) and orders the records by it
-when the settings cannot (`fight.name_code`, from character_names.json). The
-first version took the part for the right-hand fighter and the user heard
-every sound swapped: they were Nash, on the left ("NASH vs M. BISON").
-Records NSH and the story's own M. Bison, VEM, now read certain with Nash
-first. VEM is in no names file, so crossups, which match 3D characters by
-code, may still be silent there.
+sounds off rather than risk the wrong side. The display names player 1's
+fighter, the left-hand one, in a part called "player_name_right" all the
+same: "NASH" with the user as Nash on the left, "RYU" with them as Necalli on
+the right ("YOU" over the right bar), their Fighter ID in Survival. Two
+wrong readings of that part each swapped every sound before the third: the
+right-hand fighter, then the side "YOU" stands over. `Fight` takes `names`
+(`scaleform.fight_names`, player 1's if a fighter's name) and orders the
+records by it when the settings cannot (`fight.name_code`, from
+character_names.json); an order already settled by character for the same
+two records comes first, since a story fight's settings name the characters
+at its start and empty out seconds later. Records NSH and the story's own M.
+Bison, VEM, read certain; VEM is in no names file, so crossups, which match
+3D characters by code, may still be silent there.
 
 **The menus inside CFN's tabs** were walked by the user on 2026-10-04 with a
 recorder running (`snapshots/cfn-2026-10-04`): "everything seems to be
