@@ -3,6 +3,27 @@ What's new in Street Fighter V Access
 Each test version, newest first. The version you have is in VERSION.txt, beside this file.
 
 
+5 October 2026
+
+The mod now reads everything from the game itself. Reading the screen, which it fell back on when it could not, is gone, along with F9, which switched between the two. Nothing changes in use, and the download is smaller.
+New key, Alt C: says what the buttons on the current screen do, from the game's own button hints, in the button style you chose with Alt B. For example, on the main menu: "Options, Fight Request OFF. square, Fighter Profile".
+Alt T now has three settings: subtitles off, on (who speaks and what they say), and speaker names only, which says just who is speaking as each line comes.
+Fights: the health beeps, counter hit and crossup sounds now play in replays and in story fights too, on the right sides whether you play on the left or the right. In a replay, Alt H names the fighters Player 1 and Player 2.
+Crossups: they now sound for fighters in costumes that once went silent, no longer sound when a throw sends someone behind you, and sound only on the hit that starts a combo, not on every hit of it.
+Fight Money is named wherever the game shows only a number: your total at the top of every menu (Alt A), mission rewards, shop prices and purchase prompts. Offline, your total is said as "Fight Money unavailable offline".
+Main menu: the Login icon says "Logged in", or "Login. Not logged in" when you are offline.
+Missions (Challenges): each mission is one sentence, such as "Perform a normal throw 10 times! Progress 0 of 10. Reward 50 Fight Money. 3 hours 46 minutes remaining". Alt R adds the deadline and when it started.
+Shop: the item you are on is the one named; one stage you did not own was named wherever you were. Prices are said in Fight Money.
+Shop, Fighting Chance: the purchase prompt says its question, the price and your balance before and after, then the button; paying with Fortune Tickets says tickets. The cutscene's button is said ("Next Screen"), and the prize after it: one, with what it is, or all ten, then each by name as you move through them, Alt R giving what each is.
+Trials: each trial says its number, whether you have cleared it, and its combo, such as "03. Cleared. Jumping Hard Punch, Standing Medium Punch, Crouching Medium Kick, HADOKEN". Going up the fighter list now says every fighter's progress, not only the name.
+CFN, Tournament: each tournament is said in brief, such as "garnetmiki CUP. Over. Entered 4 of 4. Full", with its dates, conditions and rules on Alt R. Triangle's details screen is read as it opens.
+Story: General Story's scenes are called scenes, with whether you cleared each on Normal or Extra. Each story says its scene controls the first time you start a scene, and Alt R in a scene says the line showing and the controls. If the game's own subtitles get switched off with square, the mod says so, since nothing can be read without them. The chapter list keeps up as you scroll down it.
+Story, Costume Settings: each fighter's name is said as you reach their Costume and Color rows, and square's job, reverting them all, is said on arriving.
+Gallery, Good Luck Charms: stay on an item for a second and the mod says what it does. The list no longer repeats its description after every move.
+Fixed: garbled characters sometimes said on the main menu, and "www" said in Sound Settings.
+The mod stays quick late in a long session; after many hours it used to take a fifth of a second longer to notice each move.
+
+
 1 October 2026
 
 Fights: a counter hit plays a short sound as it lands, in the speaker on the side of whoever landed it, so you can follow it up. Crush counters are left to the game's own sound. F6 and Shift F6 make it louder or quieter; it starts at 40 percent.

@@ -43,7 +43,8 @@ Alt R: say again what is selected, with more detail where there is some.
 Alt K: list all the keys.
 Alt X: stop speaking.
 Alt B: say buttons as Xbox, PlayStation or keyboard keys.
-Alt T: turn story subtitles on or off. They are off to start with, since the story voices are in English.
+Alt C: say what the buttons on the current screen do.
+Alt T: story subtitles off, on (who speaks and what they say), or speaker names only. They are off to start with, since the story voices are in English.
 Alt H: during a fight, both fighters' health, V-Trigger and Critical Art.
 F5 and Shift F5: make the health beeps louder or quieter, 5 percent at a time. They start at 40 percent, and at 0 they are off.
 F6 and Shift F6: the same for the counter hit sound, which plays in the speaker on the side of whoever landed the hit.
@@ -59,18 +60,19 @@ What reads so far
 Menus and settings, including Controller Settings with each button's action, Button Preview and Keyboard Settings.
 Character select, stage select and the VS screen before a fight.
 Arcade, Versus and Training, including the result screen and Training's attack data.
-Trials, with each combo in words, and Demonstrations.
+Trials, with each combo in words and whether you have cleared it, and Demonstrations.
 The Story tutorial's instructions and tips.
-The shop, notices and missions after logging in, and Extra Battle.
+The shop, including Fighting Chance and its prizes, notices and missions after logging in, Challenges' Missions, and Extra Battle.
 Survival: the supplements and battle items between stages, how each fight went with the health you carry on with, and the result at the end of a run.
 Online: the VS screen, who won as each match ends, the result screen and Battle Lounge chat.
-Story: Character Story's chapters and each fighter's profile, General Story's scenes, and subtitles with Alt T.
+Story: Character Story's chapters and each fighter's profile, General Story's chapters and scenes, the scene controls, Costume Settings, and subtitles with Alt T.
 Battle Settings, including Random Stage Settings, where each stage says whether it is ticked.
-CFN: its menu, the timeline, Pending CFN Friend Requests, and a player's Fighter Profile, each page with its figures on Alt R.
+CFN: its menu, the timeline, Pending CFN Friend Requests, Tournaments with their details, and a player's Fighter Profile, each page with its figures on Alt R.
 Replays: the controls with each button named, once as a replay begins and on Alt R.
-The Message Log.
+The Message Log, and the Gallery's Good Luck Charms with what each does.
+Fights: beeps as either fighter's health drops, and sounds for counter hits and crossups, each in the speaker on the side of whoever it belongs to, in replays and story fights too.
 
-Not yet: the fights themselves. There are no sounds for health or distance yet.
+Not yet: a sound for the distance between the fighters.
 
 
 Keyboard players
