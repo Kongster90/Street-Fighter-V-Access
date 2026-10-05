@@ -2193,7 +2193,12 @@ Settings naming each fighter; Alt C for any screen's button hints; and quick
 reads sweeping only the block sizes text lives in (190 ms to 35 late in a
 long session). See the sections named and "General Story's scenes" under
 "Character Story's chapters". The user's view at the end: "this seems to be
-almost finished".
+almost finished". After it, the Gallery's Good Luck Charms (repeating fixed,
+descriptions after a second). The zip SFV-Access-2026-10-05-0283a03 (42 MB,
+no winrt, none of the user's files) was built at the end at the user's
+request, What's new dated 5 October covering everything since the 1 October
+zip, and Read me first brought up to date (Alt C, the three Alt T settings,
+fight sounds no longer "not yet"). It is not on GitHub, as before.
 
 **The session of 2026-09-30 and 10-01, in short.** Asked to speed up long
 lists in the menus, it found the "lag" was silence: Survival's and Trials'
