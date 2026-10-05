@@ -8,7 +8,7 @@ text field's exact text and which one is selected, which needs no recognition
 and no game in front. When memory cannot be read, the pixel reader takes over:
 menus are recognised and the highlighted entry found by its gold colour. The
 gauges carry no text at all, so they are measured directly from the pixels on a
-hotkey. F9 switches between memory and the screen by hand.
+hotkey.
 """
 
 from __future__ import annotations
@@ -48,8 +48,8 @@ CRASH_LOG = SNAPSHOT_DIR / "crash-log.txt"
 NEWLINE = chr(10)
 
 # Plain Alt, at the user's request: fewer keys to press, and Windows claims some
-# Control Alt combinations for itself. Quit is F10 and the memory or screen
-# switch F9, also their choice; the watch mode and recorder stop on F10 too.
+# Control Alt combinations for itself. Quit is F10, also their choice; the
+# watch mode and recorder stop on F10 too.
 # Every one was checked as free on this machine. They are registered only
 # while the game is in front (see `hotkeys.Hotkeys`): held for as long as the
 # mod ran, they took Alt D and the rest from every other program.
@@ -67,7 +67,6 @@ HOTKEYS = {
     "repeat_line":   ("alt+period", "repeat the current line"),
     "read_all":      ("alt+a",      "read the whole screen"),
     "toggle_watch":  ("alt+m",      "turn menu narration on or off"),
-    "switch_source": ("f9",         "switch between reading memory and reading the screen"),
     "button_names":  ("alt+b",      "name buttons as Xbox, PlayStation or keyboard"),
     "subtitles":     ("alt+t",      "turn story subtitles on or off"),
     "beeps_louder":  ("f5",         "health beeps louder"),
@@ -799,19 +798,6 @@ class App:
         self.narrator.reset()
         self.speech.say(f"Menu narration {'on' if self.watching else 'off'}.")
 
-    def on_switch_source(self) -> None:
-        """Choose memory or the screen by hand, for screens one reads and the other does not."""
-        self.use_memory = not self.use_memory
-        self._last_key = None
-        self._last_spoken = ""
-        self.narrator.reset()
-        if not self.use_memory:
-            self.speech.say("Reading the screen.")
-        elif self.session.available:
-            self.speech.say("Reading memory.")
-        else:
-            self.speech.say("Reading memory once the game can be read, the screen until then.")
-
     def on_button_names(self) -> None:
         """Name buttons the way the player's controller or keyboard does, remembered between runs."""
         chosen = buttons.next_style()
@@ -1230,9 +1216,7 @@ class App:
         else:
             self.presses.active.clear()
         said = self.narrator.step(items, time.monotonic())
-        # F9 can land between the read and this point; once the
-        # screen has been chosen, memory must not get the last word.
-        if not said or not self.use_memory:
+        if not said:
             return
         self.session.note(f"said {said!r}")
         print(f"[memory] {said}")

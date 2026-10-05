@@ -185,7 +185,6 @@ These work while the game has focus, including in fullscreen.
 - Alt Period: repeat the current line
 - Alt A: read the whole screen
 - Alt M: turn menu narration on or off
-- F9: switch between reading the game's memory and reading the screen
 - Alt B: name buttons as Xbox buttons, PlayStation buttons or keyboard keys, remembered between runs
 - F5 and Shift F5: health beeps louder or quieter, 5 percent at a time from 40, remembered between runs; 0 is off
 - F6 and Shift F6: the counter hit sound louder or quieter, the same way
@@ -205,9 +204,10 @@ When memory cannot be read, narration falls back to the screen. That stands
 down during a match, where speech cannot keep pace and the gauges are on a
 hotkey instead, and whenever the game is not the window in front, since capture
 covers the whole screen and would otherwise narrate whatever you had switched
-to. F9 chooses between the two by hand, for a screen one of them
-reads and the other does not. The read keys use memory when it has a reading,
-and the screen otherwise.
+to. Once memory has been read it is used throughout; F9, which chose
+between the two by hand, was removed on 2026-10-04, every screen having
+moved to memory. The read keys use memory when it has a reading, and the
+screen otherwise.
 
 ## What works
 

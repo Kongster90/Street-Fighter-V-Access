@@ -32,8 +32,9 @@ against the game's own words.
 **From the running game.** Read its memory from outside with ReadProcessMemory.
 This is now how the mod narrates menus: exact text, and which entry is
 selected, read out of Scaleform. See "Reading the interface from memory" below.
-The pixel reader is the fallback, used while memory cannot be read or when the
-user switches to it with F9. Character select reads from Scaleform too now.
+The pixel reader is the fallback, used only while memory cannot be read; F9,
+which switched to it by hand, was removed on 2026-10-04 at the user's word,
+every screen having moved to memory. Character select reads from Scaleform too now.
 `live.py`, which reads Unreal's objects, serves the pixel path and Alt P, and
 since 2026-09-15 finds the objects that hold the button layouts
 (`memory_narration.KeyConfig` and `SavedLayout`). Two things come from
@@ -2376,8 +2377,9 @@ one of the watch mode, the recorder and the mod can hold the keys at a time.
 
 Shortcuts are plain Alt plus a key, at their request: fewer keys to press, and
 Windows claims some Control Alt combinations. They chose F10 for quit (and for
-stopping the watch mode and recorder) and F9 for switching between memory and
-the screen, and are happy with F keys generally. Alt B, added 2026-09-15,
+stopping the watch mode and recorder), and are happy with F keys generally.
+F9 switched between memory and the screen until 2026-10-04, when they asked
+whether it was still needed; it was removed, so F9 is free. Alt B, added 2026-09-15,
 cycles button names between Xbox, PlayStation and keyboard keys, saved in
 `settings.json`. Alt T, added the same day, turns story subtitles on or off,
 saved there too.
