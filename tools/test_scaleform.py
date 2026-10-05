@@ -3706,6 +3706,43 @@ try:
 finally:
     sf.buttons.name = real_name
 
+# Story's Costume Settings, as read on 2026-10-05: each fighter's name in a
+# block with a Costume row and a Color row.
+def costume_block(n, name, lit_row):
+    block = (8000 + 100 * n, 8001 + 100 * n, 8999)
+    out = [sf.TextItem(name, 692, 260 + 98 * n, WHITE, 5, chain=(8010 + 100 * n, 8011 + 100 * n) + block,
+                       part="charaName")]
+    for r, label in enumerate(("Costume", "Color")):
+        row = (8020 + 100 * n + r, 8030 + 100 * n)
+        tint = GOLD if lit_row == r else GREY
+        out += [sf.TextItem(label, 876, 207 + 98 * n + 44 * r, tint, 6,
+                            chain=(8040 + 100 * n + r, 8050 + 100 * n + r) + row + block, part="labelTitleElement"),
+                sf.TextItem("Story Specific", 1166, 211 + 98 * n + 44 * r, tint, 6,
+                            chain=(8060 + 100 * n + r, 8070 + 100 * n + r) + row + block, part="labelElement")]
+    return out
+
+
+def costume_screen(n, r):
+    hint = sf.TextItem(" Revert all to Story Specific Costumes", 962, 915, WHITE, 4, chain=(8900, 8901, 8999),
+                       buttons=((4, "Revert all to Story Specific Costumes"),))
+    return costume_block(0, "RYU", r if n == 0 else None) + costume_block(1, "KEN", r if n == 1 else None) + [hint]
+
+
+for screen in (costume_screen(0, 0),):
+    pass
+check("the fighter beside the lit row", sf.row_owner(costume_screen(1, 1)) == "KEN"
+      and sf.row_owner(costume_screen(0, 0)) == "RYU")
+real_name = sf.buttons.name
+sf.buttons.name = {4: "square"}.get
+try:
+    said = [x for _, x in narrate([(0.0, costume_screen(0, 0)), (1.0, costume_screen(0, 1)),
+                                   (2.0, costume_screen(1, 0)), (3.0, costume_screen(1, 1))])]
+finally:
+    sf.buttons.name = real_name
+check("a fighter's name before their rows, once, and square's job on arriving",
+      said == ["RYU. Costume. Story Specific. square, Revert all to Story Specific Costumes",
+               "Color. Story Specific", "KEN. Costume. Story Specific", "Color. Story Specific"], repr(said))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

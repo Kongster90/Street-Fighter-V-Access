@@ -2813,6 +2813,19 @@ that object's parent or the one above show text; the fighter list tests
 hold, three cells being too few as before. Heard in play the same night:
 "it's working".
 
+Story's Costume Settings (General and Character Story Settings, 2026-10-05):
+each fighter's name ("charaName", white) sits in a block with a Costume row
+and a Color row, label and value ("Story Specific"); the cursor lights a row
+and the name is no part of it, so every fighter's rows read alike.
+`row_owner` finds the one unselected name sharing a block (within
+`ROW_OWNER_DEPTH`) with the lit row, and the narrator says it first when the
+cursor reaches another fighter's rows: "RYU. Costume. Story Specific", then
+"Color. Story Specific". Square, which the user heard only as a sound, is
+the hint " Revert all to Story Specific Costumes" (button 4, in a
+"navi_label"); `costume_hint` gives it in words, said once a visit after the
+first move and on Alt R. What the values besides "Story Specific" are, and
+whether reverting asks first, is unseen. Not yet heard in play.
+
 **Sliders drawn as cells.** Options, Screen Settings, Screen Brightness read as
 its label alone (2026-09-17): no text gives its level, unlike Sound Settings'
 volumes. Found by dumping every display object under its row before and after

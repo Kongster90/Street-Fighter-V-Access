@@ -1447,6 +1447,42 @@ def story_scene_controls(items: list[TextItem]) -> tuple[tuple[str, ...], str] |
     return None
 
 
+# Story's Costume Settings list each fighter's name ("charaName", white) in a
+# block with two rows, Costume and Color, each a label and its value ("Story
+# Specific"); the cursor lights a row, and the name is no part of it, so
+# moving said "Costume. Story Specific" for every fighter alike
+# (2026-10-05). The fighter is found as the one name sharing a block with the
+# lit row. Square is the hint " Revert all to Story Specific Costumes".
+ROW_OWNER_PART = "charaName"
+ROW_OWNER_DEPTH = 6
+COSTUME_REVERT = "Revert all to Story Specific"
+
+
+def row_owner(items: list[TextItem]) -> str | None:
+    """The fighter named beside the lit row, when the name is no part of the selection."""
+    shown = [it for it in items if it.shown]
+    names = [it for it in shown if it.part == ROW_OWNER_PART and it.text.strip()]
+    if not names:
+        return None
+    for it in shown:
+        if not it.selected or it.part == ROW_OWNER_PART:
+            continue
+        for obj in it.chain[1:ROW_OWNER_DEPTH]:
+            owners = [n for n in names if obj in n.chain]
+            if len(owners) == 1 and not owners[0].selected:
+                return owners[0].text.strip()
+            if owners:
+                break
+    return None
+
+
+def costume_hint(items: list[TextItem]) -> str | None:
+    """Costume Settings' square button in words, "square, Revert all to Story Specific Costumes"."""
+    hint = next((it for it in items if it.shown and it.buttons
+                 and any(label.startswith(COSTUME_REVERT) for _n, label in it.buttons)), None)
+    return button_hint_words(hint) if hint else None
+
+
 def on_versus_screen(items: list[TextItem]) -> bool:
     """The VS screen before a fight, whether or not both fighters show yet."""
     return _versus_panel([it for it in items if it.shown]) is not None

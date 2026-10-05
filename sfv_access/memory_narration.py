@@ -259,6 +259,11 @@ class Narrator:
         self.subtitle_said: tuple[str, str] | None = None
         # Whether the game itself draws subtitles, as its hint last said.
         self.game_subtitles: bool | None = None
+        # The fighter whose rows the cursor is on in Costume Settings, and
+        # whether that screen's square button has been said this visit.
+        self.row_owner: str | None = None
+        self.costume_hinted = False
+        self.costume_seen_at = 0.0
         # A story scene's controls in words while in one, and the kind of
         # scene whose controls were last said; see `step`.
         self.story_controls: str | None = None
@@ -709,6 +714,26 @@ class Narrator:
         # the player has them on; never otherwise, whatever else would name them.
         # With speaker names only, the speaker alone, again for each line; a
         # line with no speaker, as General Story's, says nothing then.
+        # Costume Settings: the fighter whose rows the cursor reaches, said
+        # before the row when it is another fighter's, and the square
+        # button's job once a visit.
+        owner = scaleform.row_owner(items)
+        if owner is None:
+            self.row_owner = None
+        elif parts and owner != self.row_owner:
+            self.row_owner = owner
+            if owner not in (" ".join(p.split()) for p in parts):
+                parts = [owner] + parts
+        hint = scaleform.costume_hint(items)
+        if hint is not None:
+            if not self.costume_hinted and parts:
+                self.costume_hinted = True
+                parts = parts + [hint]
+                self.said = ""
+            self.costume_seen_at = now
+        elif self.costume_hinted and now - self.costume_seen_at > GROUP_MEMORY:
+            self.costume_hinted = False
+
         # A story scene's controls, said once on starting each kind of story
         # (General Story's and Character Story's differ), again after the
         # main menu, and kept for the read key while the scene lasts.

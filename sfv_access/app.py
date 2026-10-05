@@ -354,6 +354,13 @@ class App:
                 said = memory_narration.phrase(question + [said])
             elif foot is not None and not foot.selected:
                 said = memory_narration.phrase([said, foot.text])
+            # Costume Settings: whose rows these are, and what square does.
+            owner = scaleform.row_owner(items)
+            if owner and said and not said.startswith(owner):
+                said = memory_narration.phrase([owner, said])
+            costume = scaleform.costume_hint(items)
+            if costume and said:
+                said = memory_narration.phrase([said, costume])
             # Stage conditions do not affect play, so moving through stage
             # select leaves them out; asking for a reading includes them.
             details = scaleform.stage_details(items)
