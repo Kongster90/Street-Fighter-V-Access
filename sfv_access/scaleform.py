@@ -2540,6 +2540,27 @@ def button_hint_words(it: TextItem) -> str:
     return phrase(said)
 
 
+# A field holding one controller button's picture and nothing else, as
+# Fight Request's Start beside "Fight Request OFF": its paragraph is the
+# picture and the terminator. Its words sit under the same holder, two up.
+LONE_PICTURE_SIZE = 2
+LONE_PICTURE_HOLDER = 2
+
+
+def button_hints(items: list[TextItem]) -> list[str]:
+    """Every button hint on screen in words, top to bottom: "square, Fighter Profile".
+
+    The user asked on 2026-10-05 for a key saying what the buttons do on any
+    screen, the hints being pictures the narration never says.
+    """
+    out: list[str] = []
+    for it in sorted((it for it in items if it.shown and it.buttons), key=lambda it: (round(it.y), it.x)):
+        words = button_hint_words(it)
+        if words and words not in out:
+            out.append(words)
+    return out
+
+
 def replay_controls(items: list[TextItem]) -> tuple[str, str] | None:
     """(the line as drawn, its buttons in words) while a replay's controls show."""
     for it in items:
@@ -4300,6 +4321,8 @@ class ScaleformText:
             runs, run_count = struct.unpack_from("<QQ", head, PARAGRAPH_RUNS)
             if runs and 1 < run_count <= min(size + 1, MAX_RUNS):
                 text = self._with_pictures(text, runs, run_count)
+            elif runs and run_count == 1 and size <= LONE_PICTURE_SIZE:
+                self._lone_pad(runs)
             parts.append(text.rstrip("\0"))
         if self._pads:
             self.hint_buttons[docview] = tuple(self._pads)
@@ -4307,6 +4330,29 @@ class ScaleformText:
             self.hint_buttons.pop(docview, None)
         # Scaleform ends a paragraph with a carriage return.
         return "\n".join(p.rstrip("\r") for p in parts)
+
+    def _lone_pad(self, runs: int) -> None:
+        """A controller button's picture alone in its field, as Fight Request's Start, noted
+        with no words; `_lend_lone_buttons` gives it the words beside it."""
+        raw = self.pm.read(runs, RUN_STRIDE)
+        if not raw:
+            return
+        _start, _length, fmt = struct.unpack_from("<QQQ", raw)
+        desc = self.pm.ptr(fmt + FORMAT_IMAGE) if fmt else None
+        name = self._picture_name(desc) if desc else None
+        if name in PAD_PICTURES:
+            self._pads.append((PAD_PICTURES[name], ""))
+
+    def _lend_lone_buttons(self, every: list[TextItem]) -> None:
+        """A button drawn alone beside its words, Fight Request's, becomes those words' button."""
+        for lone in every:
+            if not lone.buttons or lone.text.strip() or len(lone.chain) <= LONE_PICTURE_HOLDER:
+                continue
+            holder = lone.chain[LONE_PICTURE_HOLDER]
+            words = next((it for it in every if it is not lone and it.shown and not it.buttons
+                          and holder in it.chain), None)
+            if words is not None:
+                words.buttons = tuple((number, " ".join(words.text.split())) for number, _label in lone.buttons)
 
     def _picture_name(self, desc: int) -> str | None:
         """"punch_h" for a picture drawn from "img:///Game/CommonAsset/TaggedImages/punch_h.punch_h"."""
@@ -5257,6 +5303,7 @@ class ScaleformText:
             self._show_hidden_stage_select(every)
         self._show_final_opponent(every)
         self._show_list_cursor(every)
+        self._lend_lone_buttons(every)
         self._show_path_select(every)
         self._show_notice_title(every)
         out = every if everything else [it for it in every if it.shown]

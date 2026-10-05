@@ -67,6 +67,7 @@ HOTKEYS = {
     "read_all":      ("alt+a",      "read the whole screen"),
     "toggle_watch":  ("alt+m",      "turn menu narration on or off"),
     "button_names":  ("alt+b",      "name buttons as Xbox, PlayStation or keyboard"),
+    "button_hints":  ("alt+c",      "say what the buttons on screen do"),
     "subtitles":     ("alt+t",      "story subtitles off, on, or speaker names only"),
     "beeps_louder":  ("f5",         "health beeps louder"),
     "beeps_quieter": ("shift+f5",   "health beeps quieter"),
@@ -557,6 +558,22 @@ class App:
         self.watching = not self.watching
         self.narrator.reset()
         self.speech.say(f"Menu narration {'on' if self.watching else 'off'}.")
+
+    def on_button_hints(self) -> None:
+        """The buttons the screen's hints name, and what each does, in the chosen naming style."""
+        items = self._memory_items()
+        if items is None:
+            self.speech.say(CANNOT_READ)
+            return
+        hints = scaleform.button_hints(items)
+        if not hints:
+            # A story scene's or a replay's hint shows for a moment only.
+            kept = self.narrator.story_controls or (self.narrator.replay_controls
+                                                    if scaleform.in_replay(items) else None)
+            hints = [kept] if kept else []
+        said = memory_narration.phrase(hints) if hints else "No buttons shown on this screen."
+        print(f"[buttons] {said}")
+        self.speech.say(said)
 
     def on_button_names(self) -> None:
         """Name buttons the way the player's controller or keyboard does, remembered between runs."""

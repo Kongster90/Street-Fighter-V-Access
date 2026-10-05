@@ -2826,6 +2826,24 @@ the hint " Revert all to Story Specific Costumes" (button 4, in a
 first move and on Alt R. Heard in play in both General and Character Story
 Settings the same night: "read out perfectly".
 
+**Alt C, the screen's buttons.** Asked for on 2026-10-05: hints are button
+pictures before words, never said on moves, so square in Costume Settings
+sounded like nothing. `button_hints` gives every shown text with
+`TextItem.buttons`, top to bottom, in the Alt B style ("Options, Fight
+Request OFF. square, Fighter Profile" on the main menu); with none showing, a
+story scene's or replay's kept controls. Fight Request's Start is a picture
+alone in a field of its own (a paragraph of two, picture and terminator,
+one run), which `field_text` skipped, single runs not being read:
+`_lone_pad` notes such a field's pad picture and `_lend_lone_buttons` gives
+it to the words under the same holder. Alt C was free on this machine
+(checked with RegisterHotKey, as were N, O, U, V, J and Y). Not yet heard in
+play.
+
+Measured the same night, late in a seven-hour session: a quick read took
+190 ms against about 40 at its start, the sweep going through 2,900 blocks
+(616 on 2026-09-30); the same with the lone-picture check off. "Reads slow as
+a session goes on" still stands, and is worth doing.
+
 **Sliders drawn as cells.** Options, Screen Settings, Screen Brightness read as
 its label alone (2026-09-17): no text gives its level, unlike Sound Settings'
 volumes. Found by dumping every display object under its row before and after

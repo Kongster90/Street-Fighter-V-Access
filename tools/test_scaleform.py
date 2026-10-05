@@ -3743,6 +3743,36 @@ check("a fighter's name before their rows, once, and square's job on arriving",
       said == ["RYU. Costume. Story Specific. square, Revert all to Story Specific Costumes",
                "Color. Story Specific", "KEN. Costume. Story Specific", "Color. Story Specific"], repr(said))
 
+# Alt C: every button hint on screen in words, top to bottom.
+real_name = sf.buttons.name
+sf.buttons.name = {4: "square", 14: "Options", 8: "L1"}.get
+try:
+    hints_screen = [sf.TextItem("  Fighter Profile", 1310, 948, WHITE, 4, chain=(9000, 9001, 9009),
+                                buttons=((4, "Fighter Profile"),)),
+                    sf.TextItem("Fight Request OFF", 845, 947, WHITE, 4, chain=(9010, 9011, 9019),
+                                buttons=((14, "Fight Request OFF"),)),
+                    sf.TextItem("  Search Tournament: ---", 100, 182, WHITE, 4, chain=(9020, 9021, 9029),
+                                buttons=((8, "Search Tournament: ---"),)),
+                    sf.TextItem("ARCADE", 442, 219, GOLD, 4, chain=(9030, 9031, 9039))]
+    check("the screen's button hints, top to bottom",
+          sf.button_hints(hints_screen) == ["L1, Search Tournament: ---", "Options, Fight Request OFF",
+                                            "square, Fighter Profile"], repr(sf.button_hints(hints_screen)))
+finally:
+    sf.buttons.name = real_name
+
+# A button drawn alone in its field lends itself to the words beside it.
+mem = FakeMemory()
+root = display_object(mem, 0, 0, 0, WHITE)
+request = display_object(mem, root, 845, 947, WHITE)
+lone_field = text_field(mem, display_object(mem, request, 0, 0, WHITE), 0, 0, [" "])
+text_field(mem, display_object(mem, request, 0, 0, WHITE), 0, 0, ["Fight Request OFF"])
+lone_reader = sf.ScaleformText(mem, MODULE)
+lone_items = [sf.TextItem(" ", 845, 947, WHITE, 4, chain=(1, 2, 3, 4), buttons=((14, ""),)),
+              sf.TextItem("Fight Request OFF", 900, 947, WHITE, 4, chain=(5, 6, 3, 4))]
+lone_reader._lend_lone_buttons(lone_items)
+check("a lone button picture becomes the button of the words beside it",
+      lone_items[1].buttons == ((14, "Fight Request OFF"),), repr(lone_items[1].buttons))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)
