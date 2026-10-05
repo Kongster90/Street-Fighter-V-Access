@@ -2780,6 +2780,16 @@ number the note "Cleared on Normal and Extra", "Cleared on Normal", "Not
 cleared" or "Locked", said after it on a move and on Alt R. What a scene with
 no name is (a scene without a fight, by the look of it) is the user's to say.
 
+Then subtitles "not working for the past few minutes" (23:31 to 23:35): the
+scene hint along the foot ("  Skip   Select Scene   Hide Subtitles", Start,
+LB and square, `TextItem.buttons`) had flipped between "Hide Subtitles" and
+"Show Subtitles" several times in a second and stopped on "Show", the game's
+own subtitles hidden, so no line was drawn. The lines memory still held were
+earlier scenes', at zero alpha and cut loose from their movie, rightly
+unsaid. `game_subtitles` reads the hint, and the narrator says "Game
+subtitles off" or "on" when it changes while the mod's subtitles are on or
+names only; not on first sight of the hint.
+
 **Sliders drawn as cells.** Options, Screen Settings, Screen Brightness read as
 its label alone (2026-09-17): no text gives its level, unlike Sound Settings'
 volumes. Found by dumping every display object under its row before and after
