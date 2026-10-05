@@ -3009,6 +3009,20 @@ replay (`controls_announced`, reset once `in_replay` is false), and Alt R
 gives the current line at any time. Confirmed in play by the user the same
 day.
 
+**Fight sounds in replays.** On 2026-10-04 the user went through CFN's tabs
+with a recorder running and found them all reading, but no beeps, counter
+hits or crossups in replays. The sounds come from the fighters' records,
+which a replay plays out as a live fight does (read live mid-replay: both
+records, `certain` true, `side` None), but they waited for `fight_on_screen`,
+the labels over the health bars, and a replay shows none: its players' names
+and ranks sit lower ("player_name_left", "player_name_right", y 122).
+`fight_running` adds a running replay (`in_replay`, the version line), used
+only by the sound loops; Alt G says "in a replay", and Alt H names the sides
+"Player 1" and "Player 2" there (`fight.REPLAY_SIDES`), neither being the
+player. Replay Settings in its pause menu has Key Display, Attack Data and HUD
+Display (Normal, Hide Gauges, Hide All); the user had gauges hidden. Not yet
+heard in play.
+
 **Next, at the user's request (2026-09-22): the menus inside CFN's tabs.**
 The tabs themselves now read, but nothing under them has been looked at:
 Favorites, Replays, Pending CFN Friend Requests, Blacklist, Rival Search,

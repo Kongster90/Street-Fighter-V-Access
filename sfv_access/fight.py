@@ -223,8 +223,13 @@ def crossup(side: int, placed_before, placed) -> bool:
     return behind(placed[1 - side][0], placed_before[side][0], placed[side][1])
 
 
-def describe(first: Gauges, second: Gauges) -> str:
-    return f"{first.words('You')} {second.words('Opponent')}"
+# Alt H names the sides as you and your opponent; in a replay, by number.
+PLAYER_SIDES = ("You", "Opponent")
+REPLAY_SIDES = ("Player 1", "Player 2")
+
+
+def describe(first: Gauges, second: Gauges, sides: tuple[str, str] = PLAYER_SIDES) -> str:
+    return f"{first.words(sides[0])} {second.words(sides[1])}"
 
 
 def player_side(ctrl_types: list[int]) -> int | None:

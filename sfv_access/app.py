@@ -400,9 +400,14 @@ class App:
         if gauges is None:
             self.speech.say("Cannot read the fight.")
             return
+        first, second = gauges
+        items = self.session.items if self.session.available else None
+        if items and scaleform.in_replay(items):
+            # A replay is nobody's fight: player 1 first, by number.
+            self.speech.say(fight.describe(first, second, fight.REPLAY_SIDES))
+            return
         # Player 1's first. The player's side as the battle's settings have
         # it, or as the narrator saw it chosen when they cannot be read.
-        first, second = gauges
         side = self.fight.side()
         if side is None:
             side = self.narrator.player_side
@@ -503,7 +508,8 @@ class App:
             )
             return
         items = self.session.items if self.session.available else None
-        where = "in a match" if items and scaleform.fight_on_screen(items) else "in menus"
+        where = ("in a replay" if items and scaleform.in_replay(items)
+                 else "in a match" if items and scaleform.fight_on_screen(items) else "in menus")
         focus = "in focus" if gw.is_foreground else "not in focus"
         source = "reading memory" if self.session.available else "waiting to read the game's memory"
         self.speech.say(
@@ -663,7 +669,7 @@ class App:
         retry_at = 0.0
         while not self._stop.wait(FIGHT_POLL):
             items = self.session.items if self.session.available else None
-            if not items or not scaleform.fight_on_screen(items):
+            if not items or not scaleform.fight_running(items):
                 for levels in self.health_levels:
                     levels.reset()
                 continue
@@ -713,7 +719,7 @@ class App:
         while not self._stop.wait(COUNTER_POLL):
             items = self.session.items if self.session.available else None
             marks = None
-            if items and scaleform.fight_on_screen(items):
+            if items and scaleform.fight_running(items):
                 try:
                     marks = self.fight.counters()
                 except Exception as exc:

@@ -1376,6 +1376,18 @@ def fight_on_screen(items: list[TextItem]) -> bool:
     return any(it.x < FIGHT_LABEL_LEFT for it in row) and any(it.x > FIGHT_LABEL_RIGHT for it in row)
 
 
+def fight_running(items: list[TextItem]) -> bool:
+    """Whether a fight is being played or replayed, for the fight's sounds.
+
+    A replay shows no labels over the health bars, its players' names and
+    ranks sitting lower, so `fight_on_screen` never saw one and no beep or
+    counter hit sounded in replays (2026-10-04). The fighters' records play
+    out as in a live fight; the replay's version line, which shows for the
+    whole replay, is the sign of one.
+    """
+    return fight_on_screen(items) or in_replay(items)
+
+
 def on_versus_screen(items: list[TextItem]) -> bool:
     """The VS screen before a fight, whether or not both fighters show yet."""
     return _versus_panel([it for it in items if it.shown]) is not None
