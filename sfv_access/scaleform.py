@@ -2224,8 +2224,15 @@ def survival_tips(items: list[TextItem]) -> bool:
 
 
 def on_battle_items(items: list[TextItem]) -> bool:
-    """Survival's Battle Items screen, which follows the supplement one."""
-    return any(it.shown and it.text.strip() == SURVIVAL_ITEMS_HEADING for it in items)
+    """Survival's Battle Items screen, which follows the supplement one.
+
+    Its heading with "Selected Battle Items" beside it: the Gallery's Good Luck
+    Charms list has a "Battle Items" entry too, and taken for this screen it
+    said the Gallery's description line a second after every move there
+    (2026-10-05).
+    """
+    texts = {it.text.strip() for it in items if it.shown}
+    return SURVIVAL_ITEMS_HEADING in texts and SURVIVAL_ITEMS in texts
 
 
 def survival_summary(items: list[TextItem], health: str | None = None) -> str | None:

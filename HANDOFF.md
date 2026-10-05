@@ -1027,8 +1027,11 @@ been read as the parameter increase while its percentage was not drawn, and
 the increase must look like a number. Not yet tried: later stages, a lost
 run, the save menu, and whatever Survival's end shows.
 
-**Survival's Battle Items screen** follows the supplement one, heading
-"Battle Items", and lists what the player holds with how many ("Grapes. x2",
+**Survival's Battle Items screen** (known since 2026-10-05 by its heading
+together with "Selected Battle Items": the Gallery's Good Luck Charms list has
+a "Battle Items" entry, and taken for this screen it said the Gallery's
+description line a second after every move there) follows the supplement
+one, heading "Battle Items", and lists what the player holds with how many ("Grapes. x2",
 "Kanzuki-ryu Scroll. x1", "Masters Guide. x4"), the selected one gold at
 (803, 260) as the supplement list does, over the same left panel. It read
 already, but the names say nothing about what the things do, and that is in

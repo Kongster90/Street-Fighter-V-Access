@@ -3786,6 +3786,18 @@ check("a block of a size never holding text is left out of quick reads until a f
       first_quick == [] and full_read == ["In a big block"] and then_quick == ["In a big block"]
       and big_reader.learned_block_sizes == {0x41000}, repr((first_quick, full_read, then_quick)))
 
+# The Gallery's Good Luck Charms list has a "Battle Items" entry; it is no
+# Survival Battle Items screen, whose description follows each name.
+charms = [sf.TextItem("Good Luck Charms", 157, 331, GOLD, 5, chain=(9500, 9501, 9509)),
+          sf.TextItem("Battle Items", 888, 373, GREY, 5, chain=(9510, 9511, 9519)),
+          sf.TextItem("Colors", 888, 300, GOLD, 5, chain=(9520, 9521, 9519)),
+          sf.TextItem("View the Good Luck Charms you obtained in Fighting Chance.", 110, 992, WHITE, 4,
+                      chain=(9530, 9531, 9539))]
+check("the Gallery's Battle Items entry is not Survival's screen",
+      not sf.on_battle_items(charms) and sf.on_battle_items(battle_items()))
+check("so moving there says no description after the entry",
+      [x for _, x in narrate([(0.0, charms), (0.2, charms), (1.5, charms)])] == ["Good Luck Charms. Colors"])
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)
