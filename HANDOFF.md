@@ -2198,7 +2198,11 @@ descriptions after a second). The zip SFV-Access-2026-10-05-0283a03 (42 MB,
 no winrt, none of the user's files) was built at the end at the user's
 request, What's new dated 5 October covering everything since the 1 October
 zip, and Read me first brought up to date (Alt C, the three Alt T settings,
-fight sounds no longer "not yet"). It is not on GitHub, as before.
+fight sounds no longer "not yet"). At the user's request it is the
+repository's first GitHub release, "Test version 5 October 2026", tag
+2026-10-05-0283a03 on the commit it was built from, the zip attached and
+the 5 October What's new as its notes (the repository being private, only
+its collaborators see it).
 
 **The session of 2026-09-30 and 10-01, in short.** Asked to speed up long
 lists in the menus, it found the "lag" was silence: Survival's and Trials'
