@@ -2844,6 +2844,19 @@ the hint " Revert all to Story Specific Costumes" (button 4, in a
 first move and on Alt R. Heard in play in both General and Character Story
 Settings the same night: "read out perfectly".
 
+**The Gallery's Good Luck Charms** (2026-10-05). Its category list has a
+"Battle Items" entry, which made `on_battle_items` take it for Survival's
+screen and say the description line after every move; that screen now needs
+"Selected Battle Items" too. Inside a category the items are a list at x
+491 ("goodsNameElement"), and the panel above names the item the cursor is
+on and what it does ("goodsInfoElement"), the shop's layout. At the user's
+request `charm_description` gives the description once the panel names the
+lit item, and the narrator says it after `CHARM_DESCRIBE_AFTER` (1 s) on one
+item, through the Battle Items mechanism; Alt R gives item and description.
+Only while "Good Luck Charms" is gold in the Gallery's menu; the shop's
+lists, built the same, are left alone unless asked for. Items drawn in 0.6
+grey (Urien's Loincloth) are unexplained. Checked live; not yet heard.
+
 **Alt C, the screen's buttons.** Asked for on 2026-10-05: hints are button
 pictures before words, never said on moves, so square in Costume Settings
 sounded like nothing. `button_hints` gives every shown text with

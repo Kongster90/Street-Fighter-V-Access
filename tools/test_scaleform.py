@@ -3798,6 +3798,32 @@ check("the Gallery's Battle Items entry is not Survival's screen",
 check("so moving there says no description after the entry",
       [x for _, x in narrate([(0.0, charms), (0.2, charms), (1.5, charms)])] == ["Good Luck Charms. Colors"])
 
+# Inside a Good Luck Charms category: the item lit in the list, and the panel
+# above it naming that item and what it does.
+def charm_screen(lit, panel_name, info):
+    names = ["Mini Psycho Drive", "Knife"]
+    out = [sf.TextItem("Good Luck Charms", 157, 331, GOLD, 5, chain=(9600, 9601, 9609)),
+           sf.TextItem(panel_name, 742, 230, WHITE, 5, chain=(9610, 9611, 9619), part="goodsNameElement"),
+           sf.TextItem(info, 742, 280, WHITE, 5, chain=(9620, 9621, 9619), part="goodsInfoElement")]
+    out += [sf.TextItem(n, 491, 440 + 42 * i, GOLD if n == lit else GREY, 6, chain=(9630 + i, 9640 + i, 9650 + i, 9659),
+                        part="goodsNameElement") for i, n in enumerate(names)]
+    return out
+
+
+DRIVE = "Gradually fills the V-Gauge during battle.\nA portable Psycho Drive."
+KNIFE = "Raises attack power a little."
+check("an item's description is the panel's, once it shows that item",
+      sf.charm_description(charm_screen("Knife", "Knife", KNIFE)) == (True, KNIFE)
+      and sf.charm_description(charm_screen("Knife", "Mini Psycho Drive", DRIVE)) == (True, None)
+      and sf.charm_description(charm_screen("Knife", "Knife", KNIFE)[1:]) == (False, None))
+dwell = [(0.0, charm_screen("Mini Psycho Drive", "Mini Psycho Drive", DRIVE)),
+         (0.5, charm_screen("Knife", "Mini Psycho Drive", DRIVE)), (0.7, charm_screen("Knife", "Knife", KNIFE)),
+         (1.2, charm_screen("Knife", "Knife", KNIFE)), (1.6, charm_screen("Knife", "Knife", KNIFE)),
+         (3.0, charm_screen("Knife", "Knife", KNIFE))]
+check("a second on an item says what it does, once; moving on sooner says nothing more",
+      [x for _, x in narrate(dwell)] == ["Good Luck Charms. Mini Psycho Drive", "Knife", KNIFE.replace(chr(10), " ")],
+      repr(narrate(dwell)))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

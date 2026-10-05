@@ -2847,6 +2847,36 @@ def fortune_detail(items: list[TextItem]) -> str | None:
     return phrase(out)
 
 
+# The Gallery's Good Luck Charms: inside a category, a list of what was won
+# ("Mini Psycho Drive", "Knife") at x 491 and above it a panel with the item
+# the cursor is on and what it does ("Gradually fills the V-Gauge during
+# battle. ..."), parts named as the shop's ("goodsNameElement",
+# "goodsInfoElement"). The user asked on 2026-10-05 to hear what an item does
+# once the cursor has stayed on it a second.
+GOOD_LUCK_CHARMS = "Good Luck Charms"
+PANEL_COLUMN = 20
+
+
+def charm_description(items: list[TextItem]) -> tuple[bool, str | None]:
+    """In Good Luck Charms, the description of the item the cursor is on.
+
+    (False, None) elsewhere; (True, None) while there is no item lit or the
+    panel still shows another one.
+    """
+    shown = [it for it in items if it.shown]
+    if not any(it.highlighted and it.text.strip() == GOOD_LUCK_CHARMS for it in shown):
+        return False, None
+    row = next((it for it in shown if it.selected and it.part == FORTUNE_NAME), None)
+    info = next((it for it in shown if it.part == FORTUNE_INFO and it.text.strip()), None)
+    if row is None or info is None:
+        return True, None
+    panel = next((it for it in shown if it.part == FORTUNE_NAME and not it.selected
+                  and abs(it.x - info.x) <= PANEL_COLUMN and it.y < info.y), None)
+    if panel is None or panel.text.strip() != row.text.strip():
+        return True, None
+    return True, re.sub(r"^\[([^\]]*)\]\s*", r"\1. ", " ".join(info.text.split()))
+
+
 def cutscene_hint(items: list[TextItem]) -> str | None:
     """A cutscene's button hint with its button, "A, Next Screen", while one shows."""
     hint = next((it for it in items if it.shown and it.part == CUTSCENE_HINT and it.y >= CUTSCENE_HINT_TOP

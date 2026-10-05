@@ -353,6 +353,9 @@ class App:
             elif question:
                 # A prompt's message, then its answer, as when it opened.
                 said = memory_narration.phrase(question + [said])
+            elif scaleform.charm_description(items)[1]:
+                # A Good Luck Charm: what it does, from the panel above the list.
+                said = memory_narration.phrase([said, scaleform.charm_description(items)[1]])
             elif foot is not None and not foot.selected:
                 said = memory_narration.phrase([said, foot.text])
             # Costume Settings: whose rows these are, and what square does.

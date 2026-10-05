@@ -74,6 +74,9 @@ HEALTH_RISE_WINDOW = 15.0
 # itself after this long, at the user's request, rather than waiting for the
 # read key. Moving on before it is due drops it.
 DESCRIBE_AFTER = 0.5
+# In the Gallery's Good Luck Charms an item's description waits a second, the
+# user's choice, so moving through the list says the names alone.
+CHARM_DESCRIBE_AFTER = 1.0
 CONTROLS_HINT = "Press Alt B to cycle through button styles."
 # If arriving on Controller Setting names nothing, the hint is said alone after this.
 CONTROLS_HINT_WAIT = 0.6
@@ -807,16 +810,30 @@ class Narrator:
                     parts = (parts or []) + [message]
             self.toast_seen_at = now
 
-        # Battle Items: what the item does, a moment after its name.
-        if not scaleform.on_battle_items(items):
+        # Battle Items: what the item does, a moment after its name. In the
+        # Gallery's Good Luck Charms, the same after a second on an item,
+        # from the panel above the list, once it shows that item.
+        on_charms, charm = scaleform.charm_description(items)
+        if scaleform.on_battle_items(items):
+            wait = DESCRIBE_AFTER
+        elif on_charms:
+            wait = CHARM_DESCRIBE_AFTER
+        else:
+            wait = None
+        if wait is None:
             self.described_key, self.described_said = None, True
         elif parts:
             self.described_key, self.described_at, self.described_said = key, now, False
-        elif not self.described_said and self.described_key == key and now - self.described_at >= DESCRIBE_AFTER:
-            foot = scaleform.footer(items)
-            self.described_said = True
-            if foot is not None and not foot.selected and foot.text.strip():
-                parts = [scaleform.spoken_footer(foot.text)]
+        elif not self.described_said and self.described_key == key and now - self.described_at >= wait:
+            if on_charms:
+                if charm is not None:
+                    self.described_said = True
+                    parts = [charm]
+            else:
+                foot = scaleform.footer(items)
+                self.described_said = True
+                if foot is not None and not foot.selected and foot.text.strip():
+                    parts = [scaleform.spoken_footer(foot.text)]
 
         said = phrase(parts or [])
         if said and said != self.said:
