@@ -2370,8 +2370,8 @@ the direction: a full bar measures 83 percent on screen), is there too.
    through it; plain live reads were enough for everything else this session.
 
    A quiet recorder beside the mod, saving each screen change with every
-   text's chain, element names and a frame (as for Fighting Chance on
-   2026-10-04, written in the scratchpad), lets the user play normally while
+   text's chain, element names and a frame (`tools/record_screens.py`, as
+   for Fighting Chance on 2026-10-04), lets the user play normally while
    you read what comes out. Ask them what they heard as well as reading the
    records: every real bug lived in the gap between those two.
 
@@ -3249,6 +3249,12 @@ reader on the machine itself). A loop that runs them all:
 for t in tools/test_*.py; do .venv/Scripts/python.exe "$t" > /dev/null 2>&1 && echo "ok   $t" || echo "FAIL $t"; done
 ```
 
+`tools/record_screens.py <name> [minutes]` is the quiet recorder of
+2026-10-04 and 05: every change of what shows, with chains, instance names
+and hidden texts, and a frame each while the game is in front, beside the
+running mod, stopped by a STOP file in its folder. `tools/replay_records.py
+<records.jsonl>` steps the narrator through such a recording and prints
+what it would say. Ask the user to play while it records, then read both.
 `tools/record_hits.py [name]` keeps a window round every hit in a fight, with a
 frame each, for finding what marks an event (see "Crossups"); `--sheet` lays the
 frames' banner areas out in one picture to label them by.
