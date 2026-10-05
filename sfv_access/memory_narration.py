@@ -257,6 +257,8 @@ class Narrator:
         self.mapping_prompt: str | None = None
         self.mapping_rows: list[str] | None = None
         self.subtitle_said: tuple[str, str] | None = None
+        # Whether the game itself draws subtitles, as its hint last said.
+        self.game_subtitles: bool | None = None
         # A replay's controls in words, as last seen while the replay lasts,
         # and whether this replay has had them said.
         self.replay_controls: str | None = None
@@ -703,10 +705,19 @@ class Narrator:
         # the player has them on; never otherwise, whatever else would name them.
         # With speaker names only, the speaker alone, again for each line; a
         # line with no speaker, as General Story's, says nothing then.
+        mode = {True: "on", False: "off"}.get(self.subtitles, self.subtitles)
+        # The game's own subtitles, which square shows and hides: without
+        # them nothing is drawn to read, so their switching is said while the
+        # mod's are on. Not on first sight, only on a change.
+        drawn = scaleform.game_subtitles(items)
+        if drawn is not None:
+            if self.game_subtitles is not None and drawn != self.game_subtitles and mode != "off":
+                parts = (parts or []) + [f"Game subtitles {'on' if drawn else 'off'}"]
+                self.said = ""
+            self.game_subtitles = drawn
         line = scaleform.subtitle(items)
         if line is not None:
             parts = [p for p in (parts or []) if " ".join(p.split()) not in line] or None
-            mode = {True: "on", False: "off"}.get(self.subtitles, self.subtitles)
             if line != self.subtitle_said and mode in ("on", "names"):
                 words = phrase(list(line)) if mode == "on" else line[0].strip()
                 if words:

@@ -1404,6 +1404,22 @@ def fight_player_one(items: list[TextItem] | None) -> str | None:
     return name or None
 
 
+# A story scene's hint along the foot, "Skip   Select Scene   Hide Subtitles",
+# names square (X) for the game's own subtitles, and says "Show Subtitles"
+# while they are hidden. Pressed a few times quickly on 2026-10-04 they were
+# left hidden for four minutes, nothing was drawn, and the mod's subtitles
+# went quiet with no sign why.
+GAME_SUBTITLES_SHOWN = "Hide Subtitles"
+GAME_SUBTITLES_HIDDEN = "Show Subtitles"
+
+
+def game_subtitles(items: list[TextItem]) -> bool | None:
+    """Whether the game draws a story scene's subtitles, by its hint, or None with no hint (or both)."""
+    hints = {GAME_SUBTITLES_SHOWN in it.text for it in items if it.shown
+             and (GAME_SUBTITLES_SHOWN in it.text or GAME_SUBTITLES_HIDDEN in it.text)}
+    return hints.pop() if len(hints) == 1 else None
+
+
 def on_versus_screen(items: list[TextItem]) -> bool:
     """The VS screen before a fight, whether or not both fighters show yet."""
     return _versus_panel([it for it in items if it.shown]) is not None

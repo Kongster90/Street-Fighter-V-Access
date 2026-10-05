@@ -3654,6 +3654,22 @@ check("ribbons in words", sf.story_clear_words({"clearIconEasy", "clearIconEx"})
       and sf.story_clear_words(set()) == "Not cleared"
       and sf.story_clear_words({"lockIcon", "clearIconEasy"}) == "Locked")
 
+# The game's own subtitles, switched with square in a scene: its hint says
+# "Hide Subtitles" while they show and "Show Subtitles" while hidden.
+def scene_hint(word):
+    return [sf.TextItem(f"  Skip   Select Scene   {word} Subtitles", 1222, 1012, WHITE, 4, chain=(7000, 7001, 7009))]
+
+
+check("the game's subtitles are known by their hint",
+      sf.game_subtitles(scene_hint("Hide")) is True and sf.game_subtitles(scene_hint("Show")) is False
+      and sf.game_subtitles(scene_hint("Hide") + scene_hint("Show")) is None and sf.game_subtitles([]) is None)
+switching = [(0.0, scene_hint("Hide")), (1.0, []), (2.0, scene_hint("Show")), (3.0, scene_hint("Hide"))]
+watching = mn.Narrator(subtitles="on")
+check("their switching is said while the mod's subtitles are on, not on first sight",
+      [x for now, reading in switching if (x := watching.step(reading, now))]
+      == ["Game subtitles off", "Game subtitles on"])
+check("and not at all with them off", narrate(switching) == [])
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)
