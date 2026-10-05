@@ -2823,8 +2823,8 @@ cursor reaches another fighter's rows: "RYU. Costume. Story Specific", then
 "Color. Story Specific". Square, which the user heard only as a sound, is
 the hint " Revert all to Story Specific Costumes" (button 4, in a
 "navi_label"); `costume_hint` gives it in words, said once a visit after the
-first move and on Alt R. What the values besides "Story Specific" are, and
-whether reverting asks first, is unseen. Not yet heard in play.
+first move and on Alt R. Heard in play in both General and Character Story
+Settings the same night: "read out perfectly".
 
 **Sliders drawn as cells.** Options, Screen Settings, Screen Brightness read as
 its label alone (2026-09-17): no text gives its level, unlike Sound Settings'
