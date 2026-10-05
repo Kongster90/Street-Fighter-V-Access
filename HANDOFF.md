@@ -2752,6 +2752,14 @@ opponent is told from a title by `fighter_names`, since an epilogue's title
 sits in the opponent's column. What Oro's chapter 2 is, with no title drawn,
 is not known. Confirmed in play by the user on 2026-09-17.
 
+On 2026-10-04 the user played Akira's Character Story through with Japanese
+voices (story Language Settings, ENGLISH or JAPANESE, read as a menu) and
+subtitles on, a recorder beside the mod (`snapshots/story-2026-10-04`): every
+line said with its speaker, as `subtitle` gives them ("KARIN. What else but
+have a match?..."). The closing artwork's chatter has no subtitles at all,
+the box drawn empty for 17 s (frame 0206), which the user had taken for lines
+going unsaid. They judged Character Story fine.
+
 **Sliders drawn as cells.** Options, Screen Settings, Screen Brightness read as
 its label alone (2026-09-17): no text gives its level, unlike Sound Settings'
 volumes. Found by dumping every display object under its row before and after
