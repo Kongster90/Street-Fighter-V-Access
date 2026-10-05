@@ -45,13 +45,13 @@ def side_key(y: float) -> str:
 def load_name_file() -> dict:
     """Character codes mapped to display names, plus which side is player one.
 
-    The display names come from the localisation table, which ships encrypted,
-    so this file is built up by `tools/learn_names.py` pairing what memory says
-    with what is on screen. An unknown code is spoken as-is rather than hidden.
+    The display names come from the game's own files, through
+    `tools/names_from_data.py`; they were once learned by pairing memory with
+    the screen. An unknown code is spoken as-is rather than hidden.
 
     `player_one_side` is the sign of the world position where player one's
-    model stands. Nothing in the objects records a player number, so the
-    learning tool establishes it by watching which side changes when.
+    model stands. Nothing in the objects records a player number; the old
+    learning tool established it by watching which side changed when.
     """
     try:
         data = json.loads(NAME_MAP_FILE.read_text(encoding="utf-8"))

@@ -25,9 +25,8 @@ falls back to the Windows voices when there is none.
 
 ## 3. The game's own text
 
-Stage names, the Tutorial's instructions, and the correction of recognised text
-("RANKED MAT H" back to "RANKED MATCH") all come from the game's localisation
-table. The mod makes `strings.json` by itself the first time it finds the game
+Stage names, the Tutorial's instructions and the check that a text is one the
+game can say all come from the game's localisation table. The mod makes `strings.json` by itself the first time it finds the game
 running without one, saying so as it starts and when it is ready, in about
 three seconds (`sfv_access/gametext.py`). To do it by hand instead, with the
 game running:
@@ -85,11 +84,7 @@ package always matches a commit.
 .venv\Scripts\python.exe selftest.py
 ```
 
-The other suites under `tools/` need no game running, except
-`tools/test_screens.py`, which replays captured screens. Those captures are not
-in the repository because they carry the game's artwork and whatever profile
-name is on screen, so take your own with Alt S and add the expected
-readings to that file.
+The suites under `tools/`, every `tools/test_*.py`, need no game running.
 
 ## Building the native part
 

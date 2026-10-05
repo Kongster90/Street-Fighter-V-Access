@@ -23,7 +23,7 @@ def main() -> None:
     side = data["player_one_side"]
 
     if not names:
-        print("No characters recorded yet. Run tools/learn_names.py.")
+        print("No characters recorded yet. Run tools/names_from_data.py.")
         return
 
     print(f"player one stands on the {side} side")

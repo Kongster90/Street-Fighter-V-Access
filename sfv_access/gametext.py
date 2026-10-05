@@ -333,8 +333,7 @@ def ensure(say, note) -> None:
 
 def _forget_loaded_text() -> None:
     """Make every reader of strings.json load it again, now that it exists."""
-    from . import scaleform, strings
+    from . import scaleform
 
     scaleform._game_strings = None
     scaleform._tutorial_openings = None
-    strings._shared, strings._loaded = None, False

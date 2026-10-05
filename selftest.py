@@ -2,7 +2,7 @@
 
 import time
 
-from sfv_access import game, ocr
+from sfv_access import game
 from sfv_access.capture import Capture
 from sfv_access.hotkeys import parse
 from sfv_access.app import HOTKEYS
@@ -24,25 +24,19 @@ def check(label, fn):
 
 
 sp = check("speech backend", lambda: Speaker().backend)
-check("ocr languages", ocr.available_languages)
 check("hotkey parsing", lambda: [parse(c) and c for c, _ in HOTKEYS.values()] and "all combos valid")
 
 cap = check("capture device", lambda: Capture())
 if cap is not None:
-    def grab_and_read():
+    def grab():
         t0 = time.perf_counter()
         frame = cap.frame(max_age=0.0)
         t1 = time.perf_counter()
         assert frame is not None, "no frame captured"
-        items = ocr.reading_order(ocr.read(frame))
-        t2 = time.perf_counter()
-        return (
-            f"{frame.shape[1]}x{frame.shape[0]}, "
-            f"capture {(t1 - t0) * 1000:.0f} ms, ocr {(t2 - t1) * 1000:.0f} ms, "
-            f"{len(items)} lines"
-        )
+        return f"{frame.shape[1]}x{frame.shape[0]}, capture {(t1 - t0) * 1000:.0f} ms"
 
-    check("capture and ocr", grab_and_read)
+    # Capture is only for Alt S's snapshots now; nothing is read off the screen.
+    check("capture", grab)
     cap.close()
 
 gw = game.find_window()

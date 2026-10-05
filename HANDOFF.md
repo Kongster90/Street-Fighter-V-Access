@@ -23,19 +23,30 @@ more than anything else:
 Street Fighter V draws its interface with Unreal's Slate renderer straight to
 the GPU. Nothing on screen exists as a window, a control, or an accessibility
 object, so NVDA sees one blank rectangle. There is nothing to expose. The
-meaning has to be reconstructed, and this does it two ways.
-
-**From the pixels.** Capture the frame, recognise the text, find the highlighted
-entry by the gold the game marks it with, then correct the recognised text
-against the game's own words.
+meaning has to be reconstructed, and the mod does it from the running game.
 
 **From the running game.** Read its memory from outside with ReadProcessMemory.
-This is now how the mod narrates menus: exact text, and which entry is
+This is how the mod narrates everything: exact text, and which entry is
 selected, read out of Scaleform. See "Reading the interface from memory" below.
-The pixel reader is the fallback, used only while memory cannot be read; F9,
-which switched to it by hand, was removed on 2026-10-04 at the user's word,
-every screen having moved to memory. Character select reads from Scaleform too now.
-`live.py`, which reads Unreal's objects, serves the pixel path and Alt P, and
+
+**The screen reader is gone.** Until 2026-10-04 the mod could also read the
+screen: capture the frame, recognise the text with Windows OCR, find the
+highlighted entry by its gold, correct the text against the game's own words,
+and measure the gauges off the picture. It was the fallback once memory took
+over. On 2026-10-04 the user asked first for F9, the switch between the two,
+and then for the screen reader itself to go, every screen having moved to
+memory and the game seeing no more updates. `ocr.py`, `menu.py`, `screens.py`,
+`hud.py` and `strings.py` were deleted, with the tools and suites built on
+them (`replay.py`, `show_bands.py`, `grab_screens.py`, `trace_watch.py`,
+`learn_names.py`, `test_screens.py`, `test_highlight.py`, `test_hud.py`,
+`test_correction.py`, `test_learning.py` and others); all of it is in the
+history up to commit d2f50c4. Much of this file was written while it ran, so
+mentions of the pixel reader, the pixel path or the fallback below are
+history. Capture remains for Alt S's pictures and the recorders' frames.
+While the game cannot be read the mod now says nothing, and the read keys say
+"Cannot read the game yet."
+
+`live.py`, which reads Unreal's objects, serves Alt P, and
 since 2026-09-15 finds the objects that hold the button layouts
 (`memory_narration.KeyConfig` and `SavedLayout`). Two things come from
 Windows rather than the game: the keyboard bindings the game saves in
@@ -181,7 +192,8 @@ RYU. REWARD. 35570"), the bonus stage and its result, the score summaries,
 and summaries said once each (`SUMMARY_SETTLE`); "Logging into the server..."
 at startup has been heard at every login since.
 
-From the screen, the older path, now the fallback:
+From the screen, the older path, removed on 2026-10-04 (kept here as
+history):
 
 - Menu narration, automatic, as the cursor moves. Main menu including its icon
   column, the story, versus, challenges and settings submenus, Battle Settings,
@@ -2025,8 +2037,9 @@ searches. `find_construct.py` is the first and worst of them.
 
 ## Traps
 
-**There is one regression suite and it matters.** `tools/test_screens.py`
-replays every captured screen through the real announcement code and checks the
+**There was one regression suite and it mattered** (removed with the screen
+reader on 2026-10-04). `tools/test_screens.py`
+replayed every captured screen through the real announcement code and checked the
 entry that is actually highlighted. It is at 87 checks, and it now covers more
 than which entry is named: what position it claims, whether it reports a value
 or a level it should not, which description it picks, whether moving is
@@ -2153,8 +2166,16 @@ That afternoon the user asked for Fight Money to be named wherever it shows
 as a bare number, the header's total on Alt A and the Missions page's
 rewards: display objects' instance names now say what each text is, and
 Missions reads as a sentence. See "Display objects carry their instance
-names" and "Challenges' Missions". The shop says no price at all ("Stage:
-Ring of Justice"); not yet looked at.
+names" and "Challenges' Missions". Then, each confirmed by the user in play
+the same evening: the shop's cursor found by its named "cursorElement" (the
+price's backing on the one stage not owned had been taken for it) and its
+prices said in Fight Money ("The shop's item lists"); a fighter's trials
+said with their combos and whether cleared ("A fighter's list of trials");
+Trials' fighter list read whole going up ("Fighter lists went quiet in the
+middle"); the Login icon saying "Logged in" or "Login. Not logged in"
+("Logged in or not"); and Fighting Chance from purchase prompt to prizes
+("Fighting Chance"). Last, F9 was removed and then the whole screen reader
+(see "What the project is"): the mod now reads only from memory.
 
 **The session of 2026-09-30 and 10-01, in short.** Asked to speed up long
 lists in the menus, it found the "lag" was silence: Survival's and Trials'
@@ -2320,23 +2341,25 @@ the direction: a full bar measures 83 percent on screen), is there too.
    tool when a selection's marking is unknown and the user needs to move
    through it; plain live reads were enough for everything else this session.
 
-   `tools/grab_screens.py` saves a frame each time the selection moves, so the
-   user plays normally and you read what comes out. Ask them what they heard as
-   well as reading the frames: every real bug this session lived in the gap
-   between those two.
+   A quiet recorder beside the mod, saving each screen change with every
+   text's chain, element names and a frame (as for Fighting Chance on
+   2026-10-04, written in the scratchpad), lets the user play normally while
+   you read what comes out. Ask them what they heard as well as reading the
+   records: every real bug lived in the gap between those two.
 
 2. **Character select's third fighter.** It says "Other, KEN" alongside Player
    1 and Player 2. The game keeps a third preview model and the reader does not
    know what to call it. Small, and it needs no game in front since it reads
    from memory.
 
-3. **A replay suite for memory readings.** `test_screens.py` replays pixels;
-   memory narration is tested only against hand-built fakes of memory. The
+3. **A replay suite for memory readings.** Memory narration is tested only
+   against hand-built fakes of memory. The
    recordings in `snapshots/scaleform-*/records.jsonl` hold every text field
    and the display tree, and replaying them through `ScaleformText`'s rules and
    `Narrator` would catch a change that breaks one screen while fixing
-   another, as `test_screens.py` does for pixels. The analysis in this session
-   already replayed several of them by hand.
+   another, as `test_screens.py` once did for the screen reader. Several have
+   been replayed by hand; the Fighting Chance recordings were replayed through
+   `Narrator` from their records on 2026-10-04.
 
 4. **Combat.** Started since this was written: the health beeps, the counter
    hit sound and the crossup sound, all from the fighters' records and 3D
@@ -3012,28 +3035,23 @@ Day to day:
 .venv\Scripts\python.exe run.py
 ```
 
-```bash
-.venv\Scripts\python.exe tools\test_screens.py
-```
-
-There are twelve suites, every `tools/test_*.py`: `test_beeps`, `test_correction`,
-`test_fight`, `test_highlight`, `test_hotkeys`, `test_hud`, `test_launch`, `test_learning`,
-`test_memory`, `test_scaleform`, `test_screens` and `test_watchdog`; all should pass before anything is
-committed (`selftest.py` checks speech, OCR and capture on the machine itself). A loop that runs them all:
+There are seven suites, every `tools/test_*.py`: `test_beeps`, `test_fight`,
+`test_hotkeys`, `test_launch`, `test_memory`, `test_scaleform` and `test_watchdog`
+(five more went with the screen reader on 2026-10-04); all should pass before
+anything is committed (`selftest.py` checks speech, capture and the memory
+reader on the machine itself). A loop that runs them all:
 
 ```bash
 for t in tools/test_*.py; do .venv/Scripts/python.exe "$t" > /dev/null 2>&1 && echo "ok   $t" || echo "FAIL $t"; done
 ```
 
-`tools/show_bands.py <snapshot>` explains why a screen was read the
-way it was, and is the first thing to reach for when one reads wrongly.
 `tools/record_hits.py [name]` keeps a window round every hit in a fight, with a
 frame each, for finding what marks an event (see "Crossups"); `--sheet` lays the
 frames' banner areas out in one picture to label them by.
 
 Memory reading does not need the game in front, and does not care if it is
-minimised. Reading the screen does. So the mod narrates from memory whether or
-not the game has focus, while the pixel fallback stays quiet unless it does.
+minimised, so the mod narrates whether or not the game has focus. Screen
+capture, for Alt S and the recorders' frames, does need it in front.
 
 ```bash
 .venv\Scripts\python.exe tools\read_scaleform.py --watch
