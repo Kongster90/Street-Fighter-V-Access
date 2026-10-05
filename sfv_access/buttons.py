@@ -75,16 +75,26 @@ def next_style() -> str:
 
 
 # Story scenes' subtitles live in the same settings file: off unless the player
-# turns them on, since the story voices are often in English.
-def subtitles_on() -> bool:
-    return _load().get("subtitles") is True
+# turns them on, since the story voices are often in English. Alt T goes off,
+# on (speaker and line), then speaker names only, which the user asked for on
+# 2026-10-04 to follow who speaks in voices they understand. An older file
+# holds true or false.
+SUBTITLE_MODES = ("off", "on", "names")
+SUBTITLE_WORDS = {"off": "Subtitles off", "on": "Subtitles on", "names": "Subtitles, speaker names only"}
 
 
-def toggle_subtitles() -> bool:
-    """Turn subtitles on or off, save it, and return whether they are on."""
-    on = not subtitles_on()
-    _save("subtitles", on)
-    return on
+def subtitle_mode() -> str:
+    value = _load().get("subtitles")
+    if value is True:
+        return "on"
+    return value if value in SUBTITLE_MODES else "off"
+
+
+def next_subtitle_mode() -> str:
+    """Move to the next subtitle setting, save it, and return it."""
+    chosen = SUBTITLE_MODES[(SUBTITLE_MODES.index(subtitle_mode()) + 1) % len(SUBTITLE_MODES)]
+    _save("subtitles", chosen)
+    return chosen
 
 
 # The player's own Fighter ID, learnt from the main menu's card and kept so

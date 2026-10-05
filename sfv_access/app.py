@@ -67,7 +67,7 @@ HOTKEYS = {
     "read_all":      ("alt+a",      "read the whole screen"),
     "toggle_watch":  ("alt+m",      "turn menu narration on or off"),
     "button_names":  ("alt+b",      "name buttons as Xbox, PlayStation or keyboard"),
-    "subtitles":     ("alt+t",      "turn story subtitles on or off"),
+    "subtitles":     ("alt+t",      "story subtitles off, on, or speaker names only"),
     "beeps_louder":  ("f5",         "health beeps louder"),
     "beeps_quieter": ("shift+f5",   "health beeps quieter"),
     "counter_louder":  ("f6",       "counter hit sound louder"),
@@ -151,7 +151,7 @@ class App:
         self.health_levels = [beeps.Levels(), beeps.Levels()]
         self.beeper: beeps.Player | None = None
         self._beeper_lock = threading.Lock()   # the health beeps and counter hits share it
-        self.narrator = memory_narration.Narrator(subtitles=buttons.subtitles_on(),
+        self.narrator = memory_narration.Narrator(subtitles=buttons.subtitle_mode(),
                                                  health=self.survival_health.read,
                                                  health_known=self.survival_health.known,
                                                  side=self.fight.side)
@@ -548,9 +548,9 @@ class App:
         self.speech.say(f"Button names: {buttons.STYLE_WORDS[chosen]}.")
 
     def on_subtitles(self) -> None:
-        """Say story scenes' subtitles or not, for voices in a language the player does not follow."""
-        self.narrator.subtitles = buttons.toggle_subtitles()
-        self.speech.say(f"Subtitles {'on' if self.narrator.subtitles else 'off'}.")
+        """Story scenes' subtitles off, on, or the speaker's name alone, remembered between runs."""
+        self.narrator.subtitles = buttons.next_subtitle_mode()
+        self.speech.say(f"{buttons.SUBTITLE_WORDS[self.narrator.subtitles]}.")
 
     def on_beeps_louder(self) -> None:
         self._change_beeps(beeps.VOLUME_STEP)

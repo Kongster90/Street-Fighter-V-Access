@@ -2114,6 +2114,18 @@ check("General Story's lines, with no speaker, are said when subtitles are on",
                                          "Tokyo.", "But of course, our family's satellite, Red Spider-Lily is "
                                          "constantly monitoring it."], repr(spoken_general))
 check("and nothing of them when subtitles are off", narrate(general_run) == [], repr(narrate(general_run)))
+names_only = mn.Narrator(subtitles="names")
+spoken_names = [(now, x) for now, reading in tutorial_run if (x := names_only.step(reading, now))]
+check("with speaker names only each line says its speaker alone",
+      [x for _, x in spoken_names] == ["GOUKEN", "RYU", first_said], repr(spoken_names))
+names_general = mn.Narrator(subtitles="names")
+check("and a line with no speaker says nothing",
+      [x for now, reading in general_run if (x := names_general.step(reading, now))] == [])
+same_speaker = [(0.0, scene("KARIN", "Well, now that we arrived.")), (1.0, []),
+                (1.2, scene("KARIN", "Welcome to the girls' party."))]
+again = mn.Narrator(subtitles="names")
+check("the same speaker's next line says the name again",
+      [x for now, reading in same_speaker if (x := again.step(reading, now))] == ["KARIN", "KARIN"])
 check("a subtitle is not an Arcade ending's caption", sf.ending_summary(gouken) is None
       and sf.ending_summary([sf.TextItem("SFI Ryu", 160, 780, WHITE, 4, chain=(1, 5, 6, 7)),
                              sf.TextItem("The young challenger Ryu stands before the tournament's final opponent "

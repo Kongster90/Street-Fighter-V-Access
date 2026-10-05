@@ -2406,7 +2406,7 @@ F9 switched between memory and the screen until 2026-10-04, when they asked
 whether it was still needed; it was removed, so F9 is free. Alt B, added 2026-09-15,
 cycles button names between Xbox, PlayStation and keyboard keys, saved in
 `settings.json`. Alt T, added the same day, turns story subtitles on or off,
-saved there too.
+saved there too; since 2026-10-04 it has a third setting, speaker names only.
 Before adding a key, check it registers (every current one was free), and
 remember a global hotkey is taken from every program while the mod runs.
 F5, F6 and F7 are the volumes of the health beeps, the counter hit sound and
@@ -2759,6 +2759,13 @@ line said with its speaker, as `subtitle` gives them ("KARIN. What else but
 have a match?..."). The closing artwork's chatter has no subtitles at all,
 the box drawn empty for 17 s (frame 0206), which the user had taken for lines
 going unsaid. They judged Character Story fine.
+
+The same evening they asked for a third subtitle setting: Alt T now goes off,
+on (speaker and line), then speaker names only (`buttons.SUBTITLE_MODES`,
+saved as "subtitles" in settings.json, where an older true still means on),
+saying "Subtitles off", "Subtitles on" or "Subtitles, speaker names only".
+Names only says the speaker for each new line, the same speaker again
+included; a line with no speaker, as all of General Story's, says nothing.
 
 **Sliders drawn as cells.** Options, Screen Settings, Screen Brightness read as
 its label alone (2026-09-17): no text gives its level, unlike Sound Settings'

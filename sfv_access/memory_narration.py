@@ -169,8 +169,10 @@ class Narrator:
     replayed through it in a test.
     """
 
-    def __init__(self, subtitles: bool = False, health=None, health_known=None, side=None) -> None:
-        # Whether story scenes' subtitles are said: the player's choice, kept across resets.
+    def __init__(self, subtitles: bool | str = False, health=None, health_known=None, side=None) -> None:
+        # How story scenes' subtitles are said, the player's choice, kept
+        # across resets: "off", "on" (speaker and line) or "names" (the
+        # speaker alone). True and False stand for on and off.
         self.subtitles = subtitles
         # Asked for a health reading on the one screen that wants one, or None.
         self.health = health
@@ -699,12 +701,17 @@ class Narrator:
 
         # A story scene's subtitles, speaker and line, as each line comes, if
         # the player has them on; never otherwise, whatever else would name them.
+        # With speaker names only, the speaker alone, again for each line; a
+        # line with no speaker, as General Story's, says nothing then.
         line = scaleform.subtitle(items)
         if line is not None:
             parts = [p for p in (parts or []) if " ".join(p.split()) not in line] or None
-            if line != self.subtitle_said and self.subtitles:
-                parts = (parts or []) + [phrase(list(line))]
-                self.said = ""
+            mode = {True: "on", False: "off"}.get(self.subtitles, self.subtitles)
+            if line != self.subtitle_said and mode in ("on", "names"):
+                words = phrase(list(line)) if mode == "on" else line[0].strip()
+                if words:
+                    parts = (parts or []) + [words]
+                    self.said = ""
             self.subtitle_said = line
 
         # A lounge's chat selects nothing either. What is already in the log
