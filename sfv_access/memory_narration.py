@@ -262,8 +262,9 @@ class Narrator:
         # CFN's timeline entry at the last read, and the one last said.
         self.timeline_seen = None
         self.timeline_said = None
-        # The mission row last said on the Missions page, None elsewhere.
-        self.mission_said = None
+        # The list row last said as a sentence, by kind ("mission",
+        # "tournament"), while its screen shows. See `_row_sentence`.
+        self.rows_said: dict[str, int] = {}
         # A cutscene's button hint as last said, None while none shows.
         self.hint_said: str | None = None
         # The trial tile the cursor is on, since when, and what was said for it.
@@ -275,6 +276,27 @@ class Narrator:
         self.footer_text: str | None = None
         self.footer_changed_at = 0.0
         self.said = ""
+
+    def _row_sentence(self, kind: str, row, parts, texts, sentence):
+        """A list row said as one sentence as the cursor reaches it, in place of its texts.
+
+        `row` is the cursor's row of this kind, or None off its screen;
+        `texts` and `sentence` give the row's texts and its sentence. The
+        same row again, its texts changed, is not said again.
+        """
+        if row is None:
+            self.rows_said.pop(kind, None)
+            return parts
+        if not parts:
+            return parts
+        pieces = texts()
+        if not any(" ".join(p.split()) in pieces for p in parts):
+            return parts
+        rest = [p for p in parts if " ".join(p.split()) not in pieces]
+        if row == self.rows_said.get(kind):
+            return rest or None
+        self.rows_said[kind] = row
+        return [phrase(sentence())] + rest
 
     def health_words(self) -> str | None:
         """"Health 95 percent", as read when the supplement screen arrived, for the read key too."""
@@ -394,20 +416,14 @@ class Narrator:
         # A mission is said as one sentence, what to do, progress, reward and
         # time left, where its row's texts came out in columns, labels before
         # values (2026-10-04). Only as the cursor reaches another mission: the
-        # time left changes every minute, and that is no move.
-        row = scaleform.mission_row(items)
-        if row is None:
-            self.mission_said = None
-        elif parts:
-            pieces = scaleform.mission_texts(items)
-            moved = [p for p in parts if " ".join(p.split()) in pieces]
-            if moved:
-                rest = [p for p in parts if " ".join(p.split()) not in pieces]
-                if row != self.mission_said:
-                    self.mission_said = row
-                    parts = [phrase(scaleform.mission_entry(items))] + rest
-                else:
-                    parts = rest or None
+        # time left changes every minute, and that is no move. A tournament in
+        # CFN's list the same way: its name, status and entries.
+        parts = self._row_sentence("mission", scaleform.mission_row(items), parts,
+                                   lambda: scaleform.mission_texts(items),
+                                   lambda: scaleform.mission_entry(items))
+        parts = self._row_sentence("tournament", scaleform.tournament_row(items), parts,
+                                   lambda: scaleform.tournament_texts(items),
+                                   lambda: scaleform.tournament_entry(items))
 
         # A trial tile is said with its combo, which the panel beside the tiles
         # shows a read after the number moves: "03. Jumping Hard Punch, ...".

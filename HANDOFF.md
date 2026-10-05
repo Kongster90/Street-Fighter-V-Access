@@ -3024,6 +3024,24 @@ Display (Normal, Hide Gauges, Hide All); the user had gauges hidden. Heard
 in a replay the same evening: "everything sounds good, sounds were coming
 from the correct sides".
 
+**CFN's Tournament tab.** Asked about by the user on 2026-10-04: triangle
+opened a silent screen. Its hints are button pictures before words, "View
+Tournament Details" (button_y), "Create Tournament" (Start), "Search
+Tournament: ---" (LB); hints are never said on moves. The list's rows read as
+their gold texts in screen order, with "Not ticked" after three of them, the
+checklist rule finding box-like parts beside the labels. Every part is named,
+so `tournament_entry` says a row as "garnetmiki CUP. Over. Entered 4 of 4.
+Full" as the cursor reaches it (through `Narrator._row_sentence`, shared with
+Missions), Alt R adds the periods, preconditions and rules, and
+`clear_tournament_ticks` drops the ticks. Triangle's panel, "garnetmiki CUP
+Details", sits over the list with nothing selected: its header rows
+("ownerElement" for Host) and label and value rows ("labelLeft",
+"labelRight") under "[Precondition]", "[Rule Settings]" and "[Available
+Stages]" (pictures only, so that heading is left out). `tournament_details`
+says it once through `screen_summary`, Alt R again. Read live on the user's
+screen; not yet heard in play. Whether the panel scrolls, and what "Available
+Stages" holds, are unknown.
+
 **The menus inside CFN's tabs** were walked by the user on 2026-10-04 with a
 recorder running (`snapshots/cfn-2026-10-04`): "everything seems to be
 working", so nothing was changed there. What follows was the plan from

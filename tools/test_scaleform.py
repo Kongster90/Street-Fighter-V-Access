@@ -3561,6 +3561,63 @@ check("the read key gives the prize the cursor is on with its description",
       sf.fortune_detail(ten_prizes(1)) == "Street Fighter IV Guile. About Street Fighter IV Guile. Luck Gauge 0%",
       repr(sf.fortune_detail(ten_prizes(1))))
 
+# CFN's Tournament tab, as read live on 2026-10-04: each row's parts named,
+# the cursor's name gold; triangle opens the details panel over the list.
+def tournament(row, y, name, lit, entered="4", full=True):
+    texts = [(name, "tournamentNameLabelElement", 486, 0), ("Over", "tournamentStatusLabelElement", 1404, 0),
+             ("Registration Period", "applicationPeriodLabelElement", 503, 41),
+             ("Sep 27, 2026, 9:00 AM - Sep 29, 2026, 7:30 AM (Over)", "applicationPeriodDateTimeLabelElement", 696, 41),
+             ("Max No. of Players", "entryMaxNum", 1465, 41), ("4", "entryMaxNumLabelElement", 1465, 43),
+             ("Entered", "entryNum", 1465, 67), (entered, "entryNumLabelElement", 1465, 69),
+             ("[Precondition]", "entryCondition", 532, 99), ("Hardware", "entryCondition1", 551, 119),
+             ("No Preference", "entryConditionLabel1", 722, 119), ("[Rule Settings]", "ruleLabelElement", 1042, 99),
+             ("R3/99sec/First To 1", "rule2LabelElement", 1062, 139)]
+    if full:
+        texts.append(("(Full)", "entryEndLabelElement", 1465, 93))
+    gold = {"tournamentNameLabelElement", "entryMaxNum", "entryMaxNumLabelElement", "entryNum", "entryCondition",
+            "entryCondition1", "entryConditionLabel1", "ruleLabelElement", "rule2LabelElement"}
+    return [sf.TextItem(t, x, y + dy, GOLD if lit and part in gold else WHITE, 6,
+                        chain=(row * 100 + i, row * 100 + 50 + i, row, 4900, 4999), part=part)
+            for i, (t, part, x, dy) in enumerate(texts)]
+
+
+def tournament_list(lit):
+    return tournament(41, 243, "Kart96 CUP", lit == 1, entered="3", full=False) + tournament(42, 467, "garnetmiki CUP", lit == 2)
+
+
+check("a tournament in brief: name, status, entries",
+      mn.phrase(sf.tournament_entry(tournament_list(2))) == "garnetmiki CUP. Over. Entered 4 of 4. Full",
+      mn.phrase(sf.tournament_entry(tournament_list(2))))
+check("in full, its dates, conditions and rules",
+      mn.phrase(sf.tournament_entry(tournament_list(1), brief=False)) ==
+      "Kart96 CUP. Over. Entered 3 of 4. Registration Period: September 27, 2026, 9:00 AM - September 29, 2026, "
+      "7:30 AM (Over). Precondition: Hardware No Preference. Rule Settings: R3/99sec/First To 1",
+      mn.phrase(sf.tournament_entry(tournament_list(1), brief=False)))
+check("moving between tournaments says each in brief",
+      [x for _, x in narrate([(0.0, tournament_list(1)), (1.0, tournament_list(2))])] ==
+      ["Kart96 CUP. Over. Entered 3 of 4", "garnetmiki CUP. Over. Entered 4 of 4. Full"])
+
+
+def tournament_panel():
+    window = (5003, 5004, 5009)
+    head = [("garnetmiki CUP Details", "labelElement", 310, 163, (5100, 5101, 5102) + window),
+            ("Tournament Name", "tournamentNameElement", 671, 242, (5110, 5111, 5120, 5121) + window),
+            ("garnetmiki CUP", "tournamentNameLabelElement", 927, 242, (5112, 5113, 5120, 5121) + window),
+            ("Host", "ownerElement", 671, 272, (5114, 5115, 5120, 5121) + window),
+            ("garnetmiki", "ownerLabelElement", 927, 272, (5116, 5117, 5120, 5121) + window),
+            ("[Precondition]", "longlabel", 360, 440, (5130, 5131, 5132, 5133, 5134, 5121) + window),
+            ("Hardware", "labelLeft", 396, 472, (5140, 5141, 5142, 5133, 5134, 5121) + window),
+            ("No Preference", "labelRight", 655, 472, (5143, 5144, 5142, 5133, 5134, 5121) + window),
+            ("[Available Stages]", "longlabel", 360, 888, (5150, 5151, 5152, 5133, 5134, 5121) + window)]
+    return [sf.TextItem(t, x, y, WHITE, len(chain), chain=chain, part=part) for t, part, x, y, chain in head]
+
+
+check("the details panel is said as one passage, its empty last heading left out",
+      sf.tournament_details(tournament_list(2) + tournament_panel()) ==
+      "garnetmiki CUP Details. Host: garnetmiki. Precondition. Hardware: No Preference",
+      repr(sf.tournament_details(tournament_list(2) + tournament_panel())))
+check("and is no panel without its Host", sf.tournament_details(tournament_list(2)) is None)
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

@@ -302,7 +302,8 @@ class App:
             matchup = scaleform.matchup_details(items)
             profile_page = scaleform.profile_page_details(items)
             timeline = scaleform.timeline_entry(items)
-            mission = scaleform.mission_entry(items, brief=False)
+            mission = (scaleform.mission_entry(items, brief=False)
+                       or scaleform.tournament_entry(items, brief=False))
             trial = scaleform.trial_preview(items)
             purchase = scaleform.purchase_details(items)
             if message and entry is None:
@@ -351,7 +352,7 @@ class App:
                 said = memory_narration.phrase([said] + details)
             _summary_screen, summary = scaleform.screen_summary(
                 items, self.narrator.health_words(), buttons.fighter_id(), self.narrator.player_side)
-            prize = scaleform.fortune_detail(items)
+            prize = scaleform.fortune_detail(items) or scaleform.tournament_details(items)
             if prize:
                 # A reading's prize the cursor is on, with its description,
                 # without the shop's list behind it.

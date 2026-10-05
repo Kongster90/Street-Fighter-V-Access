@@ -2453,6 +2453,149 @@ def replay_controls(items: list[TextItem]) -> tuple[str, str] | None:
     return None
 
 
+# ----------------------------------------------------------------- tournaments
+#
+# CFN's Tournament tab lists tournaments, each row its name gold under the
+# cursor, its status ("Over"), Registration Period and Tournament Period with
+# their dates, Max No. of Players and Entered with their counts, "(Full)",
+# then "[Precondition]" over three conditions and "[Rule Settings]" over three
+# rules. Every part is named ("tournamentNameLabelElement", "entryNum",
+# "rule1LabelElement" and so on). A move said the row's gold texts in screen
+# order with "Not ticked" after three of them, the checklist rule finding a
+# box-like part beside each (2026-10-04). Triangle, "View Tournament
+# Details", opens a panel over the list, "garnetmiki CUP Details": a header of
+# Tournament Name, Host and the two periods, then a list of label and value
+# rows ("labelLeft", "labelRight") under "[Precondition]", "[Rule Settings]"
+# and "[Available Stages]". Nothing in it is selected, so it was silent.
+TOURNAMENT_NAME = "tournamentNameLabelElement"
+TOURNAMENT_STATUS = "tournamentStatusLabelElement"
+TOURNAMENT_PERIODS = (("applicationPeriodLabelElement", "applicationPeriodDateTimeLabelElement"),
+                      ("startLabelElement", "startDateTimeLabelElement"))
+TOURNAMENT_MAX = ("entryMaxNum", "entryMaxNumLabelElement")
+TOURNAMENT_ENTERED = ("entryNum", "entryNumLabelElement")
+TOURNAMENT_FULL = "entryEndLabelElement"
+TOURNAMENT_PRECONDITION = "entryCondition"
+TOURNAMENT_CONDITIONS = (("entryCondition1", "entryConditionLabel1"),
+                         ("entryCondition2", "entryConditionLabel2"),
+                         ("entryCondition3", "entryConditionLabel3"))
+TOURNAMENT_RULE_HEADING = "ruleLabelElement"
+TOURNAMENT_RULES = ("rule1LabelElement", "rule2LabelElement", "rule3LabelElement")
+TOURNAMENT_ROW_PARTS = frozenset(
+    [TOURNAMENT_NAME, TOURNAMENT_STATUS, TOURNAMENT_FULL, TOURNAMENT_PRECONDITION, TOURNAMENT_RULE_HEADING,
+     *TOURNAMENT_MAX, *TOURNAMENT_ENTERED, *TOURNAMENT_RULES]
+    + [part for pair in TOURNAMENT_PERIODS + TOURNAMENT_CONDITIONS for part in pair])
+TOURNAMENT_ROW_DEPTH = 2          # a row text's element, then the row
+# The details panel: its Host label, and the panel four above that label's field.
+TOURNAMENT_HOST = "ownerElement"
+TOURNAMENT_PANEL_DEPTH = 4
+TOURNAMENT_NAME_LABEL = "tournamentNameElement"
+TOURNAMENT_DETAILS_ROW = 6        # a label and its value sit this close in y
+
+
+def _tournament_row_of(it: TextItem) -> int | None:
+    return it.chain[TOURNAMENT_ROW_DEPTH] if len(it.chain) > TOURNAMENT_ROW_DEPTH else None
+
+
+def tournament_row(items: list[TextItem]) -> int | None:
+    """The row of the tournament the cursor is on, or None off the Tournament tab."""
+    name = next((it for it in items if it.shown and it.highlighted and it.part == TOURNAMENT_NAME), None)
+    return _tournament_row_of(name) if name else None
+
+
+def clear_tournament_ticks(items: list[TextItem]) -> None:
+    """A tournament's row is no checklist, whatever the tick rule found beside its labels."""
+    for it in items:
+        if it.part in TOURNAMENT_ROW_PARTS:
+            it.ticked = None
+
+
+def _tournament_parts(items: list[TextItem]) -> dict[str, str]:
+    row = tournament_row(items)
+    if row is None:
+        return {}
+    parts: dict[str, str] = {}
+    for it in items:
+        if it.shown and it.part and _tournament_row_of(it) == row and it.text.strip():
+            parts.setdefault(it.part, " ".join(it.text.split()))
+    return parts
+
+
+def tournament_texts(items: list[TextItem]) -> set[str]:
+    """Every text in the cursor's tournament row, to leave out of what a move says."""
+    row = tournament_row(items)
+    if row is None:
+        return set()
+    return {" ".join(it.text.split()) for it in items if it.shown and _tournament_row_of(it) == row}
+
+
+def tournament_entry(items: list[TextItem], brief: bool = True) -> list[str]:
+    """The tournament the cursor is on: name, status and entries; in full, its dates, conditions and rules."""
+    parts = _tournament_parts(items)
+    if TOURNAMENT_NAME not in parts:
+        return []
+    out = [parts[TOURNAMENT_NAME]]
+    if parts.get(TOURNAMENT_STATUS):
+        out.append(parts[TOURNAMENT_STATUS])
+    entered, most = parts.get(TOURNAMENT_ENTERED[1]), parts.get(TOURNAMENT_MAX[1])
+    full = parts.get(TOURNAMENT_FULL, "").strip("()")
+    if entered and most:
+        out.append(f"{parts.get(TOURNAMENT_ENTERED[0], 'Entered')} {entered} of {most}")
+    elif most:
+        out.append(f"{parts.get(TOURNAMENT_MAX[0], 'Max No. of Players')} {most}")
+    if full:
+        out.append(full)
+    if brief:
+        return out
+    for label, value in TOURNAMENT_PERIODS:
+        if parts.get(value):
+            out.append(f"{parts.get(label, '')}: {_spoken_date(parts[value])}".lstrip(": "))
+    conditions = [f"{parts[label]} {parts[value]}" for label, value in TOURNAMENT_CONDITIONS
+                  if parts.get(label) and parts.get(value)]
+    if conditions:
+        out.append(f"{parts.get(TOURNAMENT_PRECONDITION, 'Precondition').strip('[]')}: {', '.join(conditions)}")
+    rules = [parts[rule] for rule in TOURNAMENT_RULES if parts.get(rule)]
+    if rules:
+        out.append(f"{parts.get(TOURNAMENT_RULE_HEADING, 'Rule Settings').strip('[]')}: {', '.join(rules)}")
+    return out
+
+
+def tournament_details(items: list[TextItem]) -> str | None:
+    """The panel triangle opens over the list, as one passage, or None while it is not open.
+
+    "garnetmiki CUP Details. Host: garnetmiki. Registration Period: ...
+    Precondition. Hardware: No Preference. ..." Each row a label and its
+    value; a heading in brackets said without them.
+    """
+    shown = [it for it in items if it.shown]
+    host = next((it for it in shown if it.part == TOURNAMENT_HOST and len(it.chain) > TOURNAMENT_PANEL_DEPTH), None)
+    if host is None:
+        return None
+    panel = host.chain[TOURNAMENT_PANEL_DEPTH]
+    inside = sorted((it for it in shown if panel in it.chain and it.text.strip()), key=lambda it: (it.y, it.x))
+    rows: list[list[TextItem]] = []
+    for it in inside:
+        if rows and abs(rows[-1][0].y - it.y) <= TOURNAMENT_DETAILS_ROW:
+            rows[-1].append(it)
+        else:
+            rows.append([it])
+    out: list[str] = []
+    headings: set[int] = set()
+    for row in rows:
+        row.sort(key=lambda it: it.x)
+        if row[0].part == TOURNAMENT_NAME_LABEL:
+            continue          # the heading names it already
+        texts = [" ".join(it.text.split()) for it in row]
+        if len(texts) == 1:
+            out.append(texts[0].strip("[]"))
+            headings.add(len(out) - 1)
+        else:
+            out.append(f"{texts[0]}: {_spoken_date(' '.join(texts[1:]))}")
+    # "[Available Stages]" heads pictures alone: a heading with nothing after it says nothing.
+    while out and len(out) - 1 in headings and len(out) > 1:
+        out.pop()
+    return phrase(out) if out else None
+
+
 # ------------------------------------------------------------ fighting chance
 #
 # The shop's Fighting Chance sells readings, a draw of one prize or ten. On
@@ -3770,7 +3913,7 @@ def screen_summary(items: list[TextItem], health: str | None = None,
     tips, summary = tips_screen(items)
     if tips:
         return True, summary
-    summary = fortune_result(items)
+    summary = fortune_result(items) or tournament_details(items)
     if summary is not None:
         return True, summary
     # The online result screen is tried here as well as under `on_results`,
@@ -4970,6 +5113,7 @@ class ScaleformText:
         name_amounts(out)
         self.mark_choices(out)
         mark_message_log(out)
+        clear_tournament_ticks(out)
         self._mark_sliders(out)
         self._note_trial_cleared(out)
         out.sort(key=lambda it: (round(it.y), it.x))
