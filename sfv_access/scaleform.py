@@ -1218,6 +1218,11 @@ PATH_SELECT_PROMPT = "Please select a path."
 # Survival's and Trials' fighter lists show five rows of two, nine or ten names;
 # this many showing in one movie is taken as such a list. See `_show_list_cursor`.
 FIGHTER_LIST_MIN = 4
+# Other rows or cells a list must show for its scrolled-to row, held at alpha
+# zero, to count as showing (`_show_list_cursor`): four in General Story's
+# chapters, more in a fighter list; as for fighters' names before, three are
+# too few to call a list.
+SCROLLED_LIST_ROWS = 4
 # In those lists each text sits in a holder of its own under its fighter's
 # cell, so texts sharing either of the first two objects above them are one cell.
 CELL_DEPTH = 3
@@ -4997,28 +5002,40 @@ class ScaleformText:
         place, and nothing was said: the user heard RYU to KARIN, then silence
         all the way down, however long they waited (2026-09-30). Going up and
         back down said it, the cell being selected again without a scroll.
-        Only while several fighters' names show in the list's movie, and only
-        under a cell holding a gold fighter's name, is text hidden by nothing
-        but that cell's alpha counted as showing.
+        Text hidden by nothing but that cell's alpha counts as showing, under
+        a cell holding gold text, when the list around it shows: at least
+        `SCROLLED_LIST_ROWS` other rows or cells with text showing under the
+        cell's parent or the object above that. General Story's list of chapters does the same, its
+        scrolled-to row ("18", "Last Mission", gold at alpha zero) unsaid all
+        the way down (2026-10-05), so this is no longer kept to fighters'
+        names. A list fading out as a whole fades its other rows too.
         """
-        names = fighter_names()
-        movies = Counter(it.chain[-1] for it in every if it.shown and it.chain and it.text.strip() in names)
-        lists = {movie for movie, count in movies.items() if count >= FIGHTER_LIST_MIN}
-        if not lists:
-            return
-
         def only_faded(it):
             return (it.depth >= 2 and it.rooted and not it.hidden and it.on_stage
-                    and it.tint[3] <= 0.01 and bool(it.chain) and it.chain[-1] in lists)
+                    and it.tint[3] <= 0.01 and bool(it.chain))
 
+        shown = [it for it in every if it.shown and it.chain]
         cells = set()
         for it in every:
-            if it.text.strip() in names and it.highlighted and only_faded(it):
-                for obj in it.chain[1:]:
-                    node = self._node(obj)
-                    if node is not None and node[1][3] <= 0.01:
-                        cells.add(obj)
-                        break
+            if not (it.highlighted and only_faded(it)):
+                continue
+            for at, obj in enumerate(it.chain[1:], start=1):
+                node = self._node(obj)
+                if node is None or node[1][3] > 0.01:
+                    continue
+                rows = set()
+                for o in shown:
+                    if obj in o.chain:
+                        continue
+                    for container in it.chain[at + 1:at + 3]:
+                        if container in o.chain:
+                            k = o.chain.index(container)
+                            if k > 0:
+                                rows.add(o.chain[k - 1])
+                            break
+                if len(rows) >= SCROLLED_LIST_ROWS:
+                    cells.add(obj)
+                break
         if not cells:
             return
         for it in every:

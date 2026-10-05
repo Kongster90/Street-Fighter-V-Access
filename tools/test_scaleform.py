@@ -1077,6 +1077,14 @@ check("its neighbour fading in beside it stays hidden until it has",
       "DHALSIM" not in [it.text for it in both_faded] and "ZANGIEF" in [it.text for it in both_faded])
 check("with too few fighters showing it is not taken for a list",
       "ZANGIEF" not in [it.text for it in fighter_list(rows=SURVIVAL_ROWS[3:]).items()])
+# General Story's chapters, as read on 2026-10-05: one column of rows, the
+# cursor's scrolled in at alpha zero; no fighters' names in it.
+chapter_rows = (("14", "Personal Intent"), ("15", "Confrontation"), ("16", "Turning Point"), ("17", "100%"),
+                ("18", "Last Mission"))
+chapters = fighter_list(cursor="18", faded=("18",), rows=chapter_rows).items()
+check("a list of chapters' scrolled-to row counts as showing too",
+      [it.text.strip() for it in chapters if it.selected and it.text != "EASY"] == ["18", "SCORE 1040"],
+      repr([it.text for it in chapters if it.selected]))
 check("a gold fighter faded in another movie stays hidden",
       "ZANGIEF" not in [it.text for it in fighter_list(elsewhere=True).items()])
 check("a grey fighter faded in the list stays hidden",

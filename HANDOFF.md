@@ -2801,7 +2801,17 @@ Line" each once), again after the main menu, and keeps it while the scene
 lasts (`Narrator.story_controls`, dropped once anything is selected) for Alt
 R, which says the line showing and then the controls. Character Story's
 buttons are unseen; they come from its hint's pictures. Its History screen
-has not been looked at. Not yet heard in play.
+has not been looked at. The user found story mode working well with this
+and every fight sound in place.
+
+General Story's chapter list went quiet scrolling down (2026-10-05), as the
+fighter lists had: the scrolled-to row ("18", "Last Mission", "TIME 0:59")
+gold at alpha zero under its row's node. `_show_list_cursor` no longer wants
+fighters' names: a gold text faded only by an object above it counts as
+showing when at least `SCROLLED_LIST_ROWS` (4) other rows or cells under
+that object's parent or the one above show text; the fighter list tests
+hold, three cells being too few as before. Checked live on the row; not yet
+heard in play.
 
 **Sliders drawn as cells.** Options, Screen Settings, Screen Brightness read as
 its label alone (2026-09-17): no text gives its level, unlike Sound Settings'
