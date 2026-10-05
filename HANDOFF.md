@@ -398,6 +398,19 @@ How it was found, since none of it came from documentation:
   `TextItem.rooted` requires it (`MOVIE_ROOT_FLAGS`), and the "blind:" log
   groups the rest as "cut loose from its movie".
 
+**Logged in or not.** The main menu's Login icon is "LOGIN" either way, and
+its description line too, and the user took it for a sign they still had to
+log in (2026-10-04). The game keeps the state behind a function
+(`KWNetworkDelegateBase.GetLoginState`) with no live object holding it. Going
+offline from the main menu (the user disconnected; the game said "Gameplay
+will continue in offline mode") showed what changes: the header's Fight Money
+total reads "---", the Fight Request box is hidden, and the online modes are
+drawn at 0.36 grey against 0.27. `logged_in` goes by the total;
+`name_login` makes the icon "Logged in" or "Login. Not logged in", in the
+narrator after the banner's advert check and on Alt R, and leaves "LOGIN"
+alone when there is no header to tell by. Offline the total is said as
+"Fight Money unavailable offline".
+
 **Not everything selectable is text.** The main menu's icon row, Options,
 Gallery, Message Log, Login and Exit, lights no text when selected, so a
 reader that only looks for gold goes silent there; the user caught this on

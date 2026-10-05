@@ -335,6 +335,9 @@ class Narrator:
                             and not banner & scaleform.MAIN_MENU_NAMES)
                 if settled or rotating:
                     parts = None
+        # The Login icon says whether you are logged in, not only its name.
+        if parts:
+            parts = scaleform.name_login(parts, items)
 
         # A message says what it says; when it arrived is on the read key.
         message = scaleform.message_log_entry(items)

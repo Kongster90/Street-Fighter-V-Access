@@ -1923,6 +1923,42 @@ def name_amounts(items: list[TextItem]) -> None:
             words = FIGHT_MONEY
         if words and _BARE_AMOUNT.fullmatch(it.text.strip()):
             it.text = f"{it.text.strip()} {words}"
+        elif words and it.text.strip() == OFFLINE_AMOUNT:
+            it.text = f"{words} {OFFLINE_WORDS}"
+
+
+# The main menu's Login icon is named LOGIN whether or not you are logged in,
+# and the user took it for a sign they still had to (2026-10-04). Offline the
+# header's Fight Money total reads "---" (and Fight Request is hidden, the
+# online modes drawn dimmer); logged in it is a number. Seen by going offline
+# from the main menu that day.
+LOGIN_ENTRY = "LOGIN"
+LOGGED_IN_WORDS = "Logged in"
+LOGGED_OUT_WORDS = "Login. Not logged in"
+OFFLINE_AMOUNT = "---"
+OFFLINE_WORDS = "unavailable offline"   # "Fight Money unavailable offline" for the header's "---"
+
+
+def logged_in(items: list[TextItem]) -> bool | None:
+    """Whether the player is logged in, by the header's Fight Money total; None with no header."""
+    money = next((it for it in items if it.shown and it.part == "moneyLabelElement"), None)
+    if money is None:
+        return None
+    words = money.text.split()
+    if words and _BARE_AMOUNT.fullmatch(words[0]):
+        return True
+    return False if money.text.strip() == OFFLINE_AMOUNT or money.text.endswith(OFFLINE_WORDS) else None
+
+
+def name_login(texts: list[str], items: list[TextItem]) -> list[str]:
+    """The Login icon's name as whether you are logged in: "Logged in", "Login. Not logged in"."""
+    if not any(t.strip() == LOGIN_ENTRY for t in texts):
+        return texts
+    state = logged_in(items)
+    if state is None:
+        return texts
+    words = LOGGED_IN_WORDS if state else LOGGED_OUT_WORDS
+    return [words if t.strip() == LOGIN_ENTRY else t for t in texts]
 
 
 def mission_row(items: list[TextItem]) -> int | None:

@@ -3431,6 +3431,22 @@ check("and its note is not said twice on a move",
       [s for _, s in narrate([(0.0, trial_list(1, 1, ryu_01)), (1.0, urien_07)])][1:]
       == ["07. Not cleared. Crouching Light Punch, CHARIOT TACKLE"])
 
+# The Login icon says whether you are logged in, by the header's Fight Money
+# total: a number logged in, "---" offline, as seen on 2026-10-04.
+def header(money):
+    out = [sf.TextItem(money, 1731.9, 65.2, WHITE, 6, chain=(1, 2, 3, 4), part="moneyLabelElement"),
+           sf.TextItem("LOGIN", 799, 452, WHITE, 6, chain=(5, 6, 7, 4), chosen=True, part="labelElement")]
+    sf.name_amounts(out)
+    return out
+
+
+check("logged in, the Login icon says so", sf.name_login(["LOGIN"], header("128690")) == ["Logged in"])
+check("offline, it says you are not", sf.name_login(["LOGIN"], header("---")) == ["Login. Not logged in"]
+      and header("---")[0].text == "Fight Money unavailable offline")
+check("with no header to tell by, it is left as it is",
+      sf.name_login(["LOGIN"], header("---")[1:]) == ["LOGIN"]
+      and sf.name_login(["EXIT"], header("128690")) == ["EXIT"])
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

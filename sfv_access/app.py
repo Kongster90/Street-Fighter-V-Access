@@ -516,7 +516,7 @@ class App:
     def on_read_screen(self) -> None:
         items = self._memory_items()
         if items is not None:
-            said = memory_narration.selection_phrase(items)
+            said = memory_narration.phrase(scaleform.name_login([memory_narration.selection_phrase(items)], items))
             foot = scaleform.footer(items)
             story = (scaleform.path_story(items) or scaleform.extra_battle_details(items)
                      or scaleform.notice_details(items) or scaleform.survival_details(items)
