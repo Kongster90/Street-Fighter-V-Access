@@ -1388,20 +1388,30 @@ def fight_running(items: list[TextItem]) -> bool:
     return fight_on_screen(items) or in_replay(items)
 
 
-# The fight display's names over the health bars: a fighter's in story mode
-# ("NASH"), a Fighter ID online, "Rank 6398" in a replay; only a fighter's
-# name is any use for telling the fighters apart.
-FIGHT_NAME_PARTS = ("player_name_left", "player_name_right")
+# The fight display's name for the player's own fighter: "NASH" in story mode,
+# the Fighter ID in Survival ("Konggster"). The part is called
+# "player_name_right" but holds the player's side whichever it is: against
+# M. Bison as Nash, "YOU" over the left bar, it said NASH, and taken for the
+# right-hand fighter it swapped every sound (2026-10-04). So the name goes to
+# the side "YOU" stands over, and only a fighter's name counts.
+FIGHT_PLAYER_NAME = "player_name_right"
 
 
 def fight_names(items: list[TextItem] | None) -> tuple[str | None, str | None]:
-    """The fighters named over the left and right health bars, either None."""
-    names = fighter_names()
-    found: list[str | None] = []
-    for part in FIGHT_NAME_PARTS:
-        text = next((it.text.strip() for it in items or () if it.shown and it.part == part), None)
-        found.append(text if text in names else None)
-    return found[0], found[1]
+    """The fighters known by name on the left and right, from the player's own, either None."""
+    shown = [it for it in items or () if it.shown]
+    name = next((it.text.strip() for it in shown if it.part == FIGHT_PLAYER_NAME), None)
+    if name not in fighter_names():
+        return None, None
+    you = [it for it in shown if it.text.strip() == ONLINE_FIGHT_LABEL
+           and FIGHT_LABEL_ROW[0] <= it.y <= FIGHT_LABEL_ROW[1]]
+    if len(you) != 1:
+        return None, None
+    if you[0].x < FIGHT_LABEL_LEFT:
+        return name, None
+    if you[0].x > FIGHT_LABEL_RIGHT:
+        return None, name
+    return None, None
 
 
 def on_versus_screen(items: list[TextItem]) -> bool:

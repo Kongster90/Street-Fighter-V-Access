@@ -185,10 +185,15 @@ check("the Battle Lounge's status on that row, or YOU over a fighter, is not a f
       and not sf.fight_on_screen([label("STANDBY", 190)])
       and not sf.fight_on_screen([label("YOU", 394, 557), label("P1\n", 394, 557)])
       and not sf.fight_on_screen([label("YOU", 631, 77)]))
-check("the fighters named over the health bars, a fighter's name only",
+check("the player's fighter goes to the side YOU stands over, a fighter's name only",
       sf.fight_names([sf.TextItem("NASH", 1233, 122, (1, 1, 1, 1), 4, part="player_name_right"),
-                      sf.TextItem("Rank 6398", 174, 122, (1, 1, 1, 1), 4, part="player_name_left")])
-      == (None, "NASH"))
+                      label("YOU", 167)]) == ("NASH", None)
+      and sf.fight_names([sf.TextItem("NASH", 1233, 122, (1, 1, 1, 1), 4, part="player_name_right"),
+                          label("YOU", 1834)]) == (None, "NASH")
+      and sf.fight_names([sf.TextItem("Konggster", 1233, 122, (1, 1, 1, 1), 4, part="player_name_right"),
+                          label("YOU", 167)]) == (None, None)
+      and sf.fight_names([sf.TextItem("NASH", 1233, 122, (1, 1, 1, 1), 4, part="player_name_right")])
+      == (None, None))
 check("a replay counts as a fight for the sounds, by its version line",
       sf.fight_running([label("Rank 6398", 174, 122), label("Ver. 07.010", 960, 174)])
       and not sf.fight_on_screen([label("Rank 6398", 174, 122), label("Ver. 07.010", 960, 174)])

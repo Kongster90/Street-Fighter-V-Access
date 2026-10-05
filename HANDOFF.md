@@ -3075,14 +3075,17 @@ fights (2026-10-04). The fight display was known ("YOU" over the left bar),
 the records found, but the battle's settings name no characters in story
 mode ("characters None, None did not settle it"), so player 1's record was
 only guessed by memory order and `certain` stayed false, which keeps the
-sounds off rather than risk the wrong side. The display names the opponent
-over the right bar ("NASH", part "player_name_right"; "player_name_left" is
-"Rank ..." in replays and absent here), so `Fight` now takes `names`
-(`scaleform.fight_names`, fighters' names only) and orders the records by
-those when the settings cannot (`fight.name_code`, from
-character_names.json): records NSH and the story's own M. Bison, VEM, read
-certain. VEM is in no names file, so crossups, which match 3D characters by
-code, may still be silent there. Not yet heard in play.
+sounds off rather than risk the wrong side. The display names the player's
+own fighter ("NASH", in a part called "player_name_right", which holds the
+player's side whichever it is: Survival puts the Fighter ID there), so
+`Fight` now takes `names` (`scaleform.fight_names`: that name, if a
+fighter's, given to the side "YOU" stands over) and orders the records by it
+when the settings cannot (`fight.name_code`, from character_names.json). The
+first version took the part for the right-hand fighter and the user heard
+every sound swapped: they were Nash, on the left ("NASH vs M. BISON").
+Records NSH and the story's own M. Bison, VEM, now read certain with Nash
+first. VEM is in no names file, so crossups, which match 3D characters by
+code, may still be silent there.
 
 **The menus inside CFN's tabs** were walked by the user on 2026-10-04 with a
 recorder running (`snapshots/cfn-2026-10-04`): "everything seems to be

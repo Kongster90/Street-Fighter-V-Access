@@ -157,8 +157,8 @@ check("a fighter's name gives their code", fight.name_code("NASH") == b"NSH" and
       and fight.name_code(None) is None)
 story_records = [0x2000, 0x1000]
 story_codes = {0x2000: b"VEM", 0x1000: b"NSH"}
-check("the opponent named on the right puts the other record first",
-      fight.order_by_character(story_records, story_codes, [None, fight.name_code("NASH")]) == [0x2000, 0x1000])
+check("the player's Nash on the left puts Nash's record first",
+      fight.order_by_character(story_records, story_codes, [fight.name_code("NASH"), None]) == [0x1000, 0x2000])
 
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
