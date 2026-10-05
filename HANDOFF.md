@@ -3070,6 +3070,20 @@ says it once through `screen_summary`, Alt R again. Heard in play the same
 evening, list and panel: "Seems to work now". Whether the panel scrolls, and
 what "Available Stages" holds, are unknown.
 
+**Fight sounds in story mode.** No beeps or counter hits in General Story's
+fights (2026-10-04). The fight display was known ("YOU" over the left bar),
+the records found, but the battle's settings name no characters in story
+mode ("characters None, None did not settle it"), so player 1's record was
+only guessed by memory order and `certain` stayed false, which keeps the
+sounds off rather than risk the wrong side. The display names the opponent
+over the right bar ("NASH", part "player_name_right"; "player_name_left" is
+"Rank ..." in replays and absent here), so `Fight` now takes `names`
+(`scaleform.fight_names`, fighters' names only) and orders the records by
+those when the settings cannot (`fight.name_code`, from
+character_names.json): records NSH and the story's own M. Bison, VEM, read
+certain. VEM is in no names file, so crossups, which match 3D characters by
+code, may still be silent there. Not yet heard in play.
+
 **The menus inside CFN's tabs** were walked by the user on 2026-10-04 with a
 recorder running (`snapshots/cfn-2026-10-04`): "everything seems to be
 working", so nothing was changed there. What follows was the plan from

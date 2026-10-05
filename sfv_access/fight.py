@@ -277,6 +277,21 @@ def order_by_character(records: list[int], record_codes: dict[int, bytes | None]
     return None
 
 
+_codes_by_name: dict[str, bytes] | None = None
+
+
+def name_code(name: str | None) -> bytes | None:
+    """A fighter's character code from their name, b"NSH" for "NASH", or None."""
+    global _codes_by_name
+    if not name:
+        return None
+    if _codes_by_name is None:
+        from . import live
+
+        _codes_by_name = {said: found.encode() for found, said in live.load_name_file().get("names", {}).items()}
+    return _codes_by_name.get(name)
+
+
 def order(records: list[int], links: dict[int, int]) -> tuple[list[int], str]:
     """The two records with player 1's first, and how that was decided.
 
@@ -298,9 +313,13 @@ class Fight:
     for the screen log.
     """
 
-    def __init__(self, note=None) -> None:
+    def __init__(self, note=None, names=None) -> None:
         self.records: list[int] | None = None
         self._note = note or (lambda text: None)
+        # The fighters' names over the health bars, (left, right), either None:
+        # what settles player 1's record when the battle's settings name no
+        # characters, as in story mode's fights.
+        self._names = names or (lambda: (None, None))
         self._last_how = ""
         self._last_side = ""
         # The last order settled by character, player 1's record first, and
@@ -335,12 +354,22 @@ class Fight:
             players = self._players(session)
             codes = {r: code(self._record_code(session.pm, r)) for r in self.records}
             by_character = order_by_character(self.records, codes, [c for _k, c in players])
+            by_names = None
+            if by_character is None:
+                # Story mode's fights leave the settings' characters empty
+                # ("characters None, None" on 2026-10-04, no sound in a fight
+                # against Nash); the display names the opponent, "NASH".
+                by_names = order_by_character(self.records, codes, [name_code(n) for n in self._names()])
             player_codes = [c for _k, c in players]
             mirror = len(player_codes) == 2 and player_codes[0] is not None and player_codes[0] == player_codes[1]
             self.certain = by_character is not None or mirror
             if by_character is not None:
                 ordered, how = by_character, "character"
                 self._decided = by_character
+            elif by_names is not None:
+                ordered, how = by_names, "the names over the health bars"
+                self._decided = by_names
+                self.certain = True
             elif self._decided is not None and set(self._decided) == set(self.records):
                 # The same two records, settled by character already: the
                 # settings are rewritten between Survival's stages, and for a

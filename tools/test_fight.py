@@ -151,6 +151,15 @@ check("nothing to go on is no turn", fight.Turns().steady(0, 0.0))
 check("without both readings there is no crossup",
       not fight.crossup(1, None, on_hit) and not fight.crossup(1, before_hit, None))
 
+# Story mode's fights leave the settings' characters empty; the names over the
+# health bars settle it, as against Nash on 2026-10-04 (records NSH and VEM).
+check("a fighter's name gives their code", fight.name_code("NASH") == b"NSH" and fight.name_code("Rank 6398") is None
+      and fight.name_code(None) is None)
+story_records = [0x2000, 0x1000]
+story_codes = {0x2000: b"VEM", 0x1000: b"NSH"}
+check("the opponent named on the right puts the other record first",
+      fight.order_by_character(story_records, story_codes, [None, fight.name_code("NASH")]) == [0x2000, 0x1000])
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

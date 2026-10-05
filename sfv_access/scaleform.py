@@ -1388,6 +1388,22 @@ def fight_running(items: list[TextItem]) -> bool:
     return fight_on_screen(items) or in_replay(items)
 
 
+# The fight display's names over the health bars: a fighter's in story mode
+# ("NASH"), a Fighter ID online, "Rank 6398" in a replay; only a fighter's
+# name is any use for telling the fighters apart.
+FIGHT_NAME_PARTS = ("player_name_left", "player_name_right")
+
+
+def fight_names(items: list[TextItem] | None) -> tuple[str | None, str | None]:
+    """The fighters named over the left and right health bars, either None."""
+    names = fighter_names()
+    found: list[str | None] = []
+    for part in FIGHT_NAME_PARTS:
+        text = next((it.text.strip() for it in items or () if it.shown and it.part == part), None)
+        found.append(text if text in names else None)
+    return found[0], found[1]
+
+
 def on_versus_screen(items: list[TextItem]) -> bool:
     """The VS screen before a fight, whether or not both fighters show yet."""
     return _versus_panel([it for it in items if it.shown]) is not None
