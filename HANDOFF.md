@@ -44,7 +44,8 @@ history up to commit d2f50c4. Much of this file was written while it ran, so
 mentions of the pixel reader, the pixel path or the fallback below are
 history. Capture remains for Alt S's pictures and the recorders' frames.
 While the game cannot be read the mod now says nothing, and the read keys say
-"Cannot read the game yet."
+"Cannot read the game yet." The user played on after the removal and found
+everything working: "we can keep it this way".
 
 `live.py`, which reads Unreal's objects, serves Alt P, and
 since 2026-09-15 finds the objects that hold the button layouts
