@@ -297,7 +297,7 @@ class App:
                      or scaleform.survival_result(items))
             question = scaleform.prompt_message(items)
             entry = scaleform.text_entry(items)
-            chapter = scaleform.story_chapter(items)
+            chapter = scaleform.story_chapter(items, with_note=True)
             message = scaleform.message_log_entry(items)
             matchup = scaleform.matchup_details(items)
             profile_page = scaleform.profile_page_details(items)

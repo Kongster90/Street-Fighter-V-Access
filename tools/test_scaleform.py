@@ -3630,6 +3630,30 @@ check("the details panel is said as one passage, its empty last heading left out
       repr(sf.tournament_details(tournament_list(2) + tournament_panel())))
 check("and is no panel without its Host", sf.tournament_details(tournament_list(2)) is None)
 
+# General Story's scenes, as read live on 2026-10-04: the number at x 507,
+# a fight's name beside it or none, the side panel's "Act 1 Chapter 1 Scene 2".
+def general_scene(number, name, place):
+    out = [sf.TextItem("General Story", 157, 199, GOLD, 5, chain=(6000, 6001, 6002, 6009), part="labelElement"),
+           sf.TextItem(number, 507, 309, GOLD, 6, chain=(6010, 6011, 6012, 6013, 6019), part="cutNumber",
+                       note="Cleared on Normal"),
+           sf.TextItem(place, 1194, 265, WHITE, 5, chain=(6020, 6021, 6022, 6029), part="cutNumber")]
+    if name:
+        out.append(sf.TextItem(name, 651, 377, GOLD, 6, chain=(6014, 6015, 6012, 6013, 6019), part="cutName"))
+    return out
+
+
+check("General Story's scenes are scenes, a scene with no name its number",
+      sf.story_chapter(general_scene("2", "", "Act 1 Chapter 1 Scene 2")) == "Scene 2"
+      and sf.story_chapter(general_scene("1", "NASH vs M. BISON", "Act 1 Chapter 1 Scene 1")) ==
+      "Scene 1, NASH vs M. BISON")
+check("and the read key adds its ribbons",
+      sf.story_chapter(general_scene("2", "", "Act 1 Chapter 1 Scene 2"), with_note=True) ==
+      "Scene 2. Cleared on Normal")
+check("a chapter is still a chapter", sf.story_chapter(general_scene("2", "", "Act 1 Chapter 2")) == "Chapter 2")
+check("ribbons in words", sf.story_clear_words({"clearIconEasy", "clearIconEx"}) == "Cleared on Normal and Extra"
+      and sf.story_clear_words(set()) == "Not cleared"
+      and sf.story_clear_words({"lockIcon", "clearIconEasy"}) == "Locked")
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

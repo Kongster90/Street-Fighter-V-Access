@@ -2767,6 +2767,19 @@ saying "Subtitles off", "Subtitles on" or "Subtitles, speaker names only".
 Names only says the speaker for each new line, the same speaker again
 included; a line with no speaker, as all of General Story's, says nothing.
 
+General Story's scenes (2026-10-04). Its list of a chapter's scenes is built
+as the chapters are (a number at x 507, "cutNumber", and a name, "cutName"),
+so it read as "Chapter 1, NASH vs M. BISON" and, for a scene with no fight,
+which has no name, "Chapter 2" alone; the user took that for silence. The
+side panel says "Act 1 Chapter 1 Scene 2" and the chapter's title, which Alt
+R already gives (`story_profile`'s column). `story_chapter` now says "Scene"
+where the panel names a scene. Each row has ribbons, "clearIconEasy" (blue)
+and "clearIconEx" (gold), for the Difficulty Setting's NORMAL and EXTRA, and
+a "lockIcon"; in General Story (its tab gold) `_note_story_clears` gives the
+number the note "Cleared on Normal and Extra", "Cleared on Normal", "Not
+cleared" or "Locked", said after it on a move and on Alt R. What a scene with
+no name is (a scene without a fight, by the look of it) is the user's to say.
+
 **Sliders drawn as cells.** Options, Screen Settings, Screen Brightness read as
 its label alone (2026-09-17): no text gives its level, unlike Sound Settings'
 volumes. Found by dumping every display object under its row before and after

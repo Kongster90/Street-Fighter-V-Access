@@ -2757,14 +2757,48 @@ def _story_chapter_parts(items: list[TextItem]) -> tuple[TextItem, list[TextItem
     return number, under
 
 
-def story_chapter(items: list[TextItem]) -> str | None:
-    """"Chapter 3, Apprentice Alley, versus DHALSIM" for the chapter selected, or None."""
+# General Story's lists of chapters and of a chapter's scenes are built as
+# Character Story's chapters are, a number at x 507 and a name beside it
+# ("cutNumber", "cutName"), with the side panel naming the place, "Act 1
+# Chapter 1 Scene 2" (a string of the game's, Stor_Gene_0085). A scene with no
+# fight has no name, so it was said as "Chapter 2" alone (2026-10-04). Each
+# row carries ribbons, "clearIconEasy" and "clearIconEx", shown once cleared
+# on the Difficulty Setting's NORMAL and EXTRA, and a "lockIcon"; the number
+# gets them as its note (`ScaleformText._note_story_clears`).
+GENERAL_STORY = "General Story"
+STORY_NUMBER = "cutNumber"
+STORY_SCENE_PLACE = re.compile(r"^Act \d+ Chapter \d+ Scene \d+$")
+STORY_CLEAR_PARTS = {"clearIconEasy": "Normal", "clearIconEx": "Extra"}
+STORY_LOCK_PART = "lockIcon"
+STORY_ROW_DEPTH = 2
+
+
+def in_general_story(items: list[TextItem]) -> bool:
+    return any(it.shown and it.highlighted and it.text.strip() == GENERAL_STORY for it in items)
+
+
+def story_clear_words(shown_parts: set[str]) -> str:
+    """"Cleared on Normal and Extra", "Not cleared" or "Locked", from the ribbons a row shows."""
+    if STORY_LOCK_PART in shown_parts:
+        return "Locked"
+    cleared = [level for part, level in STORY_CLEAR_PARTS.items() if part in shown_parts]
+    return f"Cleared on {' and '.join(cleared)}" if cleared else "Not cleared"
+
+
+def story_chapter(items: list[TextItem], with_note: bool = False) -> str | None:
+    """"Chapter 3, Apprentice Alley, versus DHALSIM" for the chapter selected, or None.
+
+    In General Story's list of a chapter's scenes, "Scene 2" where the side
+    panel says it is one. `with_note` adds its ribbons, "Cleared on Normal",
+    which a move says after it anyway.
+    """
     found = _story_chapter_parts(items)
     if found is None:
         return None
     number, under = found
     texts = [" ".join(it.text.split()) for it in sorted(under, key=lambda it: (it.y, it.x))]
-    words = [f"Chapter {number.text.strip()}"]
+    scenes = any(it.shown and it.part == STORY_NUMBER and STORY_SCENE_PLACE.match(it.text.strip()) for it in items)
+    words = [f"{'Scene' if scenes else 'Chapter'} {number.text.strip()}"]
     if STORY_LOCKED in texts:
         return ", ".join(words + ["locked"])
     names = fighter_names()
@@ -2772,7 +2806,8 @@ def story_chapter(items: list[TextItem]) -> str | None:
     words += [t for t in texts if t not in names and t != STORY_VERSUS]
     if opponent:
         words.append(f"versus {opponent}")
-    return ", ".join(words)
+    said = ", ".join(words)
+    return phrase([said, number.note]) if with_note and number.note else said
 
 
 def story_chapter_texts(items: list[TextItem]) -> set[str]:
@@ -4449,6 +4484,22 @@ class ScaleformText:
             if stage is not None:
                 stage.chosen = True
 
+    def _note_story_clears(self, items: list[TextItem]) -> None:
+        """General Story: whether the chapter or scene the cursor is on is cleared, as its number's note."""
+        if not in_general_story(items):
+            return
+        for it in items:
+            if not (it.shown and it.selected and it.part == STORY_NUMBER and it.text.strip().isdigit()
+                    and len(it.chain) > STORY_ROW_DEPTH):
+                continue
+            shown_parts = set()
+            for part in self.children(it.chain[STORY_ROW_DEPTH]):
+                name = self.object_name(part)
+                node = self._node(part) if name in STORY_CLEAR_PARTS or name == STORY_LOCK_PART else None
+                if node is not None and node[2] & NODE_VISIBLE:
+                    shown_parts.add(name)
+            it.note = story_clear_words(shown_parts)
+
     def _note_trial_cleared(self, items: list[TextItem]) -> None:
         """Whether the trial tile the cursor is on is cleared, as its number's note."""
         for it in items:
@@ -5116,6 +5167,7 @@ class ScaleformText:
         clear_tournament_ticks(out)
         self._mark_sliders(out)
         self._note_trial_cleared(out)
+        self._note_story_clears(out)
         out.sort(key=lambda it: (round(it.y), it.x))
         if quick:
             selected = tuple(it.text for it in out if it.selected)
