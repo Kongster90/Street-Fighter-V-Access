@@ -163,6 +163,14 @@ quiet in the middle", "Counter hits, and new sounds" and "Crossups"):
   confirmed on 2026-10-04: "I can hear the counter hit and health bar
   sounds fine", in Training and in matches against the CPU. Not yet online.
 
+Played by the user on 2026-10-04 (see "Display objects carry their
+instance names", "Challenges' Missions", "The shop's item lists" and "A
+fighter's list of trials"): Fight Money named after the header's total and
+Missions' rewards, each mission as one sentence, the shop's cursor found by
+its named bar, "Seems to be all reading properly"; a fighter's trials as
+"03. Cleared. Jumping Hard Punch, ...", "works fine"; Trials' fighter list
+read whole going up as well as down, "Fixed worked as it should".
+
 Written and checked against the game or a recording, but not yet heard in
 play: Controller Settings with both players' screens open in Versus. Heard in
 the user's Arcade run of 2026-09-16, and so ticked off: an ending ("G. The
@@ -650,7 +658,7 @@ Going up scrolls a new row in where the last one was, so the new fighter's
 with the same text, and `landed_on`, which says what is newly selected by
 place and text, took it for old. A cell is the name's element's parent
 ("charaName" and "progress" under one object); a new fighter's name now
-brings everything lit in its cell.
+brings everything lit in its cell. Confirmed in play the same day.
 
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but
@@ -706,8 +714,8 @@ and start, then the description line, which names the modes the mission
 counts in. The time left changes every minute, so the narrator says a
 mission only as the cursor reaches another row (`Narrator.mission_said`).
 That mission rewards are Fight Money is the Message Log's word ("CLEAR!
-Reward: 500 Fight Money"). Written 2026-10-04 against the live page; not
-yet heard in play.
+Reward: 500 Fight Money"). Written 2026-10-04 against the live page and
+confirmed in play the same day.
 
 **The render node's visible bit only counts on parents.** It is clear on the
 Exit prompt's question while the question is on screen, and dropping the
