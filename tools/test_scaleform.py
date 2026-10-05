@@ -3447,6 +3447,79 @@ check("with no header to tell by, it is left as it is",
       sf.name_login(["LOGIN"], header("---")[1:]) == ["LOGIN"]
       and sf.name_login(["EXIT"], header("128690")) == ["EXIT"])
 
+# Fighting Chance in the shop, as recorded on 2026-10-04: the purchase prompt,
+# the cutscene's hint, and the prize, over the list whose row stays gold.
+def shop_row(price):
+    out = [sf.TextItem("[Dojo Fortune] Single Reading", 491, 524, GOLD, 7, chain=(3000, 3001, 3002, 3003, 3009),
+                       part="goodsNameElement"),
+           sf.TextItem(price, 1334, 528, GOLD, 7, chain=(3010, 3011, 3002, 3003, 3009), part="moneyNameElement")]
+    return out
+
+
+def purchase_prompt():
+    rows = [("Price", "valueNameElement", 414, 603), ("100", "valueMoneyNameElement", 771, 606),
+            ("Balance", "haveNameElement", 972, 603), ("129940", "haveMoneyNameElement", 1322, 606),
+            ("Balance after purchase", "balanceNameElement", 893, 646),
+            ("129840", "balanceMoneyNameElement", 1262, 650)]
+    out = [sf.TextItem("Do you want to purchase this content?", 289, 286, WHITE, 5, chain=(3100, 3101, 3102, 3109),
+                       part="labelElement")]
+    out += [sf.TextItem(t, x, y, WHITE, 5, chain=(3110 + i, 3120 + i, 3103, 3109), part=part)
+            for i, (t, part, x, y) in enumerate(rows)]
+    out += [sf.TextItem("Purchase with Fight Money", 523, 702, GOLD, 7, chain=(3130, 3131, 3132, 3133, 3134, 3109),
+                        part="labelElement"),
+            sf.TextItem("Buy with Fortune Tickets", 1011, 702, WHITE, 7, chain=(3140, 3141, 3142, 3143, 3134, 3109),
+                        part="labelElement")]
+    return out
+
+
+def prize():
+    window = (3205, 3206, 3209)
+    return [sf.TextItem("Items Obtained", 252, 101, WHITE, 8, chain=(3200, 3201, 3202, 3203) + window,
+                        part="labelElement"),
+            sf.TextItem("Ceremonial Salt", 748, 170, WHITE, 9, chain=(3210, 3211, 3212, 3213, 3214, 3203) + window,
+                        part="goodsNameElement"),
+            sf.TextItem("[Slots Used: 1 Max Owned: 5]\nThis ceremonial salt pile is said to bring good luck when "
+                        "put on display.", 748, 219, WHITE, 9, chain=(3220, 3221, 3212, 3213, 3214, 3203) + window,
+                        part="goodsInfoElement"),
+            sf.TextItem("Ceremonial Salt", 531, 380, WHITE, 10, chain=(3230, 3231, 3232, 3233, 3234, 3235, 3203)
+                        + window, part="goodsNameElement"),
+            sf.TextItem("0%", 1235, 461, WHITE, 7, chain=(3240, 3241, 3242, 3203) + window, part="currentPoint"),
+            sf.TextItem("+0%", 1336, 459, WHITE, 7, chain=(3250, 3241, 3242, 3203) + window, part="addPoint")]
+
+
+def hint(text):
+    return [sf.TextItem(f"  {text}", 1566, 980, WHITE, 5, chain=(3300, 3301, 3302, 3309), part="mText",
+                        buttons=((0, text),))]
+
+
+prompt = purchase_prompt()
+sf.name_amounts(prompt)
+check("the purchase prompt is its question, price and balances in Fight Money, then the button",
+      sf.purchase_details(shop_row("100 Fight Money") + prompt) ==
+      (["Do you want to purchase this content?", "Price 100 Fight Money", "Balance 129940 Fight Money",
+        "Balance after purchase 129840 Fight Money"], "Purchase with Fight Money"),
+      repr(sf.purchase_details(shop_row("100 Fight Money") + prompt)))
+check("a reading's prize, its description and the Luck Gauge",
+      sf.fortune_result(prize()) == "Items Obtained: Ceremonial Salt. Slots Used: 1 Max Owned: 5. This ceremonial "
+      "salt pile is said to bring good luck when put on display. Luck Gauge 0%, +0%", repr(sf.fortune_result(prize())))
+real_name = sf.buttons.name
+sf.buttons.name = lambda number: "A"
+try:
+    said = narrate([(0.0, shop_row("100 Fight Money")), (1.0, shop_row("100 Fight Money") + prompt),
+                    (2.0, shop_row("100 Fight Money")), (2.5, shop_row("100 Fight Money") + hint("Skip Cutscene")),
+                    (5.0, shop_row("100 Fight Money") + hint("Next Screen")), (8.0, shop_row("100 Fight Money")),
+                    (8.1, shop_row("500 Fight Money") + prize()), (9.0, shop_row("500 Fight Money") + prize()),
+                    (12.0, shop_row("500 Fight Money"))])
+finally:
+    sf.buttons.name = real_name
+check("a reading is said from its prompt to its prize, and the list's new price beneath is not",
+      [x for _, x in said][1:] == [
+          "Do you want to purchase this content? Price 100 Fight Money. Balance 129940 Fight Money. Balance after "
+          "purchase 129840 Fight Money. Purchase with Fight Money",
+          "A, Skip Cutscene", "A, Next Screen",
+          "Items Obtained: Ceremonial Salt. Slots Used: 1 Max Owned: 5. This ceremonial salt pile is said to bring "
+          "good luck when put on display. Luck Gauge 0%, +0%"], repr(said))
+
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")
 sys.exit(0 if ok else 1)

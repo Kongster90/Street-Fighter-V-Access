@@ -1898,7 +1898,11 @@ FIGHT_MONEY = "Fight Money"
 # name of the element holding them: the header's Fight Money total, and a shop
 # item's price, which shows only on what you do not own; what is sold for real
 # money (the stage Ring of Justice) shows no price in the game at all.
-AMOUNT_WORDS = {"moneyLabelElement": FIGHT_MONEY, "moneyNameElement": FIGHT_MONEY}
+AMOUNT_WORDS = {"moneyLabelElement": FIGHT_MONEY, "moneyNameElement": FIGHT_MONEY,
+                # A purchase prompt's price and balances, the price beside the
+                # Fight Money picture and the balance the header's total.
+                "valueMoneyNameElement": FIGHT_MONEY, "haveMoneyNameElement": FIGHT_MONEY,
+                "balanceMoneyNameElement": FIGHT_MONEY}
 MISSION_TITLE = "target_title"
 MISSION_PROGRESS = "progress"
 MISSION_REWARD = "reward"
@@ -2428,6 +2432,98 @@ def replay_controls(items: list[TextItem]) -> tuple[str, str] | None:
         if it.shown and it.buttons and any(REPLAY_CONTROLS_MARK in label for _number, label in it.buttons):
             return " ".join(it.text.split()), button_hint_words(it)
     return None
+
+
+# ------------------------------------------------------------ fighting chance
+#
+# The shop's Fighting Chance sells readings, a draw of one prize or ten. On
+# 2026-10-04 the user drew twice with a recorder running, and heard only the
+# button of the purchase prompt and then nothing of the prize.
+#
+# The prompt asks "Do you want to purchase this content?" over a Price, a
+# Balance and a Balance after purchase, each a label and a number in named
+# elements ("valueNameElement" and "valueMoneyNameElement", "have...",
+# "balance..."), the price beside the Fight Money picture, then its buttons:
+# "Purchase with Fight Money" and "Buy with Fortune Tickets" (greyed with no
+# tickets), or "Free Reading" alone for a first reading. The buttons are gold,
+# so nothing read the rest as a prompt's message; `purchase_details` gives it
+# for the narrator to say before the button, as it does for notices.
+#
+# A cutscene follows, the prize as a picture in a bubble, its only text the
+# button hint in the corner ("Skip Cutscene", then "Next Screen"), a field the
+# interface names "mText"; `cutscene_hint` says it with its button.
+#
+# Then "Items Obtained": the prize's name and description, a row naming each
+# prize (one for a single reading; a ten reading is unseen), and the Luck
+# Gauge, "0%" and "+0%" ("currentPoint", "addPoint"), which leftover Good Luck
+# Charms fill toward a Fortune Ticket, so the description line says. It stood
+# for fourteen seconds unsaid while the list behind it said its new price.
+PURCHASE_QUESTION_MARK = "?"
+PURCHASE_ROWS = (("valueNameElement", "valueMoneyNameElement"),
+                 ("haveNameElement", "haveMoneyNameElement"),
+                 ("balanceNameElement", "balanceMoneyNameElement"))
+FORTUNE_RESULT_HEADING = "Items Obtained"
+FORTUNE_WINDOW_DEPTH = 4          # the heading's element, two holders, then the window
+FORTUNE_NAME = "goodsNameElement"
+FORTUNE_INFO = "goodsInfoElement"
+FORTUNE_GAUGE = ("currentPoint", "addPoint")
+CUTSCENE_HINT = "mText"
+CUTSCENE_HINT_TOP = 900
+
+
+def purchase_details(items: list[TextItem]) -> tuple[list[str], str] | None:
+    """The purchase prompt's question and figures, and the button the cursor is on, or None."""
+    shown = [it for it in items if it.shown]
+    parts = {it.part: it for it in shown if it.part}
+    if PURCHASE_ROWS[-1][0] not in parts:
+        return None
+    price = parts.get(PURCHASE_ROWS[0][0]) or parts[PURCHASE_ROWS[-1][0]]
+    question = next((it for it in sorted(shown, key=lambda it: it.y)
+                     if it.y < price.y and it.text.strip().endswith(PURCHASE_QUESTION_MARK)), None)
+    out = [question.text.strip()] if question else []
+    for label, amount in PURCHASE_ROWS:
+        if label in parts and amount in parts:
+            out.append(f"{parts[label].text.strip()} {parts[amount].text.strip()}")
+    lowest = max(parts[label].y for label, _amount in PURCHASE_ROWS if label in parts)
+    button = next((it for it in shown if it.highlighted and it.y > lowest), None)
+    if button is None:
+        return None
+    return out, button.text.strip()
+
+
+def fortune_result(items: list[TextItem]) -> str | None:
+    """"Items Obtained: Ceremonial Salt. ... Luck Gauge 0%, +0%" while a reading's prizes show."""
+    shown = [it for it in items if it.shown]
+    heading = next((it for it in shown if it.text.strip() == FORTUNE_RESULT_HEADING
+                    and len(it.chain) > FORTUNE_WINDOW_DEPTH), None)
+    if heading is None:
+        return None
+    window = heading.chain[FORTUNE_WINDOW_DEPTH]
+    inside = [it for it in shown if it is not heading and window in it.chain and it.text.strip()]
+    names = [it for it in inside if it.part == FORTUNE_NAME]
+    if not names:
+        return None
+    detail = min(names, key=lambda it: it.y)
+    rows = sorted((it for it in names if it is not detail), key=lambda it: (round(it.y), it.x)) or [detail]
+    prizes = _unique([" ".join(it.text.split()) for it in rows])
+    out = [f"{FORTUNE_RESULT_HEADING}: {', '.join(prizes)}"]
+    info = next((it for it in inside if it.part == FORTUNE_INFO), None)
+    if info is not None and len(prizes) == 1:
+        # "[Slots Used: 1 Max Owned: 5]" heads some descriptions.
+        out.append(re.sub(r"^\[([^\]]*)\]\s*", r"\1. ", " ".join(info.text.split())))
+    gauge = [next((it.text.strip() for it in inside if it.part == part), "") for part in FORTUNE_GAUGE]
+    if gauge[0]:
+        out.append(f"Luck Gauge {', '.join(filter(None, gauge))}")
+    return phrase(out)
+
+
+def cutscene_hint(items: list[TextItem]) -> str | None:
+    """A cutscene's button hint with its button, "A, Next Screen", while one shows."""
+    hint = next((it for it in items if it.shown and it.part == CUTSCENE_HINT and it.y >= CUTSCENE_HINT_TOP
+                 and it.text.strip()), None)
+    if hint is None:
+        return None
+    return button_hint_words(hint) if hint.buttons else " ".join(hint.text.split())
 
 
 # --------------------------------------------------------------- character story
@@ -3617,6 +3713,9 @@ def screen_summary(items: list[TextItem], health: str | None = None,
         return True, summary
     tips, summary = tips_screen(items)
     if tips:
+        return True, summary
+    summary = fortune_result(items)
+    if summary is not None:
         return True, summary
     # The online result screen is tried here as well as under `on_results`,
     # since that rule wants the heading and the outcome in one movie and

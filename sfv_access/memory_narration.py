@@ -261,6 +261,8 @@ class Narrator:
         self.timeline_said = None
         # The mission row last said on the Missions page, None elsewhere.
         self.mission_said = None
+        # A cutscene's button hint as last said, None while none shows.
+        self.hint_said: str | None = None
         # The trial tile the cursor is on, since when, and what was said for it.
         self.trial_number: str | None = None
         self.trial_since = 0.0
@@ -487,7 +489,9 @@ class Narrator:
                     parts = (parts or []) + [f"Health now at {round(level * 100)} percent"]
         if summary_screen:
             self.summary_seen_at = now
-            if not any(it.selected for it in items):
+            # A reading's prizes stand over the shop's list, whose row stays
+            # gold and changed its price beneath them: that is no move.
+            if not any(it.selected for it in items) or scaleform.fortune_result(items):
                 parts, self.pending = None, None
             if (summary or "") != self.summary_pending:
                 self.summary_pending, self.summary_since = summary or "", now
@@ -530,6 +534,13 @@ class Narrator:
         if not intro:
             intro, button = phrase(scaleform.notice_details(items, brief=True)), scaleform.NOTICE_BUTTON
             held, moved_on = intro, [intro, button]
+        if not intro:
+            # The shop's purchase prompt: its question, price and balances,
+            # then the button, which is gold and so the only thing a move names.
+            purchase = scaleform.purchase_details(items)
+            if purchase:
+                intro, button = phrase(purchase[0]), purchase[1]
+                held, moved_on = intro, [intro, button]
         if not intro:
             self.intro_said = ""
         elif held != self.intro_said:
@@ -682,6 +693,16 @@ class Narrator:
             fresh = chat[:chat.index(self.chat_said)] if self.chat_said in chat else chat[:1]
             self.chat_said = chat[0]
             parts = (parts or []) + list(reversed(fresh))
+
+        # A cutscene's button hint, "A, Skip Cutscene" and then "A, Next
+        # Screen" over a reading's prize, is all it says, and when to press.
+        hint = scaleform.cutscene_hint(items)
+        if hint is None:
+            self.hint_said = None
+        elif hint != self.hint_said:
+            self.hint_said = hint
+            parts = (parts or []) + [hint]
+            self.said = ""
 
         # The game's short messages select nothing, so they are said as they
         # appear: once while they show, and again if the same one comes back,

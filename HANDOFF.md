@@ -1830,6 +1830,26 @@ Ring of Justice, sold on Steam, has no price drawn at all, so nothing is said
 for it. No item for sale for Fight Money was seen, so a price being said is
 untried.
 
+**Fighting Chance.** The shop's readings, drawn twice by the user on
+2026-10-04 with a quiet recorder beside the mod (every screen change with each
+text's chain and element names, and a frame whenever the game was in front;
+`snapshots/shop-fortune-2026-10-04b`). Only the purchase prompt's button was
+said, then nothing about the prize. The prompt, "Do you want to purchase this
+content?", has Price, Balance and Balance after purchase in named elements
+and gold buttons ("Purchase with Fight Money", "Buy with Fortune Tickets"
+greyed without tickets, or "Free Reading" alone the first time); being gold,
+nothing read the rest. `purchase_details` gives it to the narrator's
+introductions, said before the button. A cutscene shows the prize as a
+picture, its one text the corner hint ("Skip Cutscene", then "Next
+Screen", element "mText"), said with its button by `cutscene_hint`. Then
+"Items Obtained", the prize's name and description, a row per prize and the
+Luck Gauge ("currentPoint", "addPoint"), said once through `screen_summary`
+as "Items Obtained: Ceremonial Salt. Slots Used: 1 Max Owned: 5. This
+ceremonial salt pile ... Luck Gauge 0%, +0%"; the list's row behind it stays
+gold and its price changed (free to 500) while the prize showed, so moves
+are not said there. A ten reading's prizes, and buying with tickets, are
+unseen. Replayed from the recording; not yet heard in play.
+
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the
 right) read from the screen before memory took over, and never from memory:

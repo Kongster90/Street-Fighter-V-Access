@@ -530,6 +530,7 @@ class App:
             timeline = scaleform.timeline_entry(items)
             mission = scaleform.mission_entry(items, brief=False)
             trial = scaleform.trial_preview(items)
+            purchase = scaleform.purchase_details(items)
             if message and entry is None:
                 # What the message says, then when it arrived.
                 said = memory_narration.phrase([message[0], message[1]])
@@ -542,6 +543,9 @@ class App:
             elif profile_page and entry is None:
                 # Any other Fighter Profile page: its name, then its figures.
                 said = memory_narration.phrase(profile_page)
+            elif purchase and entry is None:
+                # The shop's purchase prompt: question, price, balances, button.
+                said = memory_narration.phrase(purchase[0] + [purchase[1]])
             elif trial and trial[1] and entry is None:
                 # A trial tile: its number and the combo beside it.
                 said = trial[1]
@@ -573,7 +577,10 @@ class App:
                 said = memory_narration.phrase([said] + details)
             _summary_screen, summary = scaleform.screen_summary(
                 items, self.narrator.health_words(), buttons.fighter_id(), self.narrator.player_side)
-            if summary:
+            if summary and scaleform.fortune_result(items):
+                # A reading's prizes, without the shop's list behind them.
+                said = summary
+            elif summary:
                 said = memory_narration.phrase([summary, said])
             layout = scaleform.preview_summary(items)
             if layout:
