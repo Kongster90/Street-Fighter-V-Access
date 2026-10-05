@@ -1847,8 +1847,16 @@ Luck Gauge ("currentPoint", "addPoint"), said once through `screen_summary`
 as "Items Obtained: Ceremonial Salt. Slots Used: 1 Max Owned: 5. This
 ceremonial salt pile ... Luck Gauge 0%, +0%"; the list's row behind it stays
 gold and its price changed (free to 500) while the prize showed, so moves
-are not said there. A ten reading's prizes, and buying with tickets, are
-unseen. Replayed from the recording; not yet heard in play.
+are not said there. A ten reading (`snapshots/shop-fortune-2026-10-04c`)
+lists its ten prizes as rows, the cursor's lit by its bar and described in
+the panel above: the list is said once, after `FORTUNE_SETTLE` since the
+rows come in a few at a time, then each prize by name as the cursor moves,
+and Alt R gives the one the cursor is on with its description
+(`fortune_detail`). With "Buy with Fortune Tickets" chosen the prompt's rows
+become "Fortune Tickets 10", "Owned 15", "Amount Owned after Purchase 5", so
+"Fight Money" goes only after the amounts when the first label is "Price".
+Heard live on 2026-10-04 up to the prize list; the moves through the prizes
+were silent until fixed that evening.
 
 **Arcade path select.** The paths (STREET FIGHTER I to V, each row with
 NO. OF BATTLES and BEST SCORE, the one you are on gold, a description to the

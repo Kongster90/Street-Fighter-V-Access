@@ -1921,8 +1921,15 @@ def _row_of(it: TextItem) -> int | None:
 def name_amounts(items: list[TextItem]) -> None:
     """Put a word after each number whose element says what it counts: "128690 Fight Money"."""
     missions = {_row_of(it) for it in items if it.part == MISSION_TITLE} - {None}
+    # A purchase prompt counts Fight Money under "Price", and Fortune Tickets
+    # under "Fortune Tickets", "Owned" and "Amount Owned after Purchase" once
+    # its tickets button is chosen (10, 15 and 5 on 2026-10-04).
+    price = next((it for it in items if it.part == PURCHASE_ROWS[0][0]), None)
+    in_tickets = price is not None and price.text.strip() != PURCHASE_PRICE
     for it in items:
         words = AMOUNT_WORDS.get(it.part)
+        if in_tickets and it.part in PURCHASE_AMOUNTS:
+            words = None
         if words is None and it.part == MISSION_REWARD and _row_of(it) in missions:
             words = FIGHT_MONEY
         if words and _BARE_AMOUNT.fullmatch(it.text.strip()):
@@ -2462,6 +2469,8 @@ PURCHASE_QUESTION_MARK = "?"
 PURCHASE_ROWS = (("valueNameElement", "valueMoneyNameElement"),
                  ("haveNameElement", "haveMoneyNameElement"),
                  ("balanceNameElement", "balanceMoneyNameElement"))
+PURCHASE_AMOUNTS = frozenset(amount for _label, amount in PURCHASE_ROWS)
+PURCHASE_PRICE = "Price"
 FORTUNE_RESULT_HEADING = "Items Obtained"
 FORTUNE_WINDOW_DEPTH = 4          # the heading's element, two holders, then the window
 FORTUNE_NAME = "goodsNameElement"
@@ -2510,6 +2519,41 @@ def fortune_result(items: list[TextItem]) -> str | None:
     info = next((it for it in inside if it.part == FORTUNE_INFO), None)
     if info is not None and len(prizes) == 1:
         # "[Slots Used: 1 Max Owned: 5]" heads some descriptions.
+        out.append(re.sub(r"^\[([^\]]*)\]\s*", r"\1. ", " ".join(info.text.split())))
+    gauge = [next((it.text.strip() for it in inside if it.part == part), "") for part in FORTUNE_GAUGE]
+    if gauge[0]:
+        out.append(f"Luck Gauge {', '.join(filter(None, gauge))}")
+    return phrase(out)
+
+
+def _fortune_window(shown: list[TextItem]) -> int | None:
+    heading = next((it for it in shown if it.text.strip() == FORTUNE_RESULT_HEADING
+                    and len(it.chain) > FORTUNE_WINDOW_DEPTH), None)
+    return heading.chain[FORTUNE_WINDOW_DEPTH] if heading else None
+
+
+def fortune_texts(items: list[TextItem]) -> set[str]:
+    """Every text on a reading's prize screen, to tell its moves from the list's behind it."""
+    shown = [it for it in items if it.shown]
+    window = _fortune_window(shown)
+    if window is None:
+        return set()
+    return {" ".join(it.text.split()) for it in shown if window in it.chain}
+
+
+def fortune_detail(items: list[TextItem]) -> str | None:
+    """The prize the cursor is on, its description and the Luck Gauge, for the read key."""
+    shown = [it for it in items if it.shown]
+    window = _fortune_window(shown)
+    if window is None:
+        return None
+    inside = [it for it in shown if window in it.chain and it.text.strip()]
+    names = [it for it in inside if it.part == FORTUNE_NAME]
+    if not names:
+        return None
+    out = [" ".join(min(names, key=lambda it: it.y).text.split())]
+    info = next((it for it in inside if it.part == FORTUNE_INFO), None)
+    if info is not None:
         out.append(re.sub(r"^\[([^\]]*)\]\s*", r"\1. ", " ".join(info.text.split())))
     gauge = [next((it.text.strip() for it in inside if it.part == part), "") for part in FORTUNE_GAUGE]
     if gauge[0]:

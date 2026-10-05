@@ -38,6 +38,9 @@ GROUP_MEMORY = 1.0     # how long a prompt counts as open once its panel is gone
 # VS screen's stage name arrived a read after the rest, and the sentence was
 # said without it and then again with it.
 SUMMARY_SETTLE = 0.4
+# Ten prizes come in a row at a time; four of ten stood half a second in one
+# recording (2026-10-04), so their list waits longer to be complete.
+FORTUNE_SETTLE = 1.0
 # A trial's steps are said again on a restart, but not twice for one: the
 # restart notice can come and go while it shows.
 TRIAL_RESTART_GAP = 3.0
@@ -490,13 +493,20 @@ class Narrator:
         if summary_screen:
             self.summary_seen_at = now
             # A reading's prizes stand over the shop's list, whose row stays
-            # gold and changed its price beneath them: that is no move.
-            if not any(it.selected for it in items) or scaleform.fortune_result(items):
+            # gold and changed its price beneath them: that is no move. Moving
+            # through ten prizes is, once the list of them has been said.
+            prizes = scaleform.fortune_texts(items)
+            if not any(it.selected for it in items):
                 parts, self.pending = None, None
+            elif prizes:
+                said_already = summary is not None and summary == self.summary_said
+                parts = [p for p in (parts or []) if said_already and " ".join(p.split()) in prizes] or None
+                self.pending = None
             if (summary or "") != self.summary_pending:
                 self.summary_pending, self.summary_since = summary or "", now
             # A tips screen's tip arrives whole, and can be gone in a tenth of a second.
-            settle = 0.0 if scaleform.tips_screen(items)[1] else SUMMARY_SETTLE
+            settle = (0.0 if scaleform.tips_screen(items)[1]
+                      else FORTUNE_SETTLE if prizes else SUMMARY_SETTLE)
             if summary and summary != self.summary_said:
                 if now - self.summary_since >= settle:
                     # Anything selected while it settled comes after it, once:

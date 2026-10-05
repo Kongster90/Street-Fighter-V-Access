@@ -3508,7 +3508,7 @@ try:
     said = narrate([(0.0, shop_row("100 Fight Money")), (1.0, shop_row("100 Fight Money") + prompt),
                     (2.0, shop_row("100 Fight Money")), (2.5, shop_row("100 Fight Money") + hint("Skip Cutscene")),
                     (5.0, shop_row("100 Fight Money") + hint("Next Screen")), (8.0, shop_row("100 Fight Money")),
-                    (8.1, shop_row("500 Fight Money") + prize()), (9.0, shop_row("500 Fight Money") + prize()),
+                    (8.1, shop_row("500 Fight Money") + prize()), (9.2, shop_row("500 Fight Money") + prize()),
                     (12.0, shop_row("500 Fight Money"))])
 finally:
     sf.buttons.name = real_name
@@ -3519,6 +3519,47 @@ check("a reading is said from its prompt to its prize, and the list's new price 
           "A, Skip Cutscene", "A, Next Screen",
           "Items Obtained: Ceremonial Salt. Slots Used: 1 Max Owned: 5. This ceremonial salt pile is said to bring "
           "good luck when put on display. Luck Gauge 0%, +0%"], repr(said))
+
+# With the tickets button chosen the prompt counts Fortune Tickets, not Fight
+# Money: "Fortune Tickets 10", "Owned 15", "Amount Owned after Purchase 5".
+tickets = purchase_prompt()
+for it, text in zip(tickets[1:7], ["Fortune Tickets", "10", "Owned", "15", "Amount Owned after Purchase", "5"]):
+    it.text = text
+tickets[7].tint, tickets[8].tint = WHITE, GOLD
+sf.name_amounts(tickets)
+check("paying with tickets, the prompt's figures are tickets",
+      sf.purchase_details(shop_row("4500 Fight Money") + tickets) ==
+      (["Do you want to purchase this content?", "Fortune Tickets 10", "Owned 15", "Amount Owned after Purchase 5"],
+       "Buy with Fortune Tickets"), repr(sf.purchase_details(shop_row("4500 Fight Money") + tickets)))
+
+
+# Ten prizes: their list once, then each prize by name as the cursor moves,
+# its description on the read key.
+def ten_prizes(cursor):
+    names = ["Color EX6 (Story): Nash", "Street Fighter IV Guile", "Super Street Fighter IV Abel"]
+    window = (3405, 3406, 3409)
+    out = [sf.TextItem("Items Obtained", 252, 101, WHITE, 8, chain=(3400, 3401, 3402, 3403) + window,
+                       part="labelElement"),
+           sf.TextItem(names[cursor], 748, 170, WHITE, 9, chain=(3410, 3411, 3412, 3413, 3414, 3403) + window,
+                       part="goodsNameElement"),
+           sf.TextItem(f"About {names[cursor]}.", 748, 219, WHITE, 9,
+                       chain=(3420, 3421, 3412, 3413, 3414, 3403) + window, part="goodsInfoElement"),
+           sf.TextItem("0%", 1235, 839, WHITE, 7, chain=(3440, 3441, 3442, 3403) + window, part="currentPoint")]
+    out += [sf.TextItem(n, 531, 380 + 42 * i, WHITE, 10, chain=(3450 + i, 3460 + i, 3470 + i, 3480, 3481, 3482, 3403)
+                        + window, part="goodsNameElement", chosen=i == cursor, row=3470 + i)
+            for i, n in enumerate(names)]
+    return shop_row("4500 Fight Money") + out
+
+
+said = narrate([(0.0, shop_row("4500 Fight Money")), (1.0, ten_prizes(0)), (2.5, ten_prizes(0)),
+                (3.0, ten_prizes(1)), (3.5, ten_prizes(2))])
+check("ten prizes are listed once, then each said by name as the cursor reaches it",
+      [x for _, x in said][1:] == ["Items Obtained: Color EX6 (Story): Nash, Street Fighter IV Guile, Super Street "
+                                   "Fighter IV Abel. Luck Gauge 0%", "Street Fighter IV Guile",
+                                   "Super Street Fighter IV Abel"], repr(said))
+check("the read key gives the prize the cursor is on with its description",
+      sf.fortune_detail(ten_prizes(1)) == "Street Fighter IV Guile. About Street Fighter IV Guile. Luck Gauge 0%",
+      repr(sf.fortune_detail(ten_prizes(1))))
 
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")

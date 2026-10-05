@@ -577,9 +577,11 @@ class App:
                 said = memory_narration.phrase([said] + details)
             _summary_screen, summary = scaleform.screen_summary(
                 items, self.narrator.health_words(), buttons.fighter_id(), self.narrator.player_side)
-            if summary and scaleform.fortune_result(items):
-                # A reading's prizes, without the shop's list behind them.
-                said = summary
+            prize = scaleform.fortune_detail(items)
+            if prize:
+                # A reading's prize the cursor is on, with its description,
+                # without the shop's list behind it.
+                said = prize
             elif summary:
                 said = memory_narration.phrase([summary, said])
             layout = scaleform.preview_summary(items)
