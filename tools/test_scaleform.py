@@ -1087,6 +1087,14 @@ name_first = [it for it in scrolled if not it.text.startswith("SCORE 1040")]
 check("a fighter's score arriving a read after the name says the name again with it",
       [t.strip() for t in sf.landed_on(name_first, scrolled)] == ["ZANGIEF", "SCORE 1040"],
       repr(sf.landed_on(name_first, scrolled)))
+# Moving up Trials' fighter list scrolls a row in where the last one was: the
+# new fighter's "10/10" sat exactly where the last one's had (2026-10-04).
+laura = [sf.TextItem("LAURA", 1280, 186, GOLD, 6, chain=(51, 52, 53, 98, 99)),
+         sf.TextItem("10/10", 1536, 241, GOLD, 6, chain=(54, 55, 53, 98, 99))]
+dhalsim = [sf.TextItem("DHALSIM", 1280, 186, GOLD, 6, chain=(61, 62, 63, 98, 99)),
+           sf.TextItem("10/10", 1536, 241, GOLD, 6, chain=(64, 65, 63, 98, 99))]
+check("a fighter scrolled in where the last was is said with their whole cell",
+      sf.landed_on(laura, dhalsim) == ["DHALSIM", "10/10"], repr(sf.landed_on(laura, dhalsim)))
 player_one = sf.TextItem("KEN", 300, 900, GOLD, 5, chain=(11, 12, 13, 99))
 player_two = sf.TextItem("RYU", 1600, 900, GOLD, 5, chain=(21, 22, 23, 99))
 check("another fighter lit in a cell of their own is said alone",

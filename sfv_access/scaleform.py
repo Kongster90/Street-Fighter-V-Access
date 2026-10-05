@@ -478,6 +478,11 @@ def landed_on(
     # already lit, the name is said again with it. A cell holds one fighter's
     # name: character select's two sides hang from one holder, and taking that
     # for a cell said "KOLIN. KEN" as player 1 moved.
+    #
+    # The other way about too: a fighter's name new, the rest of its cell lit
+    # before. Moving up Trials' fighter list scrolls a row in where the last
+    # one was, and DHALSIM's "10/10" sat exactly where LAURA's had, so only
+    # "DHALSIM" was said (2026-10-04). A new name brings its whole cell.
     if fresh:
         names = fighter_names()
         holding: dict[int, set[str]] = defaultdict(set)
@@ -486,7 +491,8 @@ def landed_on(
                 for obj in it.chain[1:CELL_DEPTH]:
                     holding[obj].add(it.text.strip())
         cells = {obj for it in fresh for obj in it.chain[1:CELL_DEPTH] if len(holding.get(obj, ())) == 1}
-        kept = [it for it in lit if _where(it) in was_lit and it.text.strip() in names
+        new_name = any(it.text.strip() in names for it in fresh)
+        kept = [it for it in lit if _where(it) in was_lit and (new_name or it.text.strip() in names)
                 and cells.intersection(it.chain[1:CELL_DEPTH])]
         if kept:
             chosen = {id(it) for it in kept + fresh}

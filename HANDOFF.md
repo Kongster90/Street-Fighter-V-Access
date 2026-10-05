@@ -643,6 +643,15 @@ measured median 194 ms, one in ten over 294, the worst 563, and the user
 called it "working pretty well"; with the second, "working nicely"
 (2026-09-30). The third was not tried in play; it only finds more.
 
+Moving up Trials' fighter list on 2026-10-04 said "DHALSIM" alone, and
+KARIN, VEGA and NASH the same, where the rest had "10/10" after the name.
+Going up scrolls a new row in where the last one was, so the new fighter's
+"10/10" sat exactly where the last fighter's had, gold at the same place
+with the same text, and `landed_on`, which says what is newly selected by
+place and text, took it for old. A cell is the name's element's parent
+("charaName" and "progress" under one object); a new fighter's name now
+brings everything lit in its cell.
+
 **Templates hold placeholder text.** Every prompt carries a run of lower-case
 w, and Training's loading screen runs of capital W. They are never drawn, but
 their render state looks exactly like the question's, so they are recognised
