@@ -2219,8 +2219,9 @@ user declined a release for now.
 
 Not yet heard in play, the first things to check: the free-stretch probe's last change
 (98fe0fc, it only finds more); crossups landed by projectiles or ground
-moves, and air throws and command throws (whether they set the throw mark,
--2, is unknown; the turn rule may still catch them); crossups in a mirror
+moves, and command throws (whether they set the throw mark, -2, is unknown;
+the turn rule may still catch them). Air throws, forwards and backwards,
+were heard silent as they should be on 2026-10-05. Crossups in a mirror
 match are skipped by design, the characters being matched to records by
 the character code of the costume's folder. On 2026-10-04 crossups were
 found silent for Ryu in costume 16 and his forward throw sounding as one;
