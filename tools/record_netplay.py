@@ -44,13 +44,13 @@ def main() -> None:
             if reading is None:
                 time.sleep(1.0)
                 continue
-            key = (reading.focus_id, reading.focus, tuple(r.text for r in reading.runs))
+            key = (reading.focus_id, reading.focus, reading.checked, tuple(r.text for r in reading.runs))
             if key != last_key:
                 last_key, n = key, n + 1
                 record = {"n": n, "time": dt.datetime.now().strftime("%H:%M:%S.%f")[:-3],
                           "frame": reading.frame, "focus_id": reading.focus_id,
                           "focus_window": reading.focus_window, "focus": reading.focus,
-                          "focused": [r.text for r in reading.focused()],
+                          "focused": [r.text for r in reading.focused()], "checked": reading.checked,
                           "runs": [{k: (round(v, 1) if isinstance(v, float) else v) for k, v in asdict(r).items()}
                                    for r in reading.runs]}
                 if game.in_front() and time.time() - last_png > 0.4:
