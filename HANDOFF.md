@@ -2074,6 +2074,22 @@ and "Netplay" on the way back, and Alt R there starts with the window.
 ImGui also drops focus to no item (NavId 0) for a moment after a button
 press; that is ignored, since it repeated the item.
 
+**Hosting, first heard.** The user hosted at 13:51 and heard "Send this
+code to the other player: L 6 K D C W" (SFVR's log agrees: room L6KDCW).
+HOST A MATCH keeps its nav id and becomes CONNECTING, then HOSTING; the
+screen adds "Copied to the clipboard.", a "Copy again" button, "Waiting
+for the other player..." and CANCEL. Three fixes followed. "Copy again"
+was heard as "Co. a ain": ImGui cuts text to a small frame on the CPU,
+moving the cut corners and their texture coordinates, so a character is
+now taken when its top left is a glyph's and its bottom right lies inside
+that glyph. A relabelled button is said before what came with it. And
+after CANCEL the whole Match tab was read again, JOIN and WATCH included,
+which the user then could not reach: they are disabled, and skipped by
+the arrows, until the box holds a whole code. A screen changing (five new
+texts or more) now says only what has not been heard since the panel
+opened, and JOIN and WATCH becoming usable is said ("JOIN, available").
+Not yet seen: anyone joining, the lobby, a match.
+
 ### Where UE4SS got to, and why it is not installed
 
 Tried thoroughly and abandoned one symbol short. Nothing of it is installed;

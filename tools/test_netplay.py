@@ -95,6 +95,25 @@ two = n.decode(as_array(text_vertices("JOIN", 20, 10) + text_vertices("WATCH", 3
 check("text far apart on one line is two runs", [r.text for r in two] == ["JOIN", "WATCH"], str([r.text for r in two]))
 spaced = n.decode(as_array(text_vertices("F1   or   Back", 0, 0)), glyphs, "p")
 check("runs of spaces are kept", spaced and spaced[0].text == "F1   or   Back", spaced and spaced[0].text)
+def cut_at(verts: list, bottom: float) -> list:
+    """Characters cut off below `bottom`, as ImGui cuts text to a small frame:
+    the lower corners move up, and their texture coordinates with them."""
+    out = []
+    for k in range(0, len(verts), 4):
+        quad = verts[k:k + 4]
+        top, low = quad[0][1], quad[2][1]
+        if low > bottom:
+            v_top, v_low = n.as_float(quad[0][3]), n.as_float(quad[2][3])
+            v_cut = bits(v_top + (v_low - v_top) * (bottom - top) / (low - top))
+            quad = [quad[0], quad[1], (quad[2][0], bottom, quad[2][2], v_cut, quad[2][4]),
+                    (quad[3][0], bottom, quad[3][2], v_cut, quad[3][4])]
+        out += quad
+    return out
+
+
+cut = n.decode(as_array(cut_at(text_vertices("Copy again", 20, 10), 28)), glyphs, "p")
+check("text cut short by its frame is still read whole", [r.text for r in cut] == ["Copy again"],
+      str([r.text for r in cut]))
 odd = n.decode(as_array(shape_vertices(0, 0, 5, 5)[:3] + text_vertices("A", 10, 0)), glyphs, "p")
 check("a glyph after a broken shape is still found", [r.text for r in odd] == ["A"])
 
@@ -142,7 +161,7 @@ def run(text, left, top, right, bottom, rgb=TEXT, alpha=0xFF, window="###panel",
     return n.Run(text, left, top, right, bottom, rgb, alpha, window, font, sizes[font])
 
 
-def match_tab(code: str | None = None, shift: float = 0) -> list:
+def match_tab(code: str | None = None, shift: float = 0, ready: bool = False) -> list:
     """The Match tab; `shift` moves what is under JOIN down, as the hint "A code
     is 6 characters" appearing above the box does."""
     rows = [
@@ -155,7 +174,8 @@ def match_tab(code: str | None = None, shift: float = 0) -> list:
         run(code, 586, 458 + shift, 586 + 40 * len(code), 506 + shift, TEXT, font=2) if code else
         run("CODE", 586, 458 + shift, 734, 506 + shift, HINT, font=2),
         run("Paste", 1256, 475, 1318, 496),
-        run("JOIN", 593, 550, 646, 575, DIM, 0x99, font=1), run("WATCH", 986, 550, 1070, 575, DIM, 0x99, font=1),
+        run("JOIN", 593, 550, 646, 575, DIM, 0xFF if ready else 0x99, font=1),
+        run("WATCH", 986, 550, 1070, 575, DIM, 0xFF if ready else 0x99, font=1),
     ]
     for i, ch in enumerate("ABCDEFGH"):
         rows.append(run(ch, 607 + 98 * i, 622, 622 + 98 * i, 642))
@@ -195,6 +215,9 @@ said = narrator.step(reading("A", match_tab("K")))
 check("a code typed is said as it fills in", said == "K", repr(said))
 said = narrator.step(reading("A", match_tab("K7Q")))
 check("and spelled", said == "K 7 Q", repr(said))
+said = narrator.step(reading("A", match_tab("K7Q2MX", ready=True)))
+check("a whole code says JOIN and WATCH are there to go to",
+      said == "K 7 Q 2 M X. JOIN, available. WATCH, available", repr(said))
 said = narrator.step(reading("A", match_tab()))
 check("a cleared box is said empty", said == "CODE, empty", repr(said))
 said = narrator.step(reading("code", match_tab("K7Q2MX")))
@@ -208,6 +231,14 @@ check("moving to another tab says only its name", said == "Settings tab", repr(s
 said = narrator.step(reading("settings", settings + [run("Checking for updates...", 573, 400, 800, 420)]))
 check("a tab's contents changing under it are left for Alt A", said is None, repr(said))
 narrator.step(reading("host", match_tab()))
+relabelled = match_tab()[:5] + [run("HOSTING", 593, 299, 720, 324, GOLD, font=1),
+                               run("Send this code to the other player:", 573, 354, 900, 374),
+                               run("L6KDCW", 573, 390, 760, 438, TEXT, font=2)]
+other = n.PanelNarrator()
+other.step(reading("host", match_tab()))
+said = other.step(reading("host", relabelled))
+check("a button relabelled under focus is said first, then what came with it",
+      said == "HOSTING. Send this code to the other player: L 6 K D C W", repr(said))
 hosting = match_tab()[:5] + [run("HOSTING", 573, 299, 700, 324, GOLD, font=1),
                              run("Send this code to the other player:", 573, 340, 900, 360),
                              run("KQMXTR", 573, 380, 760, 428, TEXT, font=2),
@@ -218,6 +249,10 @@ said = narrator.step(reading("cancel", hosting))
 check("a button changing the screen: what it says, a code spelled after its colon, then the new focus",
       said == "HOSTING. Send this code to the other player: K Q M X T R. Copied to the clipboard. "
               "Waiting for the other player... Cancel", repr(said))
+said = narrator.step(reading("host", match_tab()))
+check("coming back to a screen heard already says only the focus", said == "HOST A MATCH", repr(said))
+said = narrator.step(reading("cancel", hosting))
+check("going back to one heard already says only the focus", said == "Cancel", repr(said))
 said = narrator.step(reading("cancel", hosting + [run("Player Two is here", 573, 600, 800, 620)]))
 check("what appears while focus stays put is said", said == "Player Two is here", repr(said))
 ticking = hosting + [run("12 ms", 1200, 299, 1260, 319)]

@@ -101,6 +101,9 @@ ATTACH_RETRY = 3.0
 LABEL_GAP = 16
 # How long the panel must stay gone to be closed rather than resizing.
 CLOSE_DELAY = 0.2
+# This many new texts at once is the screen changing rather than a line
+# appearing on it.
+SCREEN_CHANGE = 5
 
 
 @dataclass(frozen=True)
@@ -188,11 +191,16 @@ class Glyphs:
             if cp == 32:
                 self.spaces[font] = adv
             if x1 > x0:
-                self.table[(u0 << 32) | v0] = (chr(cp), adv, x0, y0, x1, (u1 << 32) | v1, font)
+                self.table[(u0 << 32) | v0] = (chr(cp), adv, x0, y0, x1, (u1 << 32) | v1, font,
+                                               as_float(u0), as_float(v0), as_float(u1), as_float(v1))
         self.keys = np.array(sorted(self.table), dtype=np.uint64)
 
     def __len__(self) -> int:
         return len(self.table)
+
+
+def as_float(bits: int) -> float:
+    return struct.unpack("<f", struct.pack("<I", bits))[0]
 
 
 def decode(verts: np.ndarray, glyphs: Glyphs, window: str, mask: np.ndarray | None = None) -> list[Run]:
@@ -206,6 +214,12 @@ def decode(verts: np.ndarray, glyphs: Glyphs, window: str, mask: np.ndarray | No
     of text, as a new widget does. A run's left is its pen position, where
     ImGui put the text, so a box's typed text lines up with its hint. `mask`,
     if given, is marked at every vertex belonging to a character.
+
+    Text in a frame too small for it is cut to the frame, and ImGui moves the
+    cut corners in with their texture coordinates: "Copy again" lost the
+    tails of its p, y and g and was heard as "Co. a ain". A character whose
+    bottom right lies inside its glyph, its other corners agreeing, is cut
+    rather than something else, and its size comes from the part kept.
     """
     if len(verts) < 4 or not len(glyphs):
         return []
@@ -220,15 +234,21 @@ def decode(verts: np.ndarray, glyphs: Glyphs, window: str, mask: np.ndarray | No
         i = int(i)
         if i < after or i + 2 >= len(verts):
             continue
-        ch, adv, gx0, gy0, gx1, corner, font = glyphs.table[int(keys[i])]
+        ch, adv, gx0, gy0, gx1, corner, font, fu0, fv0, fu1, fv1 = glyphs.table[int(keys[i])]
+        kept = 1.0
         if int(keys[i + 2]) != corner:
-            continue
+            if i + 3 >= len(verts) or verts["v"][i + 1] != verts["v"][i] or verts["u"][i + 3] != verts["u"][i]:
+                continue
+            u2, v2 = as_float(int(verts["u"][i + 2])), as_float(int(verts["v"][i + 2]))
+            if not (fu0 < u2 <= fu1 and fv0 < v2 <= fv1):
+                continue
+            kept = (u2 - fu0) / (fu1 - fu0)
         after = i + 4
         if mask is not None:
             mask[i:i + 4] = True
         x, y = float(verts["x"][i]), float(verts["y"][i])
         x2, y2 = float(verts["x"][i + 2]), float(verts["y"][i + 2])
-        scale = (x2 - x) / (gx1 - gx0)
+        scale = (x2 - x) / ((gx1 - gx0) * kept)
         origin, top = x - gx0 * scale, y - gy0 * scale
         space = glyphs.spaces.get(font, adv * 0.5) * scale
         joined = False
@@ -574,14 +594,16 @@ class PanelNarrator:
     """
     was_open: bool = False
     focus_said: tuple = ()      # the focused item's id, its text and its tick
-    known: set = field(default_factory=set)
+    known: set = field(default_factory=set)      # the panel's texts at the last reading
+    seen: set = field(default_factory=set)       # and every one since it opened
+    unavailable: set = field(default_factory=set)   # those drawn disabled at the last reading
     toasts: set = field(default_factory=set)
     gone_since: float | None = None   # when the panel stopped showing, while it may come back
     window: str = ""            # the window focus was last heard in
 
     def reset(self) -> None:
         self.was_open, self.focus_said, self.gone_since, self.window = False, (), None, ""
-        self.known, self.toasts = set(), set()
+        self.known, self.seen, self.toasts, self.unavailable = set(), set(), set(), set()
 
     def step(self, reading: Reading | None, now: float | None = None) -> str | None:
         if reading is None:
@@ -602,6 +624,7 @@ class PanelNarrator:
                 if now - self.gone_since >= CLOSE_DELAY:
                     said.insert(0, "Netplay closed")
                     self.was_open, self.focus_said, self.known, self.gone_since = False, (), set(), None
+                    self.seen = set()
                     self.window = ""
             return phrase(dedupe(said)) or None
         self.gone_since = None
@@ -644,13 +667,23 @@ class PanelNarrator:
             # The same tick box, ticked or unticked.
             said.append("checked" if focus[2] else "not checked")
         elif not on_tab(reading, focused):
-            said += self.changes(reading, focused)
             if focus[1] != before[1]:
-                # The same item showing something else: a slider moved, a code
-                # typed into the box with focus, or ImGui keeping focus on a
-                # button that has gone, now over other text.
+                # The same item showing something else, said before whatever
+                # came with it: a slider moved, a code typed into the box with
+                # focus, HOST A MATCH become HOSTING, or ImGui keeping focus
+                # on a button that has gone, now over other text.
                 said.append(self.describe(reading, focused, with_label=False))
+            said += self.changes(reading, focused)
+        # JOIN and WATCH are unavailable, and skipped by the arrows, until the
+        # code box holds a whole code; saying when they come back says when
+        # there is somewhere to go.
+        unavailable = {key(r) for r in reading.panel if r.disabled}
+        if self.was_open:
+            said += dedupe([f"{tidy(r.text)}, available" for r in reading.panel
+                            if not r.disabled and key(r) in self.unavailable and key(r) not in unavailable])
+        self.unavailable = unavailable
         self.was_open, self.focus_said, self.known = True, focus, now_known
+        self.seen |= now_known
         self.window = window or self.window
         return phrase(dedupe(said)) or None
 
@@ -674,6 +707,11 @@ class PanelNarrator:
         """New text on the panel, other than the focused item's, above a line if given."""
         new = [r for r in reading.panel if key(r) not in self.known and not r.disabled and r not in focused
                and (above is None or r.bottom <= above + 2)]
+        if len(new) >= SCREEN_CHANGE:
+            # A whole screen changing: coming back to one already heard since
+            # the panel opened (the Match tab after cancelling a hosted match)
+            # was read out in full again; only what is new on it is said.
+            new = [r for r in new if key(r) not in self.seen]
         if not new:
             return []
         # A keyboard of single keys arriving with the rest of a screen is
