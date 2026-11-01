@@ -1991,6 +1991,60 @@ play: the voice language grid (the brightness rule may cover it; its EN and
 JA badges are pictures and are not read), and anything in a match.
 Pixel-level things such as the health bars are untouched.
 
+### SFVR, the rollback netplay mod's panel
+
+On 2026-11-01 the user installed SFVR 0.2.2 (sfvr.pages.dev), a rollback
+netplay mod for this game, and asked for it to read through the mod too. It
+sits in Binaries\Win64: `xinput1_3.dll` loads `sfv_rollback.dll` (it runs as
+`sfv_rollback.live.0.0.dll`, a copy, so match on the prefix), with
+`sfv_rollback.ini` and logs in `SFVR\logs\sfvr.log`. It updates itself from
+its site (Settings, Updates). Its panel, F1 or Back and Start, is Dear ImGui
+1.91.9b drawn on the game's swap chain: tabs Match (renamed Connecting,
+Loading, Watching, In a match during a session), Settings and Debug; on Match,
+HOST A MATCH, a CODE box with Paste, JOIN and WATCH (unavailable until there
+is a code) and its own keyboard of the 32 code characters with Delete and
+Clear. The game gets no input while it is open. Notices ("Player Two
+joined") are a window of their own, `##toasts`, shown with the panel closed
+too. Its strings also show a lobby with combos (Character, Costume, Color,
+V-Skill, V-Trigger, V-Comment, Delay), Ready and Leave, a rematch vote, a
+corner strip of ping and rollbacks, and its own character and stage select
+drawn on `##Background`; none of those has been seen yet.
+
+`sfv_access/netplay.py` reads it from memory. ImGui keeps no text after a
+frame, only vertices, and each character is a quad whose texture
+coordinates are its glyph's place in the atlas, so matching the last frame's
+vertices against the fonts' glyph tables gives back the exact text, place
+and colour (six fonts, 192 glyphs each). `NavId`, `NavWindow` and the
+window's `NavRectRel`, which is relative to `DC.CursorStartPos`, give the
+focused item's rectangle, and the focused item is the text inside it.
+Placeholder text is in the style's TextDisabled colour (7e8a8c here);
+disabled items are drawn at alpha 0x99. The ImGui frame count moves only
+while SFVR draws anything, so an idle check is one read; SFVR draws one
+empty frame on closing.
+
+Two things that cost time. The only ImGui copy on the machine (in the
+user's Mario Kart folder) was the docking branch, whose layout differs, so
+its offsets were checked against the live game and the rest found there:
+the context's IO matches up to the docking flags, and `FrameCount` 0x12F0,
+`Windows` 0x1348, `Viewports` 0x1EE8 (navigation follows right after),
+Style.Colors 0xD24; the window's Pos 0x28, DC 0x118, draw list 0x2C8,
+NavRectRel 0x3E8; the viewport's draw data at 0x50. And the context is not
+at a fixed place: `find_context` takes the pointer in the DLL's .data that
+passes several checks at once (initialised, a saving rate, a font atlas,
+windows naming it as theirs, one viewport with id 0x11111111), so a new
+SFVR build on the same ImGui is still found. `tools/record_netplay.py`
+records every change with a frame, for learning the screens not yet seen.
+
+Narration (`PanelNarrator`): "Netplay" and the focused item on opening,
+"Netplay closed"; each item focus lands on, a tab as "Match tab", an empty
+box as "CODE, empty"; text appearing while focus stays put (a code typed
+or pasted, spelled; numbers that only tick over are left out); after a
+button changes the screen, the new text above the new focus, then the
+focus; each notice once. With the panel open, Alt R says the focused item
+and the line under it, Alt A every row. Heard in play: not yet. The first
+recording (the user moving down the Match tab and onto its tab) replayed
+through it says the right thing at every step.
+
 ### Where UE4SS got to, and why it is not installed
 
 Tried thoroughly and abandoned one symbol short. Nothing of it is installed;
@@ -2150,6 +2204,11 @@ the user tried with it in the watch mode ended with "it works as it should".
 The user finds memory reading better and wants it everywhere; the pixel reader
 is kept as the fallback. The gauges moved to memory on 2026-09-28 (below).
 What follows is roughly in order of value.
+
+**The session of 2026-11-01.** The user installed SFVR, a rollback netplay
+mod that draws its own panel with Dear ImGui, and SFV Access now reads its
+panel and notices from memory; see "SFVR, the rollback netplay mod's panel".
+Not yet heard in play, and only the Match tab has been seen.
 
 **The session of 2026-10-04, in short.** Crossups, in Training with Ryu
 against Ken and then Akuma, Zeku and Akira, against the game's banners
@@ -3239,8 +3298,8 @@ Day to day:
 .venv\Scripts\python.exe run.py
 ```
 
-There are seven suites, every `tools/test_*.py`: `test_beeps`, `test_fight`,
-`test_hotkeys`, `test_launch`, `test_memory`, `test_scaleform` and `test_watchdog`
+There are eight suites, every `tools/test_*.py`: `test_beeps`, `test_fight`,
+`test_hotkeys`, `test_launch`, `test_memory`, `test_netplay`, `test_scaleform` and `test_watchdog`
 (five more went with the screen reader on 2026-10-04); all should pass before
 anything is committed (`selftest.py` checks speech, capture and the memory
 reader on the machine itself). A loop that runs them all:

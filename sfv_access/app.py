@@ -23,7 +23,7 @@ import traceback
 from pathlib import Path
 
 from . import capture as _capture
-from . import beeps, buttons, fight, game, gametext, instance, memory_narration, pads, scaleform
+from . import beeps, buttons, fight, game, gametext, instance, memory_narration, netplay, pads, scaleform
 from .capture import Capture
 from .hotkeys import Hotkeys
 from .speech import Speaker
@@ -93,6 +93,9 @@ FIGHT_RETRY = 3.0
 # How often a fight's counter hit marks are looked at. Two small reads; the
 # sound is for following up on the hit, so it should come as it lands.
 COUNTER_POLL = 0.01
+# How often SFVR's netplay panel is looked at. While SFVR draws nothing, a
+# look is one small read of its frame count.
+NETPLAY_POLL = 0.05
 # How often the game's window is looked up to find where its picture is.
 # Looking costs a walk over every window, and the window rarely moves.
 PICTURE_RECHECK = 1.0
@@ -159,6 +162,11 @@ class App:
                                                  side=self.fight.side)
         # Button Preview: each button said as it is pressed, while it is open.
         self.presses = pads.PressWatcher(self._on_preview_press)
+        # SFVR, the rollback netplay mod: its panel and notices, drawn with
+        # Dear ImGui over the game, and SFVR's latest frame for the read keys.
+        self.netplay = netplay.PanelReader(note=self.session.note)
+        self.netplay_narrator = netplay.PanelNarrator()
+        self.netplay_reading: netplay.Reading | None = None
         self._hang_file = None
         self._crash_file = None
         # When the narration loop's current pass began, None between passes,
@@ -208,6 +216,7 @@ class App:
         threading.Thread(target=self._watch_stalls, daemon=True).start()
         threading.Thread(target=self._watch_fight, daemon=True).start()
         threading.Thread(target=self._watch_counters, daemon=True).start()
+        threading.Thread(target=self._watch_netplay, daemon=True).start()
         self.presses.start()
         if self.with_game:
             threading.Thread(target=self._follow_game, daemon=True).start()
@@ -288,8 +297,19 @@ class App:
             return self.session.items if self.session.available else None
         return self.session.read()
 
+    def _panel(self) -> netplay.Reading | None:
+        """SFVR's latest frame while its panel is open, which then takes the read keys."""
+        reading = self.netplay_reading
+        return reading if reading is not None and reading.open else None
+
     # --------------------------------------------------------------- handlers
     def on_read_screen(self) -> None:
+        panel = self._panel()
+        if panel is not None:
+            said = netplay.read_focus(panel)
+            print(f"[read] {said}")
+            self.speech.say(said)
+            return
         items = self._memory_items()
         if items is not None:
             said = memory_narration.phrase(scaleform.name_login([memory_narration.selection_phrase(items)], items))
@@ -467,6 +487,12 @@ class App:
         self.speech.say(foot.text)
 
     def on_read_all(self) -> None:
+        panel = self._panel()
+        if panel is not None:
+            self.lines = netplay.read_lines(panel)
+            self.cursor = 0
+            self.speech.say_lines([line.text for line in self.lines])
+            return
         items = self._memory_items()
         if items is None:
             self.speech.say(CANNOT_READ)
@@ -560,6 +586,7 @@ class App:
     def on_toggle_watch(self) -> None:
         self.watching = not self.watching
         self.narrator.reset()
+        self.netplay_narrator.reset()
         self.speech.say(f"Menu narration {'on' if self.watching else 'off'}.")
 
     def on_button_hints(self) -> None:
@@ -780,6 +807,29 @@ class App:
                                 and fight.crossup(side, placed_before, placed)):
                             self._beep(beeps.crossup_sound(1 - side, crossup_volume))
             before, placed_before = marks, placed
+
+    def _watch_netplay(self) -> None:
+        """Speak SFVR's panel and notices as they change. See `netplay`.
+
+        Its own loop, since SFVR draws whatever the game is showing and the
+        game's narration loop can take most of a second on a busy screen.
+        """
+        while not self._stop.wait(NETPLAY_POLL):
+            try:
+                reading = self.netplay.read()
+                self.netplay_reading = reading
+                if not self.watching:
+                    continue
+                said = self.netplay_narrator.step(reading)
+            except Exception as exc:
+                self.session.note(f"netplay: {exc!r}")
+                time.sleep(0.5)
+                continue
+            if said:
+                self.session.note(f"said {said!r}")
+                print(f"[netplay] {said}")
+                self._log(said)
+                self.speech.say(said)
 
     def _placements(self):
         try:
