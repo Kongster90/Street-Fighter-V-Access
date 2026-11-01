@@ -2036,14 +2036,29 @@ SFVR build on the same ImGui is still found. `tools/record_netplay.py`
 records every change with a frame, for learning the screens not yet seen.
 
 Narration (`PanelNarrator`): "Netplay" and the focused item on opening,
-"Netplay closed"; each item focus lands on, a tab as "Match tab", an empty
-box as "CODE, empty"; text appearing while focus stays put (a code typed
-or pasted, spelled; numbers that only tick over are left out); after a
-button changes the screen, the new text above the new focus, then the
-focus; each notice once. With the panel open, Alt R says the focused item
-and the line under it, Alt A every row. Heard in play: not yet. The first
-recording (the user moving down the Match tab and onto its tab) replayed
-through it says the right thing at every step.
+"Netplay closed" once it has stayed gone a fifth of a second; each item
+focus lands on, with the label ImGui draws just right of a widget first
+("You are, P1", "Latency (ms), 0", "Name, (Steam name), empty"), a tab as
+"Match tab", a tick box with "checked" or "not checked" and only that when
+it is toggled; text appearing while focus stays put (numbers that only
+tick over are left out), and a slider's new value alone; after a button
+changes the screen, the new text above the new focus, then the focus;
+each notice once. A code is spelled when it shows in the code box's 60
+pixel font (half typed, "A A B"), or whole with a digit or after a colon;
+a word in the code's letters elsewhere stays a word. With the panel open,
+Alt R says the focused item and the line under it, Alt A every row.
+
+The user's first try (2026-11-01, "a very good start", some things not
+read) showed three faults, fixed the same day and not yet heard again.
+Frames read while SFVR was building them came back half empty: a frame is
+read only while `FrameCount` equals `FrameCountRendered` (0x12F8), before
+and after. Remembering the code box by its place broke when the hint "A
+code is 6 characters" pushed it down, and by its column alone spelled
+"Battle now" under the name box; the font size settles it. And a tick
+box's tick is found from the vertices that are not glyphs: a square in a
+FrameBg colour at the item's left, as tall as the item, holding vertices
+in the CheckMark colour (8ce3ff). That last is worked out from the
+pictures, not yet checked against a recording.
 
 ### Where UE4SS got to, and why it is not installed
 
@@ -2208,7 +2223,9 @@ What follows is roughly in order of value.
 **The session of 2026-11-01.** The user installed SFVR, a rollback netplay
 mod that draws its own panel with Dear ImGui, and SFV Access now reads its
 panel and notices from memory; see "SFVR, the rollback netplay mod's panel".
-Not yet heard in play, and only the Match tab has been seen.
+The user's first try found it "a very good start"; the faults it showed
+were fixed the same day. Hosting, the lobby and SFVR's own character and
+stage select have not been seen.
 
 **The session of 2026-10-04, in short.** Crossups, in Training with Ryu
 against Ken and then Akuma, Zeku and Akira, against the game's banners

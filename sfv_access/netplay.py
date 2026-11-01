@@ -47,7 +47,8 @@ CTX_IO = 0x8
 IO_INI_SAVING_RATE = CTX_IO + 0x14
 IO_FONTS = CTX_IO + 0x30
 CTX_COLORS = 0xD24          # Style.Colors[], RGBA floats
-CTX_FRAME = 0x12F0          # FrameCount, which moves only while SFVR draws
+CTX_FRAME = 0x12F0          # FrameCount, which moves only while SFVR draws,
+CTX_FRAME_RENDERED = 0x12F8  # and FrameCountRendered, equal to it once a frame is whole
 CTX_WINDOWS = 0x1348
 CTX_VIEWPORTS = 0x1EE8
 CTX_NAV_ID = 0x1EFC
@@ -68,10 +69,13 @@ DRAW_DATA_LISTS = 0x10
 DRAW_LIST_VERTICES = 0x20
 DRAW_LIST_OWNER = 0xD0
 ATLAS_FONTS = 0x50
+FONT_SIZE = 0x14
 FONT_GLYPHS = 0x28
 GLYPH_SIZE = 0x28
 
 COL_TEXT_DISABLED = 1       # ImGuiCol_TextDisabled: hint text in an empty box
+COL_FRAME_BG = (7, 8, 9)    # FrameBg, Hovered, Active: a tick box's square, among others
+COL_CHECK_MARK = 18         # CheckMark: the tick in it
 
 VERTEX = np.dtype([("x", "<f4"), ("y", "<f4"), ("u", "<u4"), ("v", "<u4"), ("col", "<u4")])
 
@@ -83,11 +87,20 @@ TABS = {"Match", "Connecting", "Loading", "Watching", "In a match", "Settings", 
 # A match code: six of these, as the panel's own keyboard offers them.
 CODE_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE = re.compile(f"[{CODE_LETTERS}]{{6}}")
+CODE_SO_FAR = re.compile(f"[{CODE_LETTERS}]{{1,6}}")
+# The code box draws in SFVR's 60 pixel font; a code half typed is told from
+# a word by that.
+CODE_FONT = 40.0
 # Disabled items are drawn at the style's DisabledAlpha, 0.6.
 DISABLED_ALPHA = 0xD0
 # How often to look for SFVR while it cannot be found. Looking walks the
 # mod's data and costs a few hundred reads.
 ATTACH_RETRY = 3.0
+# A widget's label sits this close to its right, ImGui's ItemInnerSpacing
+# (10 here); the next widget along is further, its text further still.
+LABEL_GAP = 16
+# How long the panel must stay gone to be closed rather than resizing.
+CLOSE_DELAY = 0.2
 
 
 @dataclass(frozen=True)
@@ -102,6 +115,7 @@ class Run:
     alpha: int
     window: str             # the window whose draw list holds it
     font: int = 0
+    size: float = 0.0       # the font's height as drawn, in pixels
 
     @property
     def disabled(self) -> bool:
@@ -122,6 +136,7 @@ class Reading:
     focus_window: str = ""
     focus: tuple[float, float, float, float] | None = None
     hint_rgb: int = -1      # the colour of hint text, TextDisabled
+    checked: bool | None = None   # the focused item is a tick box, ticked or not
 
     @property
     def panel(self) -> list[Run]:
@@ -147,14 +162,26 @@ class Reading:
         return sorted((r for r in self.runs if (r.window == name or r.window.startswith(name + "/"))
                        and r.inside(self.focus)), key=lambda r: (r.top, r.left))
 
+    def label(self, focused: list[Run]) -> str:
+        """The focused widget's label, drawn just to its right as ImGui does:
+        "You are" beside a list showing "P1", "Latency (ms)" beside a slider."""
+        if self.focus is None or not focused:
+            return ""
+        x0, y0, x1, y1 = self.focus
+        beside = [r for r in self.runs if r.window == focused[0].window and r not in focused
+                  and 0 <= r.left - x1 <= LABEL_GAP and r.top < y1 and r.bottom > y0]
+        return tidy(min(beside, key=lambda r: r.left).text) if beside else ""
+
 
 # ------------------------------------------------------------------ decoding
 class Glyphs:
     """Every font's glyphs, found by the texture coordinates of their corners."""
 
-    def __init__(self, glyphs: list[tuple]) -> None:
+    def __init__(self, glyphs: list[tuple], sizes: dict[int, float] | None = None) -> None:
         # Each: codepoint, advance, x0, y0, x1, y1, u0, v0, u1, v1 (raw float bits for
         # u and v), font index. Spaces draw nothing; their advance is kept per font.
+        # `sizes` is each font's height.
+        self.sizes = sizes or {}
         self.spaces: dict[int, float] = {}
         self.table: dict[int, tuple] = {}
         for cp, adv, x0, y0, x1, y1, u0, v0, u1, v1, font in glyphs:
@@ -168,7 +195,7 @@ class Glyphs:
         return len(self.table)
 
 
-def decode(verts: np.ndarray, glyphs: Glyphs, window: str) -> list[Run]:
+def decode(verts: np.ndarray, glyphs: Glyphs, window: str, mask: np.ndarray | None = None) -> list[Run]:
     """The lines of text in one draw list's vertices.
 
     ImGui writes each character as four vertices, top left first and bottom
@@ -176,7 +203,9 @@ def decode(verts: np.ndarray, glyphs: Glyphs, window: str) -> list[Run]:
     two before one carrying the same glyph's bottom right, starts a character.
     Characters of one call follow each other with the font's advance between
     them; a gap of whole spaces is a space, and anything else begins a new line
-    of text, as a new widget does.
+    of text, as a new widget does. A run's left is its pen position, where
+    ImGui put the text, so a box's typed text lines up with its hint. `mask`,
+    if given, is marked at every vertex belonging to a character.
     """
     if len(verts) < 4 or not len(glyphs):
         return []
@@ -195,6 +224,8 @@ def decode(verts: np.ndarray, glyphs: Glyphs, window: str) -> list[Run]:
         if int(keys[i + 2]) != corner:
             continue
         after = i + 4
+        if mask is not None:
+            mask[i:i + 4] = True
         x, y = float(verts["x"][i]), float(verts["y"][i])
         x2, y2 = float(verts["x"][i + 2]), float(verts["y"][i + 2])
         scale = (x2 - x) / (gx1 - gx0)
@@ -208,13 +239,14 @@ def decode(verts: np.ndarray, glyphs: Glyphs, window: str) -> list[Run]:
                 joined = True
         if not joined:
             col = int(verts["col"][i])
-            cur = {"text": ch, "left": x, "top": top, "font": font,
+            cur = {"text": ch, "left": origin, "top": top, "font": font,
+                   "size": glyphs.sizes.get(font, 0.0) * scale,
                    "rgb": col & 0xFFFFFF, "alpha": col >> 24}
             runs.append(cur)
         cur["next"] = origin + adv * scale
         cur["right"], cur["bottom"] = x2, y2
     return [Run(r["text"], r["left"], r["top"], r["right"], r["bottom"], r["rgb"], r["alpha"],
-                window, r["font"]) for r in runs]
+                window, r["font"], r["size"]) for r in runs]
 
 
 # ------------------------------------------------------------------- reading
@@ -227,6 +259,8 @@ class PanelReader:
         self.ctx = 0
         self.glyphs: Glyphs | None = None
         self.hint_rgb = -1
+        self.frame_rgbs: set[int] = set()
+        self.check_rgb = -1
         self._owners: dict[int, str] = {}
         self._last: Reading | None = None
         self._retry_at = 0.0
@@ -274,10 +308,13 @@ class PanelReader:
             mem.close()
             return False
         self.mem, self.ctx, self.glyphs = mem, ctx, glyphs
-        colour = mem.read(ctx + CTX_COLORS + 16 * COL_TEXT_DISABLED, 16)
-        if colour and len(colour) == 16:
-            r, g, b, _a = struct.unpack("<4f", colour)
-            self.hint_rgb = round(r * 255) | round(g * 255) << 8 | round(b * 255) << 16
+        count = COL_CHECK_MARK + 1
+        colours = mem.read(ctx + CTX_COLORS, 16 * count)
+        if colours and len(colours) == 16 * count:
+            packed = [packed_rgb(*struct.unpack_from("<3f", colours, 16 * k)) for k in range(count)]
+            self.hint_rgb = packed[COL_TEXT_DISABLED]
+            self.frame_rgbs = {packed[k] for k in COL_FRAME_BG}
+            self.check_rgb = packed[COL_CHECK_MARK]
         self.note(f"netplay: {module.name}'s panel found, {len(glyphs)} glyphs")
         self._missing_said = False
         return True
@@ -293,14 +330,15 @@ class PanelReader:
         if not self.attach():
             return None
         try:
-            for _ in range(3):
-                frame = self.mem.i32(self.ctx + CTX_FRAME)
+            for _ in range(5):
+                frame = self._whole_frame()
                 if frame is None:
-                    raise OSError("frame unreadable")
+                    time.sleep(0.002)
+                    continue
                 if self._last is not None and self._last.frame == frame:
                     return self._last
                 reading = self._read_frame(frame)
-                if self.mem.i32(self.ctx + CTX_FRAME) == frame:
+                if self._whole_frame() == frame:
                     self._last = reading
                     return reading
             return self._last
@@ -309,14 +347,31 @@ class PanelReader:
             self.detach()
             return None
 
+    def _whole_frame(self) -> int | None:
+        """SFVR's frame number, or None while it is part way through building one.
+
+        The vertices are rewritten between starting a frame and rendering it;
+        read then, the panel came back with half its text, heard as "Netplay
+        closed" and "Netplay" again, or a letter said twice.
+        """
+        size = CTX_FRAME_RENDERED - CTX_FRAME + 4
+        raw = self.mem.read(self.ctx + CTX_FRAME, size)
+        if not raw or len(raw) < size:
+            raise OSError("frame unreadable")
+        frame = struct.unpack_from("<i", raw, 0)[0]
+        rendered = struct.unpack_from("<i", raw, size - 4)[0]
+        return frame if frame == rendered else None
+
     def _read_frame(self, frame: int) -> Reading:
         mem = self.mem
+        focus_id, name, focus = self._focus()
         count, viewports = vector(mem, self.ctx + CTX_VIEWPORTS)
         if count < 1:
             raise OSError("no viewport")
         draw_data = mem.ptr(viewports) + VIEWPORT_DRAW_DATA
         valid = mem.read(draw_data, 1)
         runs: list[Run] = []
+        checked = None
         if valid and valid[0]:
             count, lists = vector(mem, draw_data + DRAW_DATA_LISTS)
             pointers = mem.read(lists, 8 * count) if 0 < count < 256 else b""
@@ -328,7 +383,18 @@ class PanelReader:
                 if not raw:
                     continue
                 verts = np.frombuffer(raw[: len(raw) // VERTEX.itemsize * VERTEX.itemsize], dtype=VERTEX)
-                runs += decode(verts, self.glyphs, self._owner(dl))
+                owner = self._owner(dl)
+                if focus is not None and owner == name:
+                    mask = np.zeros(len(verts), dtype=bool)
+                    runs += decode(verts, self.glyphs, owner, mask)
+                    checked = tick_box(verts, mask, focus, self.frame_rgbs, self.check_rgb)
+                else:
+                    runs += decode(verts, self.glyphs, owner)
+        return Reading(frame, tuple(runs), focus_id, name, focus, self.hint_rgb, checked)
+
+    def _focus(self) -> tuple[int, str, tuple[float, float, float, float] | None]:
+        """The focused item's id, its window's name and its rectangle on screen."""
+        mem = self.mem
         focus_id = mem.u32(self.ctx + CTX_NAV_ID) or 0
         window = mem.ptr(self.ctx + CTX_NAV_WINDOW) or 0
         focus, name = None, ""
@@ -342,7 +408,7 @@ class PanelReader:
                 x0, y0, x1, y1 = struct.unpack("<4f", rect)
                 if x1 > x0 and y1 > y0:
                     focus = (x0 + sx, y0 + sy, x1 + sx, y1 + sy)
-        return Reading(frame, tuple(runs), focus_id, name, focus, self.hint_rgb)
+        return focus_id, name, focus
 
     def _owner(self, draw_list: int) -> str:
         name = self._owners.get(draw_list)
@@ -350,6 +416,39 @@ class PanelReader:
             name = self.mem.cstring(self.mem.ptr(draw_list + DRAW_LIST_OWNER) or 0, 64) or ""
             self._owners[draw_list] = name
         return name
+
+
+def packed_rgb(r: float, g: float, b: float) -> int:
+    """A style colour as ImGui packs it into a vertex, 0xBBGGRR."""
+    def byte(c: float) -> int:
+        return max(0, min(255, int(c * 255.0 + 0.5)))
+    return byte(r) | byte(g) << 8 | byte(b) << 16
+
+
+def tick_box(verts: np.ndarray, mask: np.ndarray, rect: tuple[float, float, float, float],
+             frame_rgbs: set[int], check_rgb: int) -> bool | None:
+    """Whether the item in `rect` is a tick box, and if so whether it is ticked.
+
+    A tick box is a square frame at the left of its item, as tall as the item,
+    in a frame colour; ticked, it holds a line in the check mark colour. Text
+    boxes, lists and sliders have frames too, but wide ones.
+    """
+    if not frame_rgbs:
+        return None
+    x0, y0, x1, y1 = rect
+    xs, ys = verts["x"], verts["y"]
+    shape = ~mask & (xs >= x0 - 1) & (xs <= x1 + 1) & (ys >= y0 - 1) & (ys <= y1 + 1)
+    colours = verts["col"] & 0xFFFFFF
+    frame = shape & np.isin(colours, np.array(sorted(frame_rgbs), dtype=np.uint32))
+    if not frame.any():
+        return None
+    fx0, fx1 = float(xs[frame].min()), float(xs[frame].max())
+    fy0, fy1 = float(ys[frame].min()), float(ys[frame].max())
+    side = y1 - y0
+    if abs((fx1 - fx0) - side) > 6 or abs((fy1 - fy0) - side) > 6 or fx0 - x0 > 6:
+        return None
+    tick = shape & (colours == check_rgb) & (xs >= fx0) & (xs <= fx1) & (ys >= fy0) & (ys <= fy1)
+    return bool(tick.any())
 
 
 def vector(mem: ProcessMemory, address: int) -> tuple[int, int]:
@@ -411,10 +510,12 @@ def read_glyphs(mem: ProcessMemory, ctx: int) -> Glyphs | None:
     if not 0 < count < 64:
         return None
     out: list[tuple] = []
+    sizes: dict[int, float] = {}
     for index in range(count):
         font = mem.ptr(fonts + 8 * index)
         if not font:
             continue
+        sizes[index] = mem.f32(font + FONT_SIZE) or 0.0
         n, data = vector(mem, font + FONT_GLYPHS)
         raw = mem.read(data, n * GLYPH_SIZE) if 0 < n < 100_000 else None
         if not raw:
@@ -423,7 +524,7 @@ def read_glyphs(mem: ProcessMemory, ctx: int) -> Glyphs | None:
             bits, adv, x0, y0, x1, y1 = struct.unpack_from("<I5f", raw, k * GLYPH_SIZE)
             u0, v0, u1, v1 = struct.unpack_from("<4I", raw, k * GLYPH_SIZE + 0x18)
             out.append((bits >> 2, adv, x0, y0, x1, y1, u0, v0, u1, v1, index))
-    return Glyphs(out) if out else None
+    return Glyphs(out, sizes) if out else None
 
 
 # ----------------------------------------------------------------- narration
@@ -447,9 +548,10 @@ def lines(runs: list[Run]) -> list[list[Run]]:
     return [sorted(row, key=lambda r: r.left) for row in rows]
 
 
-def key(run: Run) -> str:
-    """What a text is, setting aside numbers that tick over: a ping, a count."""
-    return run.window + "\0" + re.sub(r"\d+", "#", tidy(run.text))
+def key(run: Run) -> tuple:
+    """What a text is, setting aside numbers that tick over: a ping, a count.
+    The font tells a letter typed into the code box from the same letter's key."""
+    return run.window, run.font, re.sub(r"\d+", "#", tidy(run.text))
 
 
 @dataclass
@@ -466,22 +568,24 @@ class PanelNarrator:
     The panel opening and closing, the item with focus as it moves (a tab said
     as a tab, an empty box as empty), what appears on the panel while focus
     stays put or after a button changed the screen (a code typed or pasted,
-    spelled; "Waiting for the other player..."), and each notice once. While focus is on a tab the tab's
-    contents are left to be moved through, or read with Alt A.
+    spelled; "Waiting for the other player..."), and each notice once. While
+    focus is on a tab the tab's contents are left to be moved through, or read
+    with Alt A.
     """
     was_open: bool = False
-    focus_said: tuple = ()
+    focus_said: tuple = ()      # the focused item's id, its text and its tick
     known: set = field(default_factory=set)
     toasts: set = field(default_factory=set)
-    fields: set = field(default_factory=set)   # where a box showed its hint text
+    gone_since: float | None = None   # when the panel stopped showing, while it may come back
 
     def reset(self) -> None:
-        self.was_open, self.focus_said = False, ()
-        self.known, self.toasts, self.fields = set(), set(), set()
+        self.was_open, self.focus_said, self.gone_since = False, (), None
+        self.known, self.toasts = set(), set()
 
-    def step(self, reading: Reading | None) -> str | None:
+    def step(self, reading: Reading | None, now: float | None = None) -> str | None:
         if reading is None:
             return None
+        now = time.monotonic() if now is None else now
         said: list[str] = []
         shown = {tidy(r.text) for r in reading.toasts}
         said += [t for t in (tidy(r.text) for r in reading.toasts) if t and t not in self.toasts]
@@ -489,59 +593,63 @@ class PanelNarrator:
 
         is_open = reading.open
         if not is_open:
+            # ImGui leaves a window out of a frame or so while it resizes, as
+            # the panel does going to the wider Debug tab; heard as "Netplay
+            # closed" and "Netplay" again. Closed is closed once it stays gone.
             if self.was_open:
-                said.insert(0, "Netplay closed")
-            self.was_open, self.focus_said, self.known = False, (), set()
+                self.gone_since = now if self.gone_since is None else self.gone_since
+                if now - self.gone_since >= CLOSE_DELAY:
+                    said.insert(0, "Netplay closed")
+                    self.was_open, self.focus_said, self.known, self.gone_since = False, (), set(), None
             return phrase(dedupe(said)) or None
+        self.gone_since = None
 
         focused = reading.focused()
-        # A box's hint is drawn in the hint colour, as one word ("CODE");
-        # the version and the closing line share the colour but not the shape.
-        for r in reading.panel:
-            if r.rgb == reading.hint_rgb and (r in focused or re.fullmatch(r"[A-Za-z]{2,16}", tidy(r.text))):
-                self.fields.add(self._place(r))
         now_known = {key(r) for r in reading.panel}
-        focus = (reading.focus_id, tuple(tidy(r.text) for r in focused))
+        focus = (reading.focus_id, tuple(tidy(r.text) for r in focused), reading.checked)
+        before = self.focus_said or (None, None, None)
         if not self.was_open:
             said.insert(0, "Netplay")
             said.append(self.describe(reading, focused))
-        else:
-            moved = focus != self.focus_said
+        elif focus[0] != before[0]:
             # Pressing a button that changes the screen moves focus as well,
             # onto an item that was not there before. What the new screen
             # says above that item comes first, as a dialog's text before its
             # button; what lies below is the rest of the screen, to move
             # through. Focus moving among what was already there says only
-            # the item, and the same item id with other text under it is
-            # ImGui keeping focus on a button that has gone, so everything
-            # new is said.
+            # the item.
             fresh = any(key(r) not in self.known for r in focused)
-            same_id = reading.focus_id == self.focus_said[0] if self.focus_said else False
-            if not on_tab(reading, focused):
-                if not moved or same_id:
-                    said += self.changes(reading, focused)
-                elif fresh and reading.focus is not None:
-                    said += self.changes(reading, focused, above=reading.focus[1])
-            if moved:
-                said.append(self.describe(reading, focused))
+            if fresh and reading.focus is not None and not on_tab(reading, focused):
+                said += self.changes(reading, focused, above=reading.focus[1])
+            said.append(self.describe(reading, focused))
+        elif focus[1] == before[1] and focus[2] != before[2] and focus[2] is not None:
+            # The same tick box, ticked or unticked.
+            said.append("checked" if focus[2] else "not checked")
+        elif not on_tab(reading, focused):
+            said += self.changes(reading, focused)
+            if focus[1] != before[1]:
+                # The same item showing something else: a slider moved, a code
+                # typed into the box with focus, or ImGui keeping focus on a
+                # button that has gone, now over other text.
+                said.append(self.describe(reading, focused, with_label=False))
         self.was_open, self.focus_said, self.known = True, focus, now_known
         return phrase(dedupe(said)) or None
 
-    def describe(self, reading: Reading, focused: list[Run]) -> str:
-        """The focused item, as heard when moving onto it."""
+    def describe(self, reading: Reading, focused: list[Run], with_label: bool = True) -> str:
+        """The focused item, as heard when moving onto it: its label first, if
+        it has one beside it, then what it shows, and a tick box's tick."""
         if not focused:
             return ""
         if on_tab(reading, focused):
             return f"{tidy(focused[0].text)} tab"
         if all(r.rgb == reading.hint_rgb for r in focused):
-            return f"{tidy(' '.join(r.text for r in focused))}, empty"
-        return phrase([self.value(reading, r) for r in focused])
-
-    def value(self, reading: Reading, run: Run) -> str:
-        text = tidy(run.text)
-        if self._place(run) in self.fields:
-            return "empty" if run.rgb == reading.hint_rgb else spell(text)
-        return spell(text) if CODE.fullmatch(text) and any(c.isdigit() for c in text) else text
+            shows = f"{tidy(' '.join(r.text for r in focused))}, empty"
+        else:
+            shows = phrase([words(r) for r in focused])
+        if reading.checked is not None:
+            shows += ", checked" if reading.checked else ", not checked"
+        label = reading.label(focused) if with_label else ""
+        return f"{label}, {shows}" if label else shows
 
     def changes(self, reading: Reading, focused: list[Run], above: float | None = None) -> list[str]:
         """New text on the panel, other than the focused item's, above a line if given."""
@@ -550,28 +658,41 @@ class PanelNarrator:
         if not new:
             return []
         # A keyboard of single keys arriving with the rest of a screen is
-        # moved through, not read out; one character on its own is a box
-        # filling in.
-        singles = [r for r in new if len(tidy(r.text)) == 1 and self._place(r) not in self.fields]
+        # moved through, not read out; one character on its own in the code
+        # box is the box filling in.
+        singles = [r for r in new if len(tidy(r.text)) == 1 and r.size < CODE_FONT]
         if len(singles) >= 4:
             new = [r for r in new if r not in singles]
         out = []
         rows = lines(new)
         for i, row in enumerate(rows):
             for r in row:
-                text = tidy(r.text)
                 before = rows[i - 1][-1].text.strip() if i else ""
-                if self._place(r) in self.fields:
-                    out.append(f"{text}, empty" if r.rgb == reading.hint_rgb else spell(text))
-                elif CODE.fullmatch(text) and (any(c.isdigit() for c in text) or before.endswith(":")):
-                    out.append(spell(text))
+                if r.rgb == reading.hint_rgb and is_hint(r):
+                    out.append(f"{tidy(r.text)}, empty")
                 else:
-                    out.append(text)
+                    out.append(words(r, before))
         return out
 
-    @staticmethod
-    def _place(run: Run) -> tuple:
-        return run.window, run.font, round(run.left / 4), round(run.top / 4)
+
+def is_hint(run: Run) -> bool:
+    """A box's hint, the word it shows while empty ("CODE", "(Steam name)"),
+    rather than the version or a line of help in the same colour."""
+    return bool(re.fullmatch(r"\(?[A-Za-z]+( [A-Za-z]+)?\)?", tidy(run.text)))
+
+
+def words(run: Run, before: str = "") -> str:
+    """A text as it should be said: a code spelled, anything else as it is.
+
+    A code is spelled whole wherever it shows with a digit in it or after a
+    colon ("Send this code to the other player:"), and part typed in the code
+    box's big font; a word in the code's letters elsewhere ("READY") is a word.
+    """
+    text = tidy(run.text)
+    if (CODE_SO_FAR.fullmatch(text) and run.size >= CODE_FONT) or (
+            CODE.fullmatch(text) and (any(c.isdigit() for c in text) or before.endswith(":"))):
+        return spell(text)
+    return text
 
 
 def on_tab(reading: Reading, focused: list[Run]) -> bool:

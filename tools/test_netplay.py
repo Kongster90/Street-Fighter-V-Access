@@ -50,7 +50,7 @@ for font, size in ((0, 1.0), (1, 2.0)):
         u1, v1 = u0 + 10 / 1024, v0 + 20 / 1024
         GLYPHS.append((ord(ch), 12 * size, 1 * size, 3 * size, 11 * size, 23 * size,
                        bits(u0), bits(v0), bits(u1), bits(v1), font))
-glyphs = n.Glyphs(GLYPHS)
+glyphs = n.Glyphs(GLYPHS, {0: 20.0, 1: 40.0})
 by_char = {(g[0], g[10]): g for g in GLYPHS}
 
 
@@ -84,9 +84,11 @@ verts = (shape_vertices(0, 0, 400, 40) + text_vertices("HOST A MATCH", 20, 10)
 runs = n.decode(as_array(verts), glyphs, "###panel")
 check("each piece of text is one run", [r.text for r in runs] == ["HOST A MATCH", "Send this code:", "K7Q2MX"],
       str([r.text for r in runs]))
-check("a run starts at its first glyph's pen and line", (runs[0].left, runs[0].top) == (21.0, 10.0),
+check("a run starts at its pen and line", (runs[0].left, runs[0].top) == (20.0, 10.0),
       str((runs[0].left, runs[0].top)))
 check("the window and font are kept", runs[2].window == "###panel" and runs[2].font == 1)
+check("the font's height as drawn is kept", runs[0].size == 20.0 and runs[2].size == 40.0,
+      str((runs[0].size, runs[2].size)))
 check("the colour is unpacked", runs[0].rgb == 0xE6F0F2 and runs[0].alpha == 0xFF)
 
 two = n.decode(as_array(text_vertices("JOIN", 20, 10) + text_vertices("WATCH", 300, 10)), glyphs, "p")
@@ -96,6 +98,39 @@ check("runs of spaces are kept", spaced and spaced[0].text == "F1   or   Back", 
 odd = n.decode(as_array(shape_vertices(0, 0, 5, 5)[:3] + text_vertices("A", 10, 0)), glyphs, "p")
 check("a glyph after a broken shape is still found", [r.text for r in odd] == ["A"])
 
+# A tick box: a square frame as tall as its item at the left, its label after
+# it, and when ticked a line in the check mark colour inside the square.
+FRAME, HOVER, TICK = 0x222A2A, 0x393B2B, 0xFFE38C
+box = (573.0, 278.0, 971.0, 317.0)
+
+
+def tick_box_vertices(ticked: bool, frame_col=0xFF000000 | HOVER) -> list:
+    out = shape_vertices(573, 278, 612, 317, frame_col)
+    if ticked:
+        out += [(580, 297, bits(0.5), bits(0.5), 0xFF000000 | TICK), (590, 307, bits(0.5), bits(0.5), 0xFF000000 | TICK),
+                (604, 287, bits(0.5), bits(0.5), 0xFF000000 | TICK)]
+    return out + text_vertices("Others may watch my sessions", 622, 286)
+
+
+for ticked in (True, False):
+    v = as_array(tick_box_vertices(ticked))
+    mask = np.zeros(len(v), dtype=bool)
+    got = n.decode(v, glyphs, "###panel", mask)
+    state = n.tick_box(v, mask, box, {FRAME, HOVER}, TICK)
+    check(f"a tick box {'ticked' if ticked else 'not ticked'} is found so", state is ticked, repr(state))
+    check("its label is still read", [r.text for r in got] == ["Others may watch my sessions"])
+gold_text = as_array(shape_vertices(573, 278, 612, 317, 0xFF000000 | HOVER)
+                     + text_vertices("Others", 622, 286, col=0xFF000000 | TICK))
+mask = np.zeros(len(gold_text), dtype=bool)
+n.decode(gold_text, glyphs, "###panel", mask)
+check("gold text beside an empty box is not its tick", n.tick_box(gold_text, mask, box, {FRAME, HOVER}, TICK) is False)
+wide = as_array(shape_vertices(411, 740, 811, 779, 0xFF000000 | FRAME) + text_vertices("0", 600, 748))
+mask = np.zeros(len(wide), dtype=bool)
+n.decode(wide, glyphs, "###panel", mask)
+check("a slider's wide frame is not a tick box",
+      n.tick_box(wide, mask, (411.0, 740.0, 811.0, 779.0), {FRAME, HOVER}, TICK) is None)
+check("style colours pack as ImGui packs them", n.packed_rgb(0x8C / 255, 0xE3 / 255, 1.0) == 0xFFE38C)
+
 
 # ----------------------------------------------------------------- narration
 HINT = 0x7E8A8C
@@ -103,10 +138,13 @@ GOLD, TEXT, DIM = 0x8CE3FF, 0xE6F0F2, 0x454545
 
 
 def run(text, left, top, right, bottom, rgb=TEXT, alpha=0xFF, window="###panel", font=0):
-    return n.Run(text, left, top, right, bottom, rgb, alpha, window, font)
+    sizes = {0: 25.0, 1: 30.0, 2: 60.0}
+    return n.Run(text, left, top, right, bottom, rgb, alpha, window, font, sizes[font])
 
 
-def match_tab(code: str | None = None) -> list:
+def match_tab(code: str | None = None, shift: float = 0) -> list:
+    """The Match tab; `shift` moves what is under JOIN down, as the hint "A code
+    is 6 characters" appearing above the box does."""
     rows = [
         run("NETPLAY", 573, 185, 674, 210, GOLD, font=1),
         run("SFVR 0.2.2", 1228, 185, 1345, 205, HINT),
@@ -114,8 +152,8 @@ def match_tab(code: str | None = None) -> list:
         run("HOST A MATCH", 593, 299, 762, 324, GOLD, font=1),
         run("You get a code to send to the other player.", 573, 354, 1043, 374, 0xA8A696),
         run("JOIN", 573, 399, 626, 424, GOLD, font=1),
-        run(code, 586, 458, 586 + 40 * len(code), 506, TEXT, font=2) if code else
-        run("CODE", 586, 458, 734, 506, HINT, font=2),
+        run(code, 586, 458 + shift, 586 + 40 * len(code), 506 + shift, TEXT, font=2) if code else
+        run("CODE", 586, 458 + shift, 734, 506 + shift, HINT, font=2),
         run("Paste", 1256, 475, 1318, 496),
         run("JOIN", 593, 550, 646, 575, DIM, 0x99, font=1), run("WATCH", 986, 550, 1070, 575, DIM, 0x99, font=1),
     ]
@@ -202,10 +240,69 @@ toast = [run("Player Two joined", 760, 60, 960, 80, window="##toasts")]
 said = narrator.step(reading("cancel", hosting, toast))
 check("a notice is said first", said and said.startswith("Player Two joined"), repr(said))
 check("once", narrator.step(reading("cancel", hosting, toast)) is None)
-said = narrator.step(reading(None, [], toast))
-check("closing says so", said == "Netplay closed", repr(said))
+said = narrator.step(reading(None, [], toast), now=100.0)
+check("the panel left out of a frame is not closed yet", said is None, repr(said))
+said = narrator.step(reading("cancel", hosting, toast), now=100.02)
+check("and coming back a frame later says nothing", said is None, repr(said))
+gone = reading(None, [], toast)
+narrator.step(gone, now=101.0)
+check("still gone a moment later", narrator.step(gone, now=101.1) is None)
+said = narrator.step(gone, now=101.25)
+check("gone for a fifth of a second it is closed", said == "Netplay closed", repr(said))
 said = narrator.step(reading(None, [], [run("Session over: the other player left", 700, 60, 1000, 80, window="##toasts")]))
 check("a notice with the panel closed is said", said == "Session over: the other player left", repr(said))
+
+narrator = n.PanelNarrator()
+narrator.step(reading("A", match_tab()))
+hint = [run("A code is 6 characters, like ABCDEF.", 573, 440, 950, 460, HINT)]
+said = narrator.step(reading("A", match_tab("A", shift=17) + hint))
+check("a code typed after the box moves down is still the box", said == "A code is 6 characters, like ABCDEF. A",
+      repr(said))
+said = narrator.step(reading("A", match_tab("AAB", shift=17) + hint))
+check("and spelled though it has no digit", said == "A A B", repr(said))
+
+
+def settings(focus_id, rect, checked, extra=()):
+    rows = [run("NETPLAY", 573, 130, 674, 155, GOLD, font=1), run("Match", 586, 177, 652, 197),
+            run("Settings", 691, 177, 782, 197), run("Debug", 820, 177, 890, 197),
+            run("(Steam name)", 586, 237, 742, 257, HINT), run("Name", 973, 237, 1037, 257),
+            run("Others may watch my sessions", 622, 286, 970, 306)]
+    frame[0] += 1
+    return n.Reading(frame[0], tuple(rows) + tuple(extra), focus_id, "###panel", rect, HINT, checked)
+
+
+narrator = n.PanelNarrator()
+narrator.step(settings(1, (573.0, 229.0, 963.0, 268.0), None))
+said = narrator.step(settings(1, (573.0, 229.0, 963.0, 268.0), None))
+said = narrator.step(settings(2, box, True))
+check("a tick box is said with its tick", said == "Others may watch my sessions, checked", repr(said))
+said = narrator.step(settings(2, box, False))
+check("unticking it says only that", said == "not checked", repr(said))
+said = narrator.step(settings(1, (573.0, 229.0, 963.0, 268.0), None))
+check("a box's label beside it comes first, then its hint", said == "Name, (Steam name), empty", repr(said))
+
+debug = [run("P1", 424, 474, 448, 494), run("You are", 600, 474, 684, 494),
+         run("0", 604, 748, 616, 768), run("Latency (ms)", 821, 748, 965, 768)]
+narrator = n.PanelNarrator()
+narrator.step(n.Reading(1, tuple(debug), 5, "###panel", (411.0, 466.0, 591.0, 505.0), HINT))
+said = narrator.step(n.Reading(2, tuple(debug), 6, "###panel", (411.0, 740.0, 811.0, 779.0), HINT))
+check("a slider is said with its label", said == "Latency (ms), 0", repr(said))
+moved = [r if r.text != "0" else run("25", 598, 748, 622, 768) for r in debug]
+said = narrator.step(n.Reading(3, tuple(moved), 6, "###panel", (411.0, 740.0, 811.0, 779.0), HINT))
+check("moving it says the new value alone", said == "25", repr(said))
+said = narrator.step(n.Reading(4, tuple(moved), 5, "###panel", (411.0, 466.0, 591.0, 505.0), HINT))
+check("a list is said with its label", said == "You are, P1", repr(said))
+check("Alt R says the label too", n.read_focus(n.Reading(4, tuple(moved), 5, "###panel", (411.0, 466.0, 591.0, 505.0),
+                                                         HINT)) == "You are, P1")
+
+narrator = n.PanelNarrator()
+narrator.step(settings(1, (573.0, 229.0, 963.0, 268.0), None))
+battle = [run("READY", 586, 1040, 680, 1060), run("Battle now", 586, 1080, 720, 1100)]
+narrator.step(settings(9, (573.0, 1030.0, 700.0, 1070.0), None, battle))
+said = narrator.step(settings(10, (573.0, 1070.0, 730.0, 1110.0), None, battle))
+check("a button under a box's column is not spelled", said == "Battle now", repr(said))
+said = narrator.step(settings(9, (573.0, 1030.0, 700.0, 1070.0), None, battle))
+check("a word in the code's letters is a word", said == "READY", repr(said))
 
 # ---------------------------------------------------------------- read keys
 r = reading("host", match_tab())
