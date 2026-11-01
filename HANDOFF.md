@@ -2090,6 +2090,34 @@ texts or more) now says only what has not been heard since the panel
 opened, and JOIN and WATCH becoming usable is said ("JOIN, available").
 Not yet seen: anyone joining, the lobby, a match.
 
+**SFVR's select screen.** The user said it did not read ("the character
+selection screen does not read from the netcode mod"), and a recording of
+its preview (Debug, "Character select preview"; `snapshots/netplay-select`,
+whole draw lists through a scratch recorder) showed why. SFVR draws it on
+`##Background`, with the game's own pictures for the stages and fighters,
+and nothing on it takes ImGui's focus: SFVR moves its cursor itself, left
+and right, and draws what is under it by name in a big font (55 pixels for
+a stage, 89 for a fighter), each big text twice, the first in black two
+pixels lower as its shadow. Focus meanwhile sits in `##side1` beside it
+(a player's name, REMATCH, CHARACTER SELECT, LEAVE, a Delay stepper), which
+up and down move through, and left and right step the delay as well as the
+cursor. The narrator listened only with the panel open, so it said nothing.
+Now `Reading.surface` is the panel while open and else the side window
+holding focus, followed as the panel is; and `ScreenNarrator` says the
+screen's new texts, big ones first and smallest first (the heading before
+the choice), a small one with its row ("Costume, Battle"), a whole step of
+small ones only as its sentences ("You select the stage."), never the row of
+steps and button hints along the top, nor a number that only ticks (a ping).
+Replayed, the recording says "STAGE SELECT. Ring of Destiny. You select the
+stage. P1 Player One (you). LEAVE", then "Suzaku Castle. Setting 1 of 2",
+"CHARACTER SELECT. RYU. CHUN-LI" (the other player's fighter at the right,
+with their loadout above it), "ALEX". The steps run Stage select, Character,
+Loadout, Ready; the host picks the stage (the other player sees "Player 1 is
+selecting the stage..."), A confirms, B goes back. Opening the panel closes
+the preview. Minimised, SFVR draws no text at all (ImGui culls it against a
+display of nothing) but a stray "Y", so a screen needs a big text. Not yet
+seen: the Loadout and Ready steps, and the screen in a real session.
+
 ### Where UE4SS got to, and why it is not installed
 
 Tried thoroughly and abandoned one symbol short. Nothing of it is installed;
@@ -2254,8 +2282,9 @@ What follows is roughly in order of value.
 mod that draws its own panel with Dear ImGui, and SFV Access now reads its
 panel and notices from memory; see "SFVR, the rollback netplay mod's panel".
 The user's first try found it "a very good start"; the faults it showed
-were fixed the same day. Hosting, the lobby and SFVR's own character and
-stage select have not been seen.
+were fixed the same day. Hosting was heard working; SFVR's own select
+screen is read since the same evening, from a recording of its preview.
+The lobby, a joined session and a match have not been seen.
 
 **The session of 2026-10-04, in short.** Crossups, in Training with Ryu
 against Ken and then Akuma, Zeku and Akira, against the game's banners

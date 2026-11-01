@@ -81,6 +81,15 @@ VERTEX = np.dtype([("x", "<f4"), ("y", "<f4"), ("u", "<u4"), ("v", "<u4"), ("col
 
 PANEL = "###panel"          # the panel's window; its child windows start with this
 TOASTS = "##toasts"         # the notices, which also show with the panel closed
+# SFVR's own full screens, its character and stage select, drawn behind
+# everything; and the side windows beside them, each player's name, REMATCH,
+# CHARACTER SELECT, LEAVE and the input delay, which take ImGui's focus with
+# the panel closed.
+SCREEN = "##Background"
+SIDES = "##side"
+# A screen's heading and the stage or fighter under its cursor are drawn this
+# big ("STAGE SELECT", "Ring of Power"); its prompts and button hints smaller.
+BIG_TEXT = 40.0
 # The panel's tabs, as SFVR names them. The first changes with what a session
 # is doing.
 TABS = {"Match", "Connecting", "Loading", "Watching", "In a match", "Settings", "Debug"}
@@ -153,13 +162,36 @@ class Reading:
     def toasts(self) -> list[Run]:
         return [r for r in self.runs if r.window == TOASTS]
 
+    @property
+    def screen(self) -> list[Run]:
+        """SFVR's own screen, its select screen. Each big text is drawn twice,
+        the first time in black a little lower as its shadow; that is left out."""
+        runs = [r for r in self.runs if r.window == SCREEN]
+        return [r for r in runs if not (r.rgb == 0 and any(
+            s.rgb != 0 and s.text == r.text and abs(s.left - r.left) < 4 and abs(s.top - r.top) < 4 for s in runs))]
+
+    @property
+    def surface(self) -> list[Run]:
+        """What focus moves through: the panel while it is open, or else the
+        side window holding focus."""
+        if self.open:
+            return self.panel
+        window = root(self.focus_window)
+        return [r for r in self.runs if root(r.window) == window] if window.startswith(SIDES) else []
+
+    @property
+    def showing(self) -> bool:
+        """SFVR shows something of its own to read: its panel, its select
+        screen, or a side window with focus."""
+        return bool(self.surface or body(self.screen))
+
     def focused(self) -> list[Run]:
         """The text inside the focused item, in reading order.
 
-        The item may be in the panel or in a list it opened, such as a combo's
-        choices, which ImGui draws as a window of its own.
+        The item may be in the panel, in a list it opened, such as a combo's
+        choices, which ImGui draws as a window of its own, or in a side window.
         """
-        if self.focus is None or not self.open:
+        if self.focus is None or not self.surface:
             return []
         name = self.focus_window
         return sorted((r for r in self.runs if (r.window == name or r.window.startswith(name + "/"))
@@ -549,7 +581,9 @@ def read_glyphs(mem: ProcessMemory, ctx: int) -> Glyphs | None:
 
 # ----------------------------------------------------------------- narration
 def tidy(text: str) -> str:
-    return re.sub(r"\s+", " ", text).strip()
+    # A character the font lacks comes back as U+FFFD; SFVR uses one, a dot
+    # between parts ("120 ms to the host · 3 watching").
+    return re.sub(r"\s+", " ", re.sub(r"\s*�\s*", ", ", text)).strip()
 
 
 def spell(text: str) -> str:
@@ -590,7 +624,8 @@ class PanelNarrator:
     stays put or after a button changed the screen (a code typed or pasted,
     spelled; "Waiting for the other player..."), and each notice once. While
     focus is on a tab the tab's contents are left to be moved through, or read
-    with Alt A.
+    with Alt A. With the panel closed, the same for a side window holding
+    focus, and SFVR's select screen through `ScreenNarrator`.
     """
     was_open: bool = False
     focus_said: tuple = ()      # the focused item's id, its text and its tick
@@ -600,10 +635,17 @@ class PanelNarrator:
     toasts: set = field(default_factory=set)
     gone_since: float | None = None   # when the panel stopped showing, while it may come back
     window: str = ""            # the window focus was last heard in
+    screen: ScreenNarrator = field(default_factory=lambda: ScreenNarrator())
 
     def reset(self) -> None:
+        self._leave()
+        self.toasts = set()
+        self.screen.reset()
+
+    def _leave(self) -> None:
+        """Focus has left SFVR's windows; what was heard in them is forgotten."""
         self.was_open, self.focus_said, self.gone_since, self.window = False, (), None, ""
-        self.known, self.seen, self.toasts, self.unavailable = set(), set(), set(), set()
+        self.known, self.seen, self.unavailable = set(), set(), set()
 
     def step(self, reading: Reading | None, now: float | None = None) -> str | None:
         if reading is None:
@@ -615,22 +657,25 @@ class PanelNarrator:
         self.toasts = shown
 
         is_open = reading.open
-        if not is_open:
+        if is_open:
+            self.gone_since = None
+        elif self.was_open:
             # ImGui leaves a window out of a frame or so while it resizes, as
             # the panel does going to the wider Debug tab; heard as "Netplay
             # closed" and "Netplay" again. Closed is closed once it stays gone.
-            if self.was_open:
-                self.gone_since = now if self.gone_since is None else self.gone_since
-                if now - self.gone_since >= CLOSE_DELAY:
-                    said.insert(0, "Netplay closed")
-                    self.was_open, self.focus_said, self.known, self.gone_since = False, (), set(), None
-                    self.seen = set()
-                    self.window = ""
+            self.gone_since = now if self.gone_since is None else self.gone_since
+            if now - self.gone_since < CLOSE_DELAY:
+                return phrase(dedupe(said)) or None
+            said.insert(0, "Netplay closed")
+            self._leave()
+        said += self.screen.step(reading, now)
+        surface = reading.surface
+        if not surface:
+            self._leave()
             return phrase(dedupe(said)) or None
-        self.gone_since = None
 
         focused = reading.focused()
-        now_known = {key(r) for r in reading.panel}
+        now_known = {key(r) for r in surface}
         focus = (reading.focus_id, tuple(tidy(r.text) for r in focused), reading.checked)
         before = self.focus_said or (None, None, None)
         if reading.focus_id == 0 and self.focus_said:
@@ -644,8 +689,14 @@ class PanelNarrator:
         window = root(reading.focus_window)
         crossed = bool(window and self.window and window != self.window
                        and not is_list(window) and not is_list(self.window))
-        if not self.was_open:
-            said.insert(0, "Netplay")
+        # With the panel closed, focus is in a side window: on SFVR's select
+        # screen, REMATCH, CHARACTER SELECT, LEAVE and the input delay. Its
+        # title is said on the way in, as when focus crosses into it.
+        entering = (is_open and not self.was_open) or (not is_open and window != self.window)
+        if entering:
+            if is_open:
+                said.insert(0, "Netplay")
+            self.known, self.seen, self.unavailable = set(), set(), set()
             if window and window != PANEL and not is_list(window):
                 said.append(heading(reading, window))
             said.append(self.describe(reading, focused))
@@ -677,12 +728,12 @@ class PanelNarrator:
         # JOIN and WATCH are unavailable, and skipped by the arrows, until the
         # code box holds a whole code; saying when they come back says when
         # there is somewhere to go.
-        unavailable = {key(r) for r in reading.panel if r.disabled}
-        if self.was_open:
-            said += dedupe([f"{tidy(r.text)}, available" for r in reading.panel
+        unavailable = {key(r) for r in surface if r.disabled}
+        if not entering:
+            said += dedupe([f"{tidy(r.text)}, available" for r in surface
                             if not r.disabled and key(r) in self.unavailable and key(r) not in unavailable])
         self.unavailable = unavailable
-        self.was_open, self.focus_said, self.known = True, focus, now_known
+        self.was_open, self.focus_said, self.known = is_open, focus, now_known
         self.seen |= now_known
         self.window = window or self.window
         return phrase(dedupe(said)) or None
@@ -705,7 +756,7 @@ class PanelNarrator:
 
     def changes(self, reading: Reading, focused: list[Run], above: float | None = None) -> list[str]:
         """New text on the panel, other than the focused item's, above a line if given."""
-        new = [r for r in reading.panel if key(r) not in self.known and not r.disabled and r not in focused
+        new = [r for r in reading.surface if key(r) not in self.known and not r.disabled and r not in focused
                and (above is None or r.bottom <= above + 2)]
         if len(new) >= SCREEN_CHANGE:
             # A whole screen changing: coming back to one already heard since
@@ -730,6 +781,80 @@ class PanelNarrator:
                 else:
                     out.append(words(r, before))
         return out
+
+
+@dataclass
+class ScreenNarrator:
+    """Decides what to say as SFVR's select screen changes.
+
+    Nothing on it takes ImGui's focus: SFVR moves its cursor itself, through
+    the stages and then the fighters, and draws what is under it by name. So
+    what is said is what changes: the heading, the choice and the prompt when
+    a step comes up ("STAGE SELECT. Ring of Destiny. You select the stage.",
+    "CHARACTER SELECT. RYU. CHUN-LI"), then the choice as the cursor moves
+    ("Suzaku Castle. Setting 1 of 2", "ALEX"). The steps along the top and the
+    button hints stay put, for Alt A, and a number changing on its own (a
+    ping) is not said. Measured on the preview from the panel's Debug tab (1
+    November 2026); the loadout step and a real session's have not been seen.
+    """
+    known: set = field(default_factory=set)     # the key of each text at the last reading
+    gone_since: float | None = None
+
+    def reset(self) -> None:
+        self.known, self.gone_since = set(), None
+
+    def step(self, reading: Reading, now: float) -> list[str]:
+        shown = body(reading.screen)
+        if not shown:
+            # The panel opening hides the screen, and closing on it unchanged
+            # says nothing more. Gone with the panel closed it has closed, once
+            # it stays gone, as ImGui leaves a window out of a frame or so.
+            if self.known and not reading.open:
+                self.gone_since = now if self.gone_since is None else self.gone_since
+                if now - self.gone_since >= CLOSE_DELAY:
+                    self.reset()
+            return []
+        self.gone_since = None
+        new = [r for r in shown if key(r) not in self.known]
+        self.known = {key(r) for r in shown}
+        return screen_words(new, shown)
+
+
+def body(screen: list[Run]) -> list[Run]:
+    """A select screen's texts but the row along its top, the steps ("Stage
+    select", "Character", "Loadout") and the button hints ("Confirm stage").
+    Nothing without a big text is a screen: minimised, SFVR draws a stray
+    letter there."""
+    if not any(r.size >= BIG_TEXT for r in screen):
+        return []
+    rows = lines(screen)
+    if len(rows[0]) >= 3:
+        rows = rows[1:]
+    return [r for row in rows for r in row]
+
+
+def screen_words(new: list[Run], shown: list[Run]) -> list[str]:
+    """New screen texts as said. The big ones first, smallest first, which puts
+    the heading before the stage or fighter under the cursor; then the small
+    ones, each with the small texts on its row ("Costume, Battle"). A whole
+    step of small texts at once says only its sentences ("You select the
+    stage."), leaving the other player's loadout to Alt A. The random tile's
+    "?" and the cursors' "1P" and "2P" are pictures more than words."""
+    def worth(r: Run) -> bool:
+        text = tidy(r.text)
+        return bool(re.search(r"[A-Za-z0-9]", text)) and not re.fullmatch(r"\dP", text)
+
+    def said(r: Run) -> str:
+        return re.sub(r"(\d+) ?/ ?(\d+)", r"\1 of \2", tidy(r.text))
+
+    new = [r for r in new if worth(r)]
+    big = sorted((r for r in new if r.size >= BIG_TEXT), key=lambda r: (round(r.size), r.top, r.left))
+    small = [r for r in new if r.size < BIG_TEXT]
+    if len(small) >= SCREEN_CHANGE:
+        small = [r for r in small if len(tidy(r.text).split()) >= 3]
+    rows = [row for row in lines([r for r in shown if r.size < BIG_TEXT and worth(r)])
+            if any(r in small for r in row)]
+    return [said(r) for r in big] + [", ".join(said(r) for r in row) for row in rows]
 
 
 def is_hint(run: Run) -> bool:
@@ -789,7 +914,8 @@ def dedupe(parts: list[str]) -> list[str]:
 
 
 def read_focus(reading: Reading) -> str:
-    """Alt R with the panel open: the focused item, then the line just under it.
+    """Alt R: the focused item, then the line just under it; on SFVR's select
+    screen, what it shows first ("STAGE SELECT. Ring of Power").
 
     The line under a big button is what it does ("You get a code to send to
     the other player."); a description is left-aligned with its item and
@@ -797,30 +923,39 @@ def read_focus(reading: Reading) -> str:
     """
     narrator = PanelNarrator()
     focused = reading.focused()
-    said = narrator.describe(reading, focused) if focused else "Nothing focused"
+    said = narrator.describe(reading, focused) if focused else ""
     window = root(reading.focus_window)
     if focused and window != PANEL and not is_list(window):
         said = phrase([heading(reading, window), said])
     if focused and reading.focus is not None:
         x0, _y0, _x1, y1 = reading.focus
-        under = [r for r in reading.panel if 0 <= r.top - y1 < 15 and abs(r.left - x0) < 6
+        under = [r for r in reading.surface if 0 <= r.top - y1 < 15 and abs(r.left - x0) < 6
                  and len(tidy(r.text)) > 1 and not r.disabled]
         if under:
             said = phrase([said] + [tidy(r.text) for r in sorted(under, key=lambda r: r.top)])
+    shows = body(reading.screen)
+    screen = [] if reading.open else screen_words(shows, shows)
     shown = [tidy(r.text) for r in reading.runs if r.window.startswith("##Tooltip")]
-    return phrase([said] + shown)
+    return phrase(screen + [said] + shown) or "Nothing focused"
 
 
 def read_lines(reading: Reading) -> list[Line]:
-    """Alt A with the panel open: every line of it, an unavailable item said so."""
+    """Alt A: every line of the panel while it is open, an unavailable item
+    said so; with it closed, of SFVR's select screen, then its side windows."""
+    if reading.open:
+        groups = [reading.panel]
+    else:
+        sides = sorted({root(r.window) for r in reading.runs if r.window.startswith(SIDES)})
+        groups = [reading.screen] + [[r for r in reading.runs if root(r.window) == side] for side in sides]
     out = []
     focused = set(id(r) for r in reading.focused())
-    for row in lines(reading.panel):
-        words = []
-        for r in row:
-            text = tidy(r.text)
-            if r.disabled:
-                text += ", unavailable"
-            words.append(text)
-        out.append(Line(", ".join(words), any(id(r) in focused for r in row)))
+    for runs in groups:
+        for row in lines(runs):
+            words = []
+            for r in row:
+                text = tidy(r.text)
+                if r.disabled:
+                    text += ", unavailable"
+                words.append(text)
+            out.append(Line(", ".join(words), any(id(r) in focused for r in row)))
     return out

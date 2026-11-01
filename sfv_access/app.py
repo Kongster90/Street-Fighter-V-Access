@@ -298,9 +298,10 @@ class App:
         return self.session.read()
 
     def _panel(self) -> netplay.Reading | None:
-        """SFVR's latest frame while its panel is open, which then takes the read keys."""
+        """SFVR's latest frame while it shows something of its own (its panel,
+        its select screen), which then takes the read keys."""
         reading = self.netplay_reading
-        return reading if reading is not None and reading.open else None
+        return reading if reading is not None and reading.showing else None
 
     # --------------------------------------------------------------- handlers
     def on_read_screen(self) -> None:
