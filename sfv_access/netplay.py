@@ -66,6 +66,7 @@ WIN_NAV_RECT = 0x3E8        # NavRectRel[2]
 VIEWPORT_DEFAULT_ID = 0x11111111
 VIEWPORT_DRAW_DATA = 0x50
 DRAW_DATA_LISTS = 0x10
+DRAW_DATA_SIZE = 0x28       # DisplaySize, the game's picture in pixels
 DRAW_LIST_VERTICES = 0x20
 DRAW_LIST_OWNER = 0xD0
 ATLAS_FONTS = 0x50
@@ -149,6 +150,8 @@ class Reading:
     focus: tuple[float, float, float, float] | None = None
     hint_rgb: int = -1      # the colour of hint text, TextDisabled
     checked: bool | None = None   # the focused item is a tick box, ticked or not
+    width: float = 0.0      # the picture's width, whose halves are the two players' on the select screen
+    marks: tuple = ()       # the select screen's cursor bars, rectangles as (left, top, right, bottom)
 
     @property
     def panel(self) -> list[Run]:
@@ -165,19 +168,25 @@ class Reading:
     @property
     def screen(self) -> list[Run]:
         """SFVR's own screen, its select screen. Each big text is drawn twice,
-        the first time in black a little lower as its shadow; that is left out."""
+        the first time in black a little lower as its shadow (two pixels for
+        the heading, four for a fighter); that is left out."""
         runs = [r for r in self.runs if r.window == SCREEN]
         return [r for r in runs if not (r.rgb == 0 and any(
-            s.rgb != 0 and s.text == r.text and abs(s.left - r.left) < 4 and abs(s.top - r.top) < 4 for s in runs))]
+            s.rgb != 0 and s.text == r.text and abs(s.left - r.left) < 8 and abs(s.top - r.top) < 8 for s in runs))]
 
     @property
     def surface(self) -> list[Run]:
         """What focus moves through: the panel while it is open, or else the
-        side window holding focus."""
+        side window holding focus. Not on the select screen: the side window
+        there was the panel's preview of the match-over window ("P1 window"),
+        whose focus moved with the same arrows as the screen's cursor, and
+        LEAVE and Delay were heard among the fighters' names."""
         if self.open:
             return self.panel
         window = root(self.focus_window)
-        return [r for r in self.runs if root(r.window) == window] if window.startswith(SIDES) else []
+        if not window.startswith(SIDES) or body(self.screen):
+            return []
+        return [r for r in self.runs if root(r.window) == window]
 
     @property
     def showing(self) -> bool:
@@ -424,6 +433,8 @@ class PanelReader:
         valid = mem.read(draw_data, 1)
         runs: list[Run] = []
         checked = None
+        width = mem.f32(draw_data + DRAW_DATA_SIZE) or 0.0
+        marks: tuple = ()
         if valid and valid[0]:
             count, lists = vector(mem, draw_data + DRAW_DATA_LISTS)
             pointers = mem.read(lists, 8 * count) if 0 < count < 256 else b""
@@ -440,9 +451,13 @@ class PanelReader:
                     mask = np.zeros(len(verts), dtype=bool)
                     runs += decode(verts, self.glyphs, owner, mask)
                     checked = tick_box(verts, mask, focus, self.frame_rgbs, self.check_rgb)
+                elif owner == SCREEN:
+                    mask = np.zeros(len(verts), dtype=bool)
+                    runs += decode(verts, self.glyphs, owner, mask)
+                    marks = cursor_bars(verts, mask)
                 else:
                     runs += decode(verts, self.glyphs, owner)
-        return Reading(frame, tuple(runs), focus_id, name, focus, self.hint_rgb, checked)
+        return Reading(frame, tuple(runs), focus_id, name, focus, self.hint_rgb, checked, width, marks)
 
     def _focus(self) -> tuple[int, str, tuple[float, float, float, float] | None]:
         """The focused item's id, its window's name and its rectangle on screen."""
@@ -501,6 +516,25 @@ def tick_box(verts: np.ndarray, mask: np.ndarray, rect: tuple[float, float, floa
         return None
     tick = shape & (colours == check_rgb) & (xs >= fx0) & (xs <= fx1) & (ys >= fy0) & (ys <= fy1)
     return bool(tick.any())
+
+
+def cursor_bars(verts: np.ndarray, mask: np.ndarray) -> tuple:
+    """The bars SFVR lays behind the loadout row its cursor is on: a wide
+    rectangle fading from gold at one side to nothing at the other, as ImGui's
+    AddRectFilledMultiColor draws it (left corners first and last, right
+    corners between). Every row's dark backing fades too, but not to nothing.
+    `mask` marks the characters' vertices, left out."""
+    if len(verts) < 4:
+        return ()
+    x, y, col = verts["x"], verts["y"], verts["col"]
+    a, b, c, d = (slice(k, len(verts) - 3 + k) for k in range(4))
+    alpha = col >> 24
+    with np.errstate(invalid="ignore"):
+        bar = ((x[a] == x[d]) & (x[b] == x[c]) & (y[a] == y[b]) & (y[c] == y[d])
+               & (col[a] == col[d]) & (col[b] == col[c])
+               & ((col[a] & 0xFFFFFF) == (col[b] & 0xFFFFFF)) & ((alpha[a] == 0) != (alpha[b] == 0))
+               & (x[b] - x[a] > 200) & (y[c] - y[a] > 20) & (y[c] - y[a] < 80) & ~mask[a])
+    return tuple((float(x[i]), float(y[i]), float(x[i + 1]), float(y[i + 2])) for i in np.nonzero(bar)[0])
 
 
 def vector(mem: ProcessMemory, address: int) -> tuple[int, int]:
@@ -788,20 +822,27 @@ class ScreenNarrator:
     """Decides what to say as SFVR's select screen changes.
 
     Nothing on it takes ImGui's focus: SFVR moves its cursor itself, through
-    the stages and then the fighters, and draws what is under it by name. So
-    what is said is what changes: the heading, the choice and the prompt when
-    a step comes up ("STAGE SELECT. Ring of Destiny. You select the stage.",
-    "CHARACTER SELECT. RYU. CHUN-LI"), then the choice as the cursor moves
-    ("Suzaku Castle. Setting 1 of 2", "ALEX"). The steps along the top and the
-    button hints stay put, for Alt A, and a number changing on its own (a
-    ping) is not said. Measured on the preview from the panel's Debug tab (1
-    November 2026); the loadout step and a real session's have not been seen.
+    the stages, the fighters and then the loadout's rows, and draws what is
+    under it. So what is said is what changes. A step coming up says its
+    heading, its choices and its prompt ("STAGE SELECT. Ring of Destiny. You
+    select the stage.", "CHARACTER SELECT. RYU. Other player, CHUN-LI"); a
+    step with no heading of its own says its name from the row along the top
+    ("Loadout"). Then the stage or fighter as the cursor moves ("Suzaku
+    Castle. Setting 1 of 2", "ALEX"), and on the loadout the row the cursor
+    is on ("Color, 03") and a value as it changes ("04"); a row's help line
+    is for Alt R. The other player's half of the screen says only their
+    fighter; the button hints, their loadout and a number that only ticks
+    over (a ping) are for Alt A. Measured on the preview from the panel's
+    Debug tab (1 November 2026); a real session's has not been seen.
     """
     known: set = field(default_factory=set)     # the key of each text at the last reading
+    lit: str = ""               # the step lit along the top
+    row: tuple = ()             # the texts of the loadout row the cursor is on
+    row_top: float | None = None
     gone_since: float | None = None
 
     def reset(self) -> None:
-        self.known, self.gone_since = set(), None
+        self.known, self.lit, self.row, self.row_top, self.gone_since = set(), "", (), None, None
 
     def step(self, reading: Reading, now: float) -> list[str]:
         shown = body(reading.screen)
@@ -815,9 +856,29 @@ class ScreenNarrator:
                     self.reset()
             return []
         self.gone_since = None
-        new = [r for r in shown if key(r) not in self.known]
-        self.known = {key(r) for r in shown}
-        return screen_words(new, shown)
+        mine = my_half(reading, shown)
+        new = [r for r in shown if key(r) not in self.known and worth(r)]
+        big = sorted((r for r in new if r.size >= BIG_TEXT), key=lambda r: (round(r.size), r.top, r.left))
+        said = [say(r) if r in mine else f"Other player, {say(r)}" for r in big]
+        lit = lit_step(reading.screen)
+        if lit and self.lit and lit != self.lit and not any(lit.lower() in tidy(r.text).lower() for r in big):
+            said.insert(0, lit)
+        row = cursor_row(reading, shown, mine)
+        if row and (self.row_top is None or abs(row[0].top - self.row_top) > 2):
+            said.append(", ".join(say(r) for r in row))
+        elif row:
+            # The same row, a value changed by left or right. Compared whole,
+            # since "03" becoming "04" is a number only ticking over to `key`.
+            said += [say(r) for r in row if tidy(r.text) not in self.row]
+        else:
+            small = [r for r in new if r.size < BIG_TEXT and r in mine]
+            if len(small) >= SCREEN_CHANGE:
+                small = [r for r in small if is_sentence(r)]
+            rows = lines([r for r in shown if r.size < BIG_TEXT and r in mine and worth(r)])
+            said += [", ".join(say(r) for r in row) for row in rows if any(r in small for r in row)]
+        self.known, self.lit = {key(r) for r in shown}, lit
+        self.row, self.row_top = tuple(tidy(r.text) for r in row), (row[0].top if row else None)
+        return said
 
 
 def body(screen: list[Run]) -> list[Run]:
@@ -833,28 +894,81 @@ def body(screen: list[Run]) -> list[Run]:
     return [r for row in rows for r in row]
 
 
-def screen_words(new: list[Run], shown: list[Run]) -> list[str]:
-    """New screen texts as said. The big ones first, smallest first, which puts
-    the heading before the stage or fighter under the cursor; then the small
-    ones, each with the small texts on its row ("Costume, Battle"). A whole
-    step of small texts at once says only its sentences ("You select the
-    stage."), leaving the other player's loadout to Alt A. The random tile's
-    "?" and the cursors' "1P" and "2P" are pictures more than words."""
-    def worth(r: Run) -> bool:
-        text = tidy(r.text)
-        return bool(re.search(r"[A-Za-z0-9]", text)) and not re.fullmatch(r"\dP", text)
+def lit_step(screen: list[Run]) -> str:
+    """The step lit along the top of the select screen: dark text on a gold
+    button, where the others are light."""
+    rows = lines(screen)
+    if not rows or len(rows[0]) < 3:
+        return ""
+    lit = [r for r in rows[0] if (r.rgb & 0xFF) + (r.rgb >> 8 & 0xFF) + (r.rgb >> 16 & 0xFF) < 0xC0]
+    return tidy(lit[0].text) if len(lit) == 1 else ""
 
-    def said(r: Run) -> str:
-        return re.sub(r"(\d+) ?/ ?(\d+)", r"\1 of \2", tidy(r.text))
 
-    new = [r for r in new if worth(r)]
-    big = sorted((r for r in new if r.size >= BIG_TEXT), key=lambda r: (round(r.size), r.top, r.left))
-    small = [r for r in new if r.size < BIG_TEXT]
-    if len(small) >= SCREEN_CHANGE:
-        small = [r for r in small if len(tidy(r.text).split()) >= 3]
-    rows = [row for row in lines([r for r in shown if r.size < BIG_TEXT and worth(r)])
-            if any(r in small for r in row)]
-    return [said(r) for r in big] + [", ".join(said(r) for r in row) for row in rows]
+def my_half(reading: Reading, shown: list) -> list:
+    """What on the select screen is the player's: the half with "(you)" over
+    its fighter, and what spans the middle (the heading, the prompt). With no
+    "(you)", as on the stage step, all of it."""
+    you = next((r for r in shown if "(you)" in r.text), None)
+    if you is None or not reading.width:
+        return list(shown)
+    side = half(reading, you)
+    return [r for r in shown if half(reading, r) in (None, side)]
+
+
+def half(reading: Reading, r) -> int | None:
+    """0 for the left half, 1 for the right, None across the middle. Takes a
+    run or a rectangle."""
+    left, right = (r.left, r.right) if isinstance(r, Run) else (r[0], r[2])
+    middle = reading.width / 2
+    return 0 if right <= middle else 1 if left >= middle else None
+
+
+def cursor_row(reading: Reading, shown: list, mine: list) -> list[Run]:
+    """The loadout row under the player's cursor bar, left to right, without
+    its arrows: "Costume", "Kenji"."""
+    you = next((r for r in shown if "(you)" in r.text), None)
+    bars = [m for m in reading.marks if you is None or half(reading, m) in (None, half(reading, you))]
+    return sorted((r for r in mine if worth(r) and r.size < BIG_TEXT
+                   and any(m[1] <= (r.top + r.bottom) / 2 <= m[3] for m in bars)), key=lambda r: r.left)
+
+
+def worth(r: Run) -> bool:
+    """A text worth saying: not the random tile's "?", nor the cursors' "1P"
+    and "2P", nor a row's arrows, which are pictures more than words; nor the
+    player's own name over their fighter ("YOU (you)")."""
+    text = tidy(r.text)
+    return bool(re.search(r"[A-Za-z0-9]", text)) and not re.fullmatch(r"\dP", text) and "(you)" not in text
+
+
+def is_sentence(r: Run) -> bool:
+    """A prompt or a help line ("You select the stage.", "Ready: the match
+    starts once both players are"), not a value in capitals ("II KARURA
+    TENZAN")."""
+    text = tidy(r.text)
+    return len(text.split()) >= 3 and bool(re.search(r"[a-z]", text)) and (text.endswith(".") or ":" in text)
+
+
+def say(r: Run) -> str:
+    """A screen text as said: "Setting 1 / 2" as "Setting 1 of 2"."""
+    return re.sub(r"(\d+) ?/ ?(\d+)", r"\1 of \2", tidy(r.text))
+
+
+def read_screen(reading: Reading) -> list[str]:
+    """Alt R on the select screen: its step when it has no heading, the
+    heading and the choices, and the loadout row under the cursor with its
+    help ("Costume, Kenji. Pick a costume.")."""
+    shown = body(reading.screen)
+    if not shown:
+        return []
+    said = ScreenNarrator().step(reading, 0.0)
+    lit = lit_step(reading.screen)
+    if lit and not any(lit.lower() in tidy(r.text).lower() for r in shown if r.size >= BIG_TEXT):
+        said.insert(0, lit)
+    mine = my_half(reading, shown)
+    row = cursor_row(reading, shown, mine)
+    if row:
+        said += [tidy(r.text) for r in mine if is_sentence(r) and r not in row and r.size < BIG_TEXT]
+    return said
 
 
 def is_hint(run: Run) -> bool:
@@ -933,8 +1047,7 @@ def read_focus(reading: Reading) -> str:
                  and len(tidy(r.text)) > 1 and not r.disabled]
         if under:
             said = phrase([said] + [tidy(r.text) for r in sorted(under, key=lambda r: r.top)])
-    shows = body(reading.screen)
-    screen = [] if reading.open else screen_words(shows, shows)
+    screen = [] if reading.open else read_screen(reading)
     shown = [tidy(r.text) for r in reading.runs if r.window.startswith("##Tooltip")]
     return phrase(screen + [said] + shown) or "Nothing focused"
 

@@ -2115,8 +2115,29 @@ with their loadout above it), "ALEX". The steps run Stage select, Character,
 Loadout, Ready; the host picks the stage (the other player sees "Player 1 is
 selecting the stage..."), A confirms, B goes back. Opening the panel closes
 the preview. Minimised, SFVR draws no text at all (ImGui culls it against a
-display of nothing) but a stray "Y", so a screen needs a big text. Not yet
-seen: the Loadout and Ready steps, and the screen in a real session.
+display of nothing) but a stray "Y", so a screen needs a big text.
+
+The user's first try of that ("other little snips of speech that felt like
+it didn't belong") and a second recording (`snapshots/netplay-loadout`)
+brought four changes the same evening. The side window was the panel's
+preview of the match-over window (Debug, "P1 window", still ticked), whose
+focus moved with the same arrows as the cursor: LEAVE and Delay among the
+fighters. A side window's focus is no longer followed while the select
+screen is up (`Reading.surface`), only after it, as after a match. Each
+player has half the screen (`DisplaySize`, draw data 0x28, is
+`Reading.width`), theirs the half with "(you)" over the fighter, and the
+loadout tables share their rows, so "Costume, DEFAULT, Costume, Story" was
+both players' at once: now the other player's half says only their fighter,
+"Other player, CHUN-LI". The loadout's cursor is a gold bar behind the row,
+fading out to the right (AddRectFilledMultiColor, its right corners at alpha
+0; every row's dark backing fades too, but not to nothing), found by
+`cursor_bars` into `Reading.marks`: moving says the row ("Color, 03"),
+left and right the value ("04", compared whole, as `key` hides digits), and
+the row's help line ("Pick a color.") is for Alt R. A step with no heading
+of its own is said from the lit button along the top ("Loadout", "Ready").
+The Ready step's line really reads "Ready: the match starts once both
+players are", cut short by SFVR. A fighter's shadow is four pixels down, not
+two, and was read twice. Not yet seen: the screen in a real session.
 
 ### Where UE4SS got to, and why it is not installed
 

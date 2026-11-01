@@ -369,36 +369,55 @@ check("opening with focus in another window says that window", said == "Netplay.
       repr(said))
 
 # ---------------------------------------------------------- the select screen
-# As SFVR 0.2.2 drew its select preview (snapshots/netplay-select, 1 November
-# 2026): a row of steps and button hints along the top, big texts drawn twice
-# with a black shadow, and the side window holding focus with the panel closed.
+# As SFVR 0.2.2 drew its select preview (snapshots/netplay-select and
+# netplay-loadout, 1 November 2026): a row of steps and button hints along the
+# top, the lit step dark on gold, big texts drawn twice with a black shadow,
+# each player's half of the screen with their fighter and loadout, a gold bar
+# fading out behind the loadout row the cursor is on; and the panel's preview
+# of the match-over window, holding focus, beside it.
 def screen_text(text, left, top, size, rgb=0xFFFFFF, font=5):
     width = 0.5 * size * len(text)
-    return [run(text, left, top + 2, left + width, top + 2 + size, 0, 220, "##Background", font, size),
+    shadow = 4 if size > 80 else 2
+    return [run(text, left, top + shadow, left + width, top + shadow + size, 0, 220, "##Background", font, size),
             run(text, left, top, left + width, top + size, rgb, 0xFF, "##Background", font, size)]
 
 
-def bar(*hints):
+def bar(lit, *hints):
     steps = [("Stage select", 45), ("Character", 188), ("Loadout", 311), ("Ready", 419), ("Close preview", 512)]
-    return [run(t, x, 28, x + 9 * len(t), 46, 0xF4F1E8, window="##Background", size=18.0) for t, x in steps] + \
+    return [run(t, x, 28, x + 9 * len(t), 46, 0x15130D if t == lit else 0xF4F1E8, window="##Background", size=18.0)
+            for t, x in steps] + \
         [run(t, 1500 + 120 * i, 28, 1500 + 120 * i + 9 * len(t), 48, 0xF4F1E8, window="##Background", size=20.4)
          for i, t in enumerate(hints)]
 
 
 def stage_step(stage="Ring of Destiny", setting=None, prompt="You select the stage."):
-    runs = bar(*(["Setting"] if setting else []), "Confirm stage", "Menu")
+    runs = bar("Stage select", *(["Setting"] if setting else []), "Confirm stage", "Menu")
     runs += screen_text("STAGE SELECT", 827, 91, 50.4) + screen_text(stage, 802, 565, 55.2)
     if setting:
         runs.append(run(f"Setting {setting}", 910, 524, 1010, 543, 0xE9C46A, window="##Background", size=19.2))
     return runs + [run(prompt, 871, 992, 1060, 1011, 0xBDB8AA, window="##Background", size=19.2)]
 
 
-def character_step(mine="RYU", ping="38 ms"):
-    runs = bar("Select", "Stage", "Menu")
-    for i, (label, value) in enumerate([("Costume", "Story"), ("Color", "01"), ("V-Skill", "II HAZANSHU")]):
-        runs += [run(label, 1228, 140 + 53 * i, 1330, 163 + 53 * i, 0xF4F1E8, window="##Background", size=22.8),
-                 run(value, 1600, 141 + 53 * i, 1720, 163 + 53 * i, 0xF4F1E8, window="##Background", size=21.6)]
-    runs += [run("YOU (you)", 143, 568, 230, 587, 0xF4F1E8, window="##Background", size=19.2),
+def table(left, values, arrows=False):
+    out = []
+    for i, (label, value) in enumerate(zip(("Costume", "Color", "V-Skill"), values)):
+        top = 140 + 53 * i
+        out += [run(label, left, top, left + 100, top + 23, 0xF4F1E8, window="##Background", size=22.8),
+                run(value, left + 400, top + 1, left + 520, top + 23, 0xF4F1E8, window="##Background", size=21.6)]
+        if arrows:
+            out += [run(c, x, top + 2, x + 8, top + 20, 0xE9C46A, window="##Background", size=18.0)
+                    for c, x in (("<", left + 198), (">", left + 661))]
+    return out
+
+
+def character_step(mine="RYU", ping="38 ms", loadout=None, help_line="Pick a costume."):
+    """The fighter step, or with `loadout` (my three values) the loadout step."""
+    runs = bar("Loadout" if loadout else "Character", *(["Ready", "Back"] if loadout else ["Select", "Stage"]), "Menu")
+    runs += table(1228, ("Story", "01", "II HAZANSHU"))
+    if loadout:
+        runs += table(52, loadout, arrows=True)
+        runs.append(run(help_line, 52, 507, 200, 524, 0xD9D4C6, window="##Background", size=16.8))
+    runs += [run("YOU  (you)", 143, 568, 230, 587, 0xF4F1E8, window="##Background", size=19.2),
              run(ping, 1544, 570, 1590, 588, 0x7FD88B, window="##Background", size=18.0),
              run("MOCK OPPONENT", 1622, 568, 1775, 587, 0xF4F1E8, window="##Background", size=19.2),
              run("1P", 866, 877, 880, 891, 0xFFFFFF, window="##Background", size=14.4)]
@@ -419,63 +438,85 @@ def select_side(delay="3 frames"):
 
 SIDE = {"rematch": (0x51, (40.0, 748.0, 442.0, 808.8)), "character": (0x52, (40.0, 818.0, 442.0, 878.8)),
         "leave": (0x53, (40.0, 888.0, 442.0, 948.8)), "delay": (0x54, (40.0, 968.0, 325.0, 1007.0))}
+ROWS = {"costume": (0.0, 129.6, 336.0, 177.6), "color": (0.0, 182.4, 336.0, 230.4)}
 
 
-def select(screen, focus="leave", delay="3 frames", extra=()):
+def select(screen, focus="leave", delay="3 frames", row=None, extra=()):
     frame[0] += 1
     fid, rect = SIDE[focus] if focus else (0, None)
     return n.Reading(frame[0], tuple(screen) + tuple(select_side(delay) if focus else ()) + tuple(extra),
-                     fid, "##side1" if focus else "", rect, HINT)
+                     fid, "##side1" if focus else "", rect, HINT, None, 1920.0, (ROWS[row],) if row else ())
 
 
 narrator = n.PanelNarrator()
 said = narrator.step(select(stage_step()), now=10.0)
-check("the select screen coming up says its heading, the stage and the prompt, then the side window's focus",
-      said == "STAGE SELECT. Ring of Destiny. You select the stage. P1 Player One (you). LEAVE", repr(said))
+check("the select screen coming up says its heading, the stage and the prompt",
+      said == "STAGE SELECT. Ring of Destiny. You select the stage.", repr(said))
 check("the same again says nothing", narrator.step(select(stage_step()), now=10.1) is None)
 said = narrator.step(select(stage_step(), "character"), now=10.2)
-check("moving in the side window says the item", said == "CHARACTER SELECT", repr(said))
+check("the match-over preview's focus, moved by the same arrows as the cursor, is not said", said is None, repr(said))
 said = narrator.step(select(stage_step("Suzaku Castle", "1 / 2"), "character"), now=10.3)
 check("the cursor onto another stage says it, with its setting", said == "Suzaku Castle. Setting 1 of 2", repr(said))
 said = narrator.step(select(stage_step("Suzaku Castle at Night", "2 / 2"), "character"), now=10.4)
 check("another setting of it says the new name", said == "Suzaku Castle at Night", repr(said))
-said = narrator.step(select(stage_step("Ring of Power"), "delay"), now=10.5)
-check("the delay is said with its label", said == "Ring of Power. Delay, 3 frames", repr(said))
-said = narrator.step(select(stage_step("Honda Sento"), "delay", "4 frames"), now=10.6)
-check("left and right move the stage and the delay together", said == "Honda Sento. 4 frames", repr(said))
-said = narrator.step(select(character_step(), "delay", "4 frames"), now=10.7)
-check("the fighter step: its heading, then the fighters", said == "CHARACTER SELECT. RYU. CHUN-LI", repr(said))
-said = narrator.step(select(character_step("ALEX"), "delay", "4 frames"), now=10.8)
+said = narrator.step(select(stage_step("Ring of Power"), "delay", "4 frames"), now=10.5)
+check("nor the preview's delay stepping with the stage", said == "Ring of Power", repr(said))
+said = narrator.step(select(character_step(), "delay"), now=10.7)
+check("the fighter step: its heading, my fighter, the other player's", said == "CHARACTER SELECT. RYU. Other player, CHUN-LI",
+      repr(said))
+said = narrator.step(select(character_step("ALEX"), "delay"), now=10.8)
 check("the cursor onto another fighter says them", said == "ALEX", repr(said))
-said = narrator.step(select(character_step("ALEX", "41 ms"), "delay", "4 frames"), now=10.9)
+said = narrator.step(select(character_step("ALEX", "41 ms"), "delay"), now=10.9)
 check("a ping ticking over is not said", said is None, repr(said))
-check("Alt R says what the screen shows, then the focus",
-      n.read_focus(select(character_step("ALEX"), "delay", "4 frames"))
-      == "CHARACTER SELECT. ALEX. CHUN-LI. P1 Player One (you). Delay, 4 frames. Suggested delay 1 (ping 38 ms)",
-      n.read_focus(select(character_step("ALEX"), "delay", "4 frames")))
-texts = [line.text for line in n.read_lines(select(stage_step("Ring of Power"), "leave"))]
-check("Alt A reads the screen, its top row too, then the side window, no shadow twice",
-      texts[:4] == ["Stage select, Character, Loadout, Ready, Close preview, Confirm stage, Menu",
-                    "STAGE SELECT", "Ring of Power", "You select the stage."]
-      and "3 frames, Delay" in texts and texts.count("Ring of Power") == 1, str(texts))
-check("the select screen takes the read keys", select(stage_step()).showing)
-narrator.step(select(stage_step("Honda Sento"), "leave"), now=11.0)
-narrator.step(reading("host", match_tab()), now=11.1)
-said = narrator.step(select(stage_step("Honda Sento"), "leave"), now=11.2)
+mine = ("DEFAULT", "01", "I FUKURO")
+said = narrator.step(select(character_step("ALEX", loadout=mine), row="costume"), now=11.0)
+check("the loadout step: its name, as the heading stays, and the row the cursor is on",
+      said == "Loadout. Costume, DEFAULT", repr(said))
+said = narrator.step(select(character_step("ALEX", loadout=("Kenji",) + mine[1:]), row="costume"), now=11.1)
+check("a value changed says the value", said == "Kenji", repr(said))
+said = narrator.step(select(character_step("ALEX", loadout=("Kenji",) + mine[1:], help_line="Pick a color."),
+                            row="color"), now=11.2)
+check("the cursor down a row says the row, not its help, nor the other player's", said == "Color, 01", repr(said))
+loadout = select(character_step("ALEX", loadout=("Kenji", "02", "I FUKURO"), help_line="Pick a color."), row="color")
+said = narrator.step(loadout, now=11.3)
+check("a number changed in the row is said though it only ticks over elsewhere", said == "02", repr(said))
+check("Alt R on the loadout says the step, the fighters, the row and its help",
+      n.read_focus(loadout) == "Loadout. CHARACTER SELECT. ALEX. Other player, CHUN-LI. Color, 02. Pick a color.",
+      n.read_focus(loadout))
+texts = [line.text for line in n.read_lines(loadout)]
+check("Alt A reads the screen row by row, the top row too, each shadow once, then the side window",
+      texts[0] == "Stage select, Character, Loadout, Ready, Close preview, Ready, Back, Menu"
+      and "Color, <, 02, >, Color, 01" in texts and "ALEX, CHARACTER SELECT, CHUN-LI" in texts
+      and "3 frames, Delay" in texts, str(texts))
+check("the select screen takes the read keys", loadout.showing)
+narrator.step(reading("host", match_tab()), now=11.4)
+said = narrator.step(loadout, now=11.5)
 check("closing the panel waits a moment", said is None, repr(said))
-said = narrator.step(select(stage_step("Honda Sento"), "leave"), now=11.4)
-check("then says so, and focus back in the side window, but not the screen again",
-      said == "Netplay closed. P1 Player One (you). LEAVE", repr(said))
+said = narrator.step(loadout, now=11.8)
+check("then says so, and not the screen again", said == "Netplay closed", repr(said))
 narrator.step(select([], None), now=12.0)
 narrator.step(select([], None), now=12.3)
 said = narrator.step(select(stage_step(prompt="Player 1 is selecting the stage..."), "rematch"), now=13.0)
 check("the screen gone and back is said again",
-      said == "STAGE SELECT. Ring of Destiny. Player 1 is selecting the stage... P1 Player One (you). REMATCH", repr(said))
+      said == "STAGE SELECT. Ring of Destiny. Player 1 is selecting the stage...", repr(said))
+said = narrator.step(select([], "rematch"), now=14.0)
+check("the side window holding focus with the screen gone is followed, as after a match",
+      said == "P1 Player One (you). REMATCH", repr(said))
 minimised = n.Reading(1, (run("Y", 0, 0, 13, 20, 0xBDB8AA, window="##Background"),), 0x52, "##side1", None, HINT)
 check("minimised, the stray letter SFVR draws is not a screen",
       n.PanelNarrator().step(minimised) is None and not minimised.showing)
-check("a character the font lacks is said as a pause", n.tidy("120 ms to the host  �  3 watching")
+check("a character the font lacks is said as a pause", n.tidy("120 ms to the host  \ufffd  3 watching")
       == "120 ms to the host, 3 watching")
+fade = shape_vertices(0, 182.4, 336, 230.4, 0x8CF0C85A)
+fade[1] = (336.0, 182.4, fade[1][2], fade[1][3], 0x00F0C85A)
+fade[2] = (336.0, 230.4, fade[2][2], fade[2][3], 0x00F0C85A)
+backing = shape_vertices(0, 129.6, 744, 177.6, 0xEB0B0908)
+backing[1] = (744.0, 129.6, backing[1][2], backing[1][3], 0xC80B0908)
+backing[2] = (744.0, 177.6, backing[2][2], backing[2][3], 0xC80B0908)
+verts = as_array(backing + fade)
+check("the cursor bar is the rectangle fading to nothing, not a row's dark backing",
+      n.cursor_bars(verts, np.zeros(len(verts), dtype=bool)) == ((0.0, 182.39999389648438, 336.0, 230.39999389648438),),
+      str(n.cursor_bars(verts, np.zeros(len(verts), dtype=bool))))
 
 # ---------------------------------------------------------------- read keys
 r = reading("host", match_tab())
