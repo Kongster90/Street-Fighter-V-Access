@@ -2057,8 +2057,22 @@ code is 6 characters" pushed it down, and by its column alone spelled
 "Battle now" under the name box; the font size settles it. And a tick
 box's tick is found from the vertices that are not glyphs: a square in a
 FrameBg colour at the item's left, as tall as the item, holding vertices
-in the CheckMark colour (8ce3ff). That last is worked out from the
-pictures, not yet checked against a recording.
+in the CheckMark colour (8ce3ff). Heard in play the same afternoon:
+"Others may watch my sessions, checked", and Player bars ticked and
+unticked.
+
+**The Debug tab's previews trap focus.** "P1 window" (and P2 window, the
+player bars and the rest under "Preview the match windows") puts up
+SFVR's match-over window, `##side1`, with made-up data: REMATCH,
+CHARACTER SELECT, LEAVE and a Delay stepper. It takes focus, the arrows
+then stay inside it, its buttons do nothing, and it stays up with the
+panel closed. The user got stuck there on 2026-11-01. Control Tab (on a
+pad, Square held and R1) moves focus back to the panel, where unticking
+"P1 window" or "All off" removes it. The narrator now says a window's
+first line when focus crosses into it ("P1 Player One (you). REMATCH")
+and "Netplay" on the way back, and Alt R there starts with the window.
+ImGui also drops focus to no item (NavId 0) for a moment after a button
+press; that is ignored, since it repeated the item.
 
 ### Where UE4SS got to, and why it is not installed
 

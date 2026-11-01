@@ -304,6 +304,35 @@ check("a button under a box's column is not spelled", said == "Battle now", repr
 said = narrator.step(settings(9, (573.0, 1030.0, 700.0, 1070.0), None, battle))
 check("a word in the code's letters is a word", said == "READY", repr(said))
 
+side = [run("P1", 40, 668, 66, 688, 0xFFB45A, window="##side1"),
+        run("Player One (you)", 80, 668, 256, 688, window="##side1"),
+        run("choosing...", 40, 715, 156, 735, HINT, window="##side1"),
+        run("REMATCH", 60, 770, 167, 790, GOLD, window="##side1", font=1),
+        run("CHARACTER SELECT", 60, 840, 273, 860, DIM, window="##side1", font=1)]
+narrator = n.PanelNarrator()
+narrator.step(reading("host", match_tab() + side))
+said = narrator.step(n.Reading(frame[0] + 1, tuple(match_tab() + side), 0x99, "##side1", (40.0, 748.0, 442.0, 808.8), HINT))
+frame[0] += 1
+check("focus moving into another window says its title first", said == "P1 Player One (you). REMATCH", repr(said))
+said = narrator.step(n.Reading(frame[0] + 1, tuple(match_tab() + side), 0x9A, "##side1", (40.0, 818.0, 442.0, 878.8), HINT))
+frame[0] += 1
+check("moving within it says only the item", said == "CHARACTER SELECT", repr(said))
+check("Alt R there says which window", n.read_focus(n.Reading(frame[0], tuple(match_tab() + side), 0x9A, "##side1",
+                                                              (40.0, 818.0, 442.0, 878.8), HINT))
+      == "P1 Player One (you). CHARACTER SELECT")
+pressed = n.Reading(frame[0] + 1, tuple(match_tab() + side), 0, "##side1", (40.0, 818.0, 442.0, 878.8), HINT)
+check("focus dropped to no item for a moment says nothing", narrator.step(pressed) is None)
+back = n.Reading(frame[0] + 2, tuple(match_tab() + side), 0x9A, "##side1", (40.0, 818.0, 442.0, 878.8), HINT)
+frame[0] += 2
+check("and given back says nothing", narrator.step(back) is None)
+said = narrator.step(reading("host", match_tab() + side))
+check("coming back to the panel says so", said == "Netplay. HOST A MATCH", repr(said))
+narrator = n.PanelNarrator()
+said = narrator.step(n.Reading(frame[0] + 1, tuple(match_tab() + side), 0x99, "##side1", (40.0, 748.0, 442.0, 808.8), HINT))
+frame[0] += 1
+check("opening with focus in another window says that window", said == "Netplay. P1 Player One (you). REMATCH",
+      repr(said))
+
 # ---------------------------------------------------------------- read keys
 r = reading("host", match_tab())
 check("Alt R adds the line under a button", n.read_focus(r) == "HOST A MATCH. You get a code to send to the other player.",

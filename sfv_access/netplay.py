@@ -577,9 +577,10 @@ class PanelNarrator:
     known: set = field(default_factory=set)
     toasts: set = field(default_factory=set)
     gone_since: float | None = None   # when the panel stopped showing, while it may come back
+    window: str = ""            # the window focus was last heard in
 
     def reset(self) -> None:
-        self.was_open, self.focus_said, self.gone_since = False, (), None
+        self.was_open, self.focus_said, self.gone_since, self.window = False, (), None, ""
         self.known, self.toasts = set(), set()
 
     def step(self, reading: Reading | None, now: float | None = None) -> str | None:
@@ -601,6 +602,7 @@ class PanelNarrator:
                 if now - self.gone_since >= CLOSE_DELAY:
                     said.insert(0, "Netplay closed")
                     self.was_open, self.focus_said, self.known, self.gone_since = False, (), set(), None
+                    self.window = ""
             return phrase(dedupe(said)) or None
         self.gone_since = None
 
@@ -608,8 +610,24 @@ class PanelNarrator:
         now_known = {key(r) for r in reading.panel}
         focus = (reading.focus_id, tuple(tidy(r.text) for r in focused), reading.checked)
         before = self.focus_said or (None, None, None)
+        if reading.focus_id == 0 and self.focus_said:
+            # ImGui drops focus to no item for a moment after a button is
+            # pressed, and gives it back: the item was said twice.
+            focus = before
+        # Focus can move out of the panel into another of SFVR's windows, such
+        # as the match-over window (which Debug's "P1 window" previews), and the
+        # arrows then stay inside it. Its title is said on the way in, and
+        # "Netplay" on the way back. A list opened from the panel is part of it.
+        window = root(reading.focus_window)
+        crossed = bool(window and self.window and window != self.window
+                       and not is_list(window) and not is_list(self.window))
         if not self.was_open:
             said.insert(0, "Netplay")
+            if window and window != PANEL and not is_list(window):
+                said.append(heading(reading, window))
+            said.append(self.describe(reading, focused))
+        elif focus[0] != before[0] and crossed:
+            said.append(heading(reading, window))
             said.append(self.describe(reading, focused))
         elif focus[0] != before[0]:
             # Pressing a button that changes the screen moves focus as well,
@@ -633,6 +651,7 @@ class PanelNarrator:
                 # button that has gone, now over other text.
                 said.append(self.describe(reading, focused, with_label=False))
         self.was_open, self.focus_said, self.known = True, focus, now_known
+        self.window = window or self.window
         return phrase(dedupe(said)) or None
 
     def describe(self, reading: Reading, focused: list[Run], with_label: bool = True) -> str:
@@ -695,6 +714,26 @@ def words(run: Run, before: str = "") -> str:
     return text
 
 
+def root(window: str) -> str:
+    """A window's top window: the panel for its child windows."""
+    return window.split("/", 1)[0]
+
+
+def is_list(window: str) -> bool:
+    """A combo's choices, which ImGui opens as a window of its own."""
+    return window.startswith("##Combo")
+
+
+def heading(reading: Reading, window: str) -> str:
+    """What a window is called when focus moves into it: "Netplay" for the
+    panel, and for another of SFVR's windows its first line ("P1 Player One
+    (you)")."""
+    if window == PANEL:
+        return "Netplay"
+    rows = lines([r for r in reading.runs if root(r.window) == window])
+    return " ".join(tidy(r.text) for r in rows[0]) if rows else ""
+
+
 def on_tab(reading: Reading, focused: list[Run]) -> bool:
     """Focus is on one of the panel's tabs: a tab's name, in a row of tab names."""
     if len(focused) != 1 or tidy(focused[0].text) not in TABS:
@@ -721,6 +760,9 @@ def read_focus(reading: Reading) -> str:
     narrator = PanelNarrator()
     focused = reading.focused()
     said = narrator.describe(reading, focused) if focused else "Nothing focused"
+    window = root(reading.focus_window)
+    if focused and window != PANEL and not is_list(window):
+        said = phrase([heading(reading, window), said])
     if focused and reading.focus is not None:
         x0, _y0, _x1, y1 = reading.focus
         under = [r for r in reading.panel if 0 <= r.top - y1 < 15 and abs(r.left - x0) < 6
