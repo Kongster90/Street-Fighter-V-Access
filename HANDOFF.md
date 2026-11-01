@@ -2305,7 +2305,11 @@ panel and notices from memory; see "SFVR, the rollback netplay mod's panel".
 The user's first try found it "a very good start"; the faults it showed
 were fixed the same day. Hosting was heard working; SFVR's own select
 screen is read since the same evening, from a recording of its preview.
-The lobby, a joined session and a match have not been seen.
+The lobby, a joined session and a match have not been seen. At the user's
+request, the zip SFV-Access-2026-11-01-4684552 (42 MB) was built and
+published as the GitHub release "Test version 1 November 2026", tag
+2026-11-01-4684552 on the commit it was built from, the 1 November What's
+new (all SFVR) as its notes; the repository is public now.
 
 **The session of 2026-10-04, in short.** Crossups, in Training with Ryu
 against Ken and then Akuma, Zeku and Akira, against the game's banners
