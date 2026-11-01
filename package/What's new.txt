@@ -3,6 +3,18 @@ What's new in Street Fighter V Access
 Each test version, newest first. The version you have is in VERSION.txt, beside this file.
 
 
+1 November 2026
+
+SFVR, the rollback netcode mod (sfvr.pages.dev), is read if you have it installed beside the game. Its panel, opened with F1 or Back and Start, says "Netplay" as it opens and "Netplay closed" as it closes, and each item as you move: tabs as tabs, tick boxes with checked or not checked, and each box, list or slider with its label, such as "Latency (ms), 0".
+SFVR's notices, such as "Player Two joined", are said as they appear, with the panel open or closed.
+Hosting a match: the code to send the other player is spelled out, such as "Send this code to the other player: L 6 K D C W".
+Joining a match: the code you type on the panel's keys or paste is spelled as it fills in. Join and Watch cannot be reached until the code has all six characters; "JOIN, available. WATCH, available" says when they can.
+SFVR's own select screen: each step as it comes up ("STAGE SELECT. Ring of Destiny. You select the stage."), the stage or fighter under the cursor as you move, with a stage's setting ("Suzaku Castle. Setting 1 of 2"), and the other player's fighter as "Other player, CHUN-LI". On the Loadout step, the row you are on ("Color, 03") and each value as you change it; Alt R adds the row's help line.
+While SFVR's panel or select screen is showing, Alt R and Alt A read it instead of the game.
+On SFVR's Debug tab, "P1 window" and the other previews put up a window that takes the arrow keys. Untick it, or choose "All off", to be rid of it; Control Tab (on a pad, square held and R1) moves between the panel and that window.
+Not yet tried in a real session with another player.
+
+
 5 October 2026
 
 The mod now reads everything from the game itself. Reading the screen, which it fell back on when it could not, is gone, along with F9, which switched between the two. Nothing changes in use, and the download is smaller.

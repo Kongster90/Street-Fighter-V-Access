@@ -71,6 +71,7 @@ CFN: its menu, the timeline, Pending CFN Friend Requests, Tournaments with their
 Replays: the controls with each button named, once as a replay begins and on Alt R.
 The Message Log, and the Gallery's Good Luck Charms with what each does.
 Fights: beeps as either fighter's health drops, and sounds for counter hits and crossups, each in the speaker on the side of whoever it belongs to, in replays and story fights too.
+SFVR, the rollback netcode mod, if you have it installed: its panel (F1, or Back and Start), its notices, hosting and joining with the match code spelled out, and its own stage, fighter and loadout select. Alt R and Alt A read it while it shows.
 
 Not yet: a sound for the distance between the fighters.
 
