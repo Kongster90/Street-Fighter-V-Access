@@ -2229,6 +2229,39 @@ line height under another at the same left, in its font and colour,
 starting in lower case) and a sentence is no longer followed by a comma
 (`commas`), both heard in 0.3.0's update notice.
 
+**SFVR 0.3.0's rooms.** The user then made a room and said "Not sure which
+table I am on or anything." A room (`netplay-030`, records 140 on) has its
+title ("Kongster's room", Public, the code), four tables down the left (a
+header row "TABLE 1", the rules "First to 2 · winner stays, up to 3 · 99
+seconds", "0 in queue", then two seats: "Open seat", "Sit here as P1", or a
+fighter and player name), the players list top right (each row a name,
+"(you)" on the player's, a place such as "Watching Table 1" or "Table 1 ·
+seated", ping, "Wired"), the room chat under it with a box and a Send
+button, and a help line bottom left that follows the selection ("That's
+you." on the player's own row). A selected table lights its header row; a
+selected player row has only a gold outline, its text light, which
+`Reading.lit` cannot see (vertices would show it: no recording of them yet);
+Send is always lit. So `MenuNarrator` now works in items (`menu_items`: each
+lit row, and for a row spanning 40 % of the width or more, the texts under
+it up to six line heights or the next text at or left of its header: the
+table's seats) and says only items not lit before, so Send is said once;
+the same item changed says only what changed ("KONGSTER" on sitting down).
+With nothing new lit the help line is said when it changes, which is how the
+players list is heard for now; it blinks, so a blank frame keeps it. The
+player's place (`you_status`: the texts right of a "(you)" in the right
+half, connection left out) is said with the title and as it changes ("You:
+Table 2, seated", "You: Watching Table 1", "You: Table 2, playing"). Chat
+lines (`chat_lines`: under the "... CHAT" heading at its left) are said as
+they arrive, matched by the old lines moving up. A " · " is said as a
+comma. A title is no longer a button hint (30 pixels at least, the hints
+22.8), and waits a moment while it shows a "?", a letter not baked yet
+("?'s room"). On 0.3.0's own character picker ("MY CHARACTER"), "(you)" is
+on both halves, the fighter left and the loadout right; it was heard as
+"Other player, ZEKU", and `my_half` now takes it all as the player's. Not
+yet seen or done: the players list's outline, the table rules dialog (read
+roughly), other players' chat messages, a match called from a queue, and
+Alt A, which still runs the columns together.
+
 ### Where UE4SS got to, and why it is not installed
 
 Tried thoroughly and abandoned one symbol short. Nothing of it is installed;

@@ -600,6 +600,45 @@ select = n.Reading(1, tuple(steps + [text("STAGE SELECT", 827, 91, 50.4, 0xFFFFF
                                      text("Stage", 1600, 1025, 20.0, DARK)]), width=1920.0)
 check("the select screen keeps its own rules", not select.lit)
 
+# A room, shaped like Kongster's room as recorded: tables down the left, each
+# a header row and two seats; the players list and chat on the right; the
+# chat's Send button always gold.
+def room(table=2, seat="Sit here as P1", status="Watching Table 1", chat=("DCQ left",), helpline="ROOM OPEN"):
+    runs = [text("Kongster's room", 57, 26, 48.0, 0xFFFFFF)]
+    for k, top in ((1, 106), (2, 334), (3, 562)):
+        rgb = DARK if k == table else LIGHT
+        runs += [text(f"TABLE {k}", 76, top, rgb=rgb),
+                 text("First to 2 · winner stays, up to 3 · 99 seconds", 546, top, 22.8, rgb),
+                 text("0 in queue", 936, top, 22.8, rgb),
+                 text(seat if k == table else "Open seat", 235, top + 105, 21.6),
+                 text("VS", 524, top + 95, 36.0, 0x8A8170), text("Open seat", 785, top + 106, 21.6)]
+    runs += [text("KONGS...", 1253, 150, 22.8), text("(you)", 1335, 151, 21.6), text(status, 1392, 151, 21.6, 0x7FD88B),
+             text("Wired", 1780, 152, 20.4), text("ROOM CHAT", 1092, 652, 19.2, 0xE9C46A)]
+    runs += [text(line, 1092, 904 - 27 * k, 22.8) for k, line in enumerate(reversed(chat))]
+    runs += [text("Say something (Back + Y, or click here)", 1108, 945, 22.8), text("Send", 1780, 945, 21.6, DARK),
+             text(helpline, 57, 1026, 24.0)]
+    return n.Reading(1, tuple(runs), width=1920.0)
+
+
+lobby = n.PanelNarrator()
+said = lobby.step(room(), 0.0)
+check("a room says its title, the table with its seats, and where the player is",
+      said == "Kongster's room. TABLE 2, First to 2, winner stays, up to 3, 99 seconds, 0 in queue, "
+      "Sit here as P1, VS, Open seat. Send. You: Watching Table 1", str(said))
+said = lobby.step(room(table=3), 1.0)
+check("moving to another table says that table, not Send again",
+      said == "TABLE 3, First to 2, winner stays, up to 3, 99 seconds, 0 in queue, Sit here as P1, VS, Open seat",
+      str(said))
+said = lobby.step(room(table=3, seat="KONGSTER", status="Table 3 · seated"), 2.0)
+check("sitting says who is in the seat now and where the player is", said == "KONGSTER. You: Table 3, seated",
+      str(said))
+said = lobby.step(room(table=3, seat="KONGSTER", status="Table 3 · seated",
+                       chat=("DCQ left", "Forever Solo Queue joined")), 3.0)
+check("a new chat line is said", said == "Forever Solo Queue joined", str(said))
+said = lobby.step(room(table=0, seat="KONGSTER", status="Table 3 · seated",
+                       chat=("DCQ left", "Forever Solo Queue joined"), helpline="That's you."), 4.0)
+check("moving to the players list says the line along the bottom", said == "That's you.", str(said))
+
 # ------------------------------------------------------- fonts built again
 # SFVR builds its fonts again when a player's name brings a character they
 # lack, which moves every glyph. The reader must take the new table, but not

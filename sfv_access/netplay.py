@@ -139,6 +139,16 @@ LABEL_GAP = 16
 # bigger than the selection a new text is to be a dialog's heading.
 TOP_STRIP = 0.06
 RAISED = 4.0
+# Titles are this big; the hints sharing the strip are smaller.
+TITLE_SIZE = 30.0
+# The bottom strip, where the help line sits, below this share of the width.
+BOTTOM_STRIP = 0.5
+# A selected card's contents lie within this many of its header's line heights.
+CARD_DEPTH = 6
+# and the selection is a card when it spans this share of the width.
+CARD_WIDTH = 0.4
+# How a player is connected, left out of their place in a room.
+CONNECTION = re.compile(r"Wired|Wireless|Wi-?Fi|\d+ ?ms")
 # A wrapped line starts this close to the one above's left, and one line
 # height below it.
 WRAP_SLACK = 1.5
@@ -1193,31 +1203,43 @@ class PanelNarrator:
 
 @dataclass
 class MenuNarrator:
-    """Decides what to say on SFVR 0.3.0's own screens, its hub, settings and
-    the rest, which SFVR draws whole with its own cursor (`Reading.lit`).
+    """Decides what to say on SFVR 0.3.0's own screens, its hub, settings,
+    rooms and the rest, which SFVR draws whole with its own cursor
+    (`Reading.lit`).
 
-    A screen coming up says its title and the selection ("SFVR SETTINGS.
-    Check at start, On"); moving says the new selection ("Word filter, On");
-    left and right on the same item say the new value ("Off"). A dialog
-    coming up over the screen, a new text bigger than the selection and
-    standing over it, says its heading and sentences first ("Custom Rooms
-    are unavailable. The rooms server is up, ..."). What the selection does, shown beside
-    it or along the bottom, is for Alt R. Recorded on SFVR 0.3.0, 7 November
-    2026; the user heard the old select-screen rules read the settings with
-    unrelated texts run together.
+    A screen coming up says its title, the selection and where the player is
+    ("Kongster's room. TABLE 1, ... You: Table 1, seated"); moving says the
+    new selection ("Word filter, On"), a table with what is in it; left and
+    right on the same item say the new value ("Off"). A selected item that
+    stays put, as the chat's Send button always is, is not said again. With
+    nothing new selected, a new line along the bottom is said ("That's
+    you."), as the players list shows its cursor only as an outline. The
+    player's own place is said as it changes, and each new chat line. A
+    dialog coming up over the screen, a new text bigger than the selection
+    and standing over it, says its heading and sentences first ("Custom
+    Rooms are unavailable. The rooms server is up, ..."). What the selection
+    does, shown beside it or along the bottom, is for Alt R. Recorded on SFVR
+    0.3.0, 7 November 2026; the user heard the old select-screen rules read
+    the settings with unrelated texts run together, and asked which table
+    they were at.
     """
     title: str | None = None
-    lit: tuple = ()
+    items: tuple = ()
+    status: str = ""
+    chat: tuple = ()
+    help: str = ""
     known: set = field(default_factory=set)
     gone_since: float | None = None
+    unsettled: float | None = None   # since when a new title has shown a "?"
 
     def reset(self) -> None:
-        self.title, self.lit, self.known, self.gone_since = None, (), set(), None
+        self.title, self.items, self.status, self.chat, self.help = None, (), "", (), ""
+        self.known, self.gone_since, self.unsettled = set(), None, None
 
     def leave(self, now: float) -> None:
         """No selection showing; forgotten once it stays gone, since a screen
         changing can leave a frame or so without one."""
-        if self.title is None and not self.lit:
+        if self.title is None and not self.items:
             return
         self.gone_since = now if self.gone_since is None else self.gone_since
         if now - self.gone_since >= CLOSE_DELAY:
@@ -1227,19 +1249,29 @@ class MenuNarrator:
         self.gone_since = None
         shown = reading.screen
         lit_runs = [r for row in lines(reading.lit) for r in row]
-        lit = tuple(say(r) for r in lit_runs)
-        title = menu_title(reading)
+        items = menu_items(reading)
+        title, status, chat, help_line = (menu_title(reading), you_status(reading),
+                                          chat_lines(reading), bottom_line(reading))
         said: list[str] = []
+        if self.title and "?" in self.title and same_but_unknown(self.title, title):
+            self.title = title
+        # A new title with a letter not drawn yet waits a moment for it.
+        if title != self.title and "?" in title:
+            self.unsettled = now if self.unsettled is None else self.unsettled
+            if now - self.unsettled < CLOSE_DELAY * 2:
+                return said
+        self.unsettled = None
         if title != self.title:
             said += [title] if title else []
-            said.append(commas(lit))
+            said += [commas(item) for item in items]
+            said += [status] if status else []
         else:
             size = max(r.size for r in lit_runs)
             top = reading.width * TOP_STRIP
             new = [r for r in shown if key(r) not in self.known and r.top >= top]
             # A dialog's heading stands over its own selected button; the
             # panel beside a list, whose heading is as big, stands apart.
-            raised = sorted((r for r in new if r.size >= size + RAISED and say(r) not in lit
+            raised = sorted((r for r in new if r.size >= size + RAISED and not lit_text(r, items)
                              and any(r.left < o.right and o.left < r.right for o in lit_runs)),
                             key=lambda r: (r.top, r.left))
             if raised:
@@ -1249,16 +1281,107 @@ class MenuNarrator:
                 # selection stays lit; only the dialog's button is said.
                 first = min(shown.index(r) for r in raised)
                 over = tuple(say(r) for r in lit_runs if shown.index(r) > first)
-                if over:
-                    said.append(commas(over))
-                    self.title, self.lit, self.known = title, lit, {key(r) for r in shown}
-                    return said
-            if lit != self.lit:
-                same_item = (not raised and self.lit and len(lit) == len(self.lit) > 1
-                             and lit[0] == self.lit[0])
-                said += [t for t in lit if t not in self.lit] if same_item else [commas(lit)]
-        self.title, self.lit, self.known = title, lit, {key(r) for r in shown}
+                said += [commas(over)] if over else []
+            else:
+                fresh = [item for item in items if item not in self.items]
+                for item in fresh:
+                    # The same item with a value changed: its first text kept.
+                    was = next((o for o in self.items if o[:1] == item[:1] and o not in items), None)
+                    said += ([t for t in item if t not in was] if was and len(items) == len(self.items)
+                             else [commas(item)])
+                if not fresh and help_line and help_line != self.help:
+                    said.append(help_line)
+            if status and status != self.status:
+                said.append(status)
+            said += new_chat(self.chat, chat)
+        # The line along the bottom blinks; a frame without it keeps it.
+        self.help = help_line or self.help
+        self.title, self.items, self.status, self.chat = title, items, status, chat
+        self.known = {key(r) for r in shown}
         return said
+
+
+def menu_items(reading: Reading) -> tuple:
+    """The selection as items, each a row of lit texts with what lies under
+    it on its card: a table's header, then its seats ("TABLE 2", "0 in
+    queue", "First to 2, winner stays, ...", "Sit here as P1", "VS", "Open
+    seat"). Only a selection spanning much of the screen is a card; it ends
+    at a text starting at or left of its header (the next table's), or a few
+    lines down. A settings row is narrower, and has no card."""
+    shown = reading.screen
+    lit = reading.lit
+    out = []
+    for row in lines(lit):
+        head = row[0]
+        left, right = min(r.left for r in row), max(r.right for r in row)
+        card = []
+        if right - left > CARD_WIDTH * reading.width:
+            depth = head.top + CARD_DEPTH * head.size
+            below = sorted((r for r in shown if r.top > head.bottom - 2 and r.top < depth
+                            and left - 2 <= r.left and r.right <= right + 2 and worth(r)),
+                           key=lambda r: r.top)
+            for r in below:
+                if r.left < head.left + 3:
+                    break
+                if r not in lit:
+                    card.append(r)
+        out.append(tuple(say(r) for r in row) + tuple(say(r) for line in lines(card) for r in line))
+    return tuple(out)
+
+
+def same_but_unknown(before: str, now: str) -> bool:
+    """The same text, but for letters that were "?" before: ImGui 1.92 draws
+    a character it has not baked yet as "?" for a frame ("?'s room", then
+    "Kongster's room")."""
+    pattern = "".join(".+?" if c == "?" else re.escape(c) for c in before)
+    return re.fullmatch(pattern, now) is not None
+
+
+def lit_text(r: Run, items: tuple) -> bool:
+    return any(say(r) in item for item in items)
+
+
+def you_status(reading: Reading) -> str:
+    """Where the player is, from their own row in a room's players list:
+    "You: Table 1, seated", "You: Watching Table 1". How they are connected
+    is left out."""
+    shown = reading.screen
+    you = next((r for r in shown if tidy(r.text) == "(you)" and r.left > reading.width / 2), None)
+    if you is None:
+        return ""
+    row = next((row for row in lines(shown) if you in row), [])
+    after = [say(r) for r in row if r.left > you.left and not CONNECTION.fullmatch(tidy(r.text))]
+    return f"You: {commas(after)}" if after else ""
+
+
+def chat_lines(reading: Reading) -> tuple:
+    """A room's chat, oldest first: the lines set under its heading ("ROOM
+    CHAT") at the heading's left; the box to type in sits further in."""
+    shown = reading.screen
+    heading = next((r for r in shown if tidy(r.text).endswith("CHAT") and tidy(r.text).isupper()), None)
+    if heading is None:
+        return ()
+    return tuple(say(r) for r in sorted(shown, key=lambda r: r.top)
+                 if r is not heading and r.top > heading.top and abs(r.left - heading.left) < 3)
+
+
+def new_chat(before: tuple, now: tuple) -> list[str]:
+    """The chat lines added since: the old lines move up as new ones come in
+    underneath. On first sight there is nothing new."""
+    if not before:
+        return []
+    for overlap in range(min(len(before), len(now)), 0, -1):
+        if before[-overlap:] == now[:overlap]:
+            return list(now[overlap:])
+    return list(now)
+
+
+def bottom_line(reading: Reading) -> str:
+    """The line along the bottom left, which says what the selection is or
+    does ("That's you.", "ROOM OPEN, Share the code to invite friends.")."""
+    low = [r for r in reading.screen if r.top > reading.width * BOTTOM_STRIP and r.left < reading.width / 2]
+    rows = lines(low)
+    return commas(say(r) for r in rows[-1]) if rows else ""
 
 
 def is_dark(r: Run) -> bool:
@@ -1267,9 +1390,10 @@ def is_dark(r: Run) -> bool:
 
 
 def menu_title(reading: Reading) -> str:
-    """The biggest text along the top of one of SFVR's screens: "SFVR SETTINGS"."""
+    """The biggest text along the top of one of SFVR's screens: "SFVR SETTINGS".
+    Button hints share the strip ("Preferred stage"), in smaller letters."""
     top = reading.width * TOP_STRIP
-    along = [r for r in reading.screen if r.top < top and worth(r)]
+    along = [r for r in reading.screen if r.top < top and worth(r) and r.size >= TITLE_SIZE]
     return say(max(along, key=lambda r: r.size)) if along else ""
 
 
@@ -1277,10 +1401,12 @@ def read_menu(reading: Reading) -> list[str]:
     """Alt R on one of SFVR 0.3.0's screens: the selection, then the
     sentences on the screen, which say what it does ("Word filter, On. Hides
     offensive names and words in public rooms.")."""
-    lit = [r for row in lines(reading.lit) for r in row]
-    if not lit:
+    if not reading.lit:
         return []
-    return [commas(say(r) for r in lit)] + [say(r) for r in reading.screen if is_sentence(r) and r not in lit]
+    items = menu_items(reading)
+    status = you_status(reading)
+    return ([commas(item) for item in items] + ([status] if status else [])
+            + [say(r) for r in reading.screen if is_sentence(r) and not lit_text(r, items)])
 
 
 @dataclass
@@ -1378,6 +1504,10 @@ def my_half(reading: Reading, shown: list) -> list:
     if you is None or not reading.width:
         return list(shown)
     side = half(reading, you)
+    # SFVR 0.3.0's own character picker has the player's fighter on the left
+    # and their loadout, "(you)" again, on the right: it is all theirs.
+    if any("(you)" in r.text and half(reading, r) not in (None, side) for r in shown):
+        return list(shown)
     return [r for r in shown if half(reading, r) in (None, side)]
 
 
@@ -1427,8 +1557,10 @@ def commas(texts) -> str:
 
 
 def say(r: Run) -> str:
-    """A screen text as said: "Setting 1 / 2" as "Setting 1 of 2"."""
-    return re.sub(r"(\d+) ?/ ?(\d+)", r"\1 of \2", tidy(r.text))
+    """A screen text as said: "Setting 1 / 2" as "Setting 1 of 2", and a dot
+    between parts as a pause ("First to 2, winner stays")."""
+    text = re.sub(r"(\s*\u00b7\s*)+", ", ", tidy(r.text)).strip(", ")
+    return re.sub(r"(\d+) ?/ ?(\d+)", r"\1 of \2", text)
 
 
 def read_screen(reading: Reading) -> list[str]:
