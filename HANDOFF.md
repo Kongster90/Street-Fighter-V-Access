@@ -2474,7 +2474,15 @@ fonts again mid-session". The user also got stuck in the Debug previews
 Then SFVR 0.3.0 came out, on ImGui 1.92 with a new interface, and the
 reader was ported and given menu rules; see "SFVR 0.3.0: ImGui 1.92 and a
 new look". For the next What's new, along with Read me first's SFVR line,
-which still describes 0.2's F1 panel.
+which still describes 0.2's F1 panel. The user then played several sets
+in rooms and said "Everything works so far", and asked whether the mod still
+works without SFVR: it does (checked by pointing the SFVR parts at a module
+name that is not loaded: nothing attached, nothing written, F11 "No SFVR
+status found."). At the user's request What's new got its 7 November entry,
+Read me first's SFVR line was brought to 0.3, and the zip
+SFV-Access-2026-11-07-65bf4d1 (42 MB) was built and published as the GitHub
+release "Test version 7 November 2026", tag 2026-11-07-65bf4d1 on the
+commit it was built from, the 7 November What's new as its notes.
 
 **The session of 2026-11-01.** The user installed SFVR, a rollback netplay
 mod that draws its own panel with Dear ImGui, and SFV Access now reads its
