@@ -2165,6 +2165,26 @@ live game while the user watched (it found the one site and read that
 line), and the write and title clearing on a stand-in process; not yet
 heard in play.
 
+**SFVR builds its fonts again mid-session.** The same evening, on SFVR
+0.2.6.1 (it updated itself on 2026-11-04), the user joined a room as P2 and
+heard nothing on the select and loadout screens, then "Y. Y" and "Rematch.
+Y" on the Debug tab's Character select preview, where a recording
+(`snapshots/netplay-session`) replayed through today's narrator says
+"STAGE SELECT. Ring of Destiny. You select the stage." and the rest. The
+difference was the glyph table: SFVR adds a character to all six fonts
+whenever one they lack turns up (a player's name, presumably) and builds
+the atlas again, which moves the glyphs; 191 a font when the mod attached,
+193 an hour later. The reader had kept the table from attaching, so the
+panel's small text still read and the big headings and fighters came back
+as "Y" or nothing. `PanelReader._follow_atlas` now compares `atlas_key`
+(the atlas, each font's glyph vector's length and data) before each new
+frame and reads the glyphs again when it moves, keeping a table only if the
+key held still while it was read. On 0.2.6.1 the select screen's heading is
+50.4 pixels, a stage 55.2, a fighter 88.8, and the preview reads as it did
+on 0.2.2. A real session's select and loadout are still unrecorded: one
+taken by hand at 20:01 showed the loadout rows and READY but the dump was
+cut short, so whether a real loadout has a big text is not known.
+
 ### Where UE4SS got to, and why it is not installed
 
 Tried thoroughly and abandoned one symbol short. Nothing of it is installed;
@@ -2328,7 +2348,12 @@ What follows is roughly in order of value.
 **The session of 2026-11-07.** Online watching a session, the user heard
 NVDA say SFVR's frame count every second, from the window title, and asked
 for silence and a key instead: the title is kept still and F11 says the
-status line. See "SFVR's window title, and F11". For the next What's new.
+status line. See "SFVR's window title, and F11". Then nothing read on
+SFVR's select screen after joining: SFVR builds its fonts again as names
+bring new characters, and the reader now follows that. See "SFVR builds its
+fonts again mid-session". The user also got stuck in the Debug previews
+(P2 window and Character select preview); F1, then All off, got them out.
+For the next What's new.
 
 **The session of 2026-11-01.** The user installed SFVR, a rollback netplay
 mod that draws its own panel with Dear ImGui, and SFV Access now reads its

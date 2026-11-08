@@ -328,6 +328,7 @@ class PanelReader:
         self.check_rgb = -1
         self._owners: dict[int, str] = {}
         self._last: Reading | None = None
+        self._atlas: tuple = ()     # `atlas_key` when `glyphs` was read
         self._retry_at = 0.0
         self._missing_said = False
 
@@ -368,11 +369,12 @@ class PanelReader:
                 self.note(f"netplay: {module.name} is loaded but its panel was not found "
                           "(not drawn yet, or a different ImGui)")
             return False
+        atlas = atlas_key(mem, ctx)
         glyphs = read_glyphs(mem, ctx)
         if glyphs is None:
             mem.close()
             return False
-        self.mem, self.ctx, self.glyphs = mem, ctx, glyphs
+        self.mem, self.ctx, self.glyphs, self._atlas = mem, ctx, glyphs, atlas
         count = COL_CHECK_MARK + 1
         colours = mem.read(ctx + CTX_COLORS, 16 * count)
         if colours and len(colours) == 16 * count:
@@ -402,6 +404,7 @@ class PanelReader:
                     continue
                 if self._last is not None and self._last.frame == frame:
                     return self._last
+                self._follow_atlas()
                 reading = self._read_frame(frame)
                 if self._whole_frame() == frame:
                     self._last = reading
@@ -411,6 +414,24 @@ class PanelReader:
             self.note(f"netplay: reading stopped ({exc!r}); looking again")
             self.detach()
             return None
+
+    def _follow_atlas(self) -> None:
+        """Read the glyphs again when SFVR has built its fonts again.
+
+        SFVR adds a character to every font when one it lacks turns up, as in
+        a player's name, and builds the atlas anew, which moves the glyphs.
+        Read with the old table, the select screen's headings and fighters
+        came back as "Y" or nothing (7 November 2026, 191 glyphs a font at
+        the start, 193 an hour later). The table is taken only if the atlas
+        held still while it was read.
+        """
+        atlas = atlas_key(self.mem, self.ctx)
+        if atlas == self._atlas:
+            return
+        glyphs = read_glyphs(self.mem, self.ctx)
+        if glyphs is not None and atlas_key(self.mem, self.ctx) == atlas:
+            self.glyphs, self._atlas = glyphs, atlas
+            self.note(f"netplay: SFVR built its fonts again, {len(glyphs)} glyphs")
 
     def _whole_frame(self) -> int | None:
         """SFVR's frame number, or None while it is part way through building one.
@@ -590,6 +611,20 @@ def is_context(mem: ProcessMemory, p: int) -> bool:
         return False
     viewport = mem.ptr(viewports)
     return bool(viewport) and mem.u32(viewport) == VIEWPORT_DEFAULT_ID
+
+
+def atlas_key(mem: ProcessMemory, ctx: int) -> tuple:
+    """What changes when SFVR builds its fonts again: the atlas, and each
+    font's glyph table, its length and where it lives. A few small reads."""
+    atlas = mem.ptr(ctx + IO_FONTS)
+    if not atlas:
+        return ()
+    count, fonts = vector(mem, atlas + ATLAS_FONTS)
+    pointers = mem.read(fonts, 8 * count) if 0 < count < 64 else b""
+    key = [atlas, count]
+    for (font,) in struct.iter_unpack("<Q", pointers or b""):
+        key += vector(mem, font + FONT_GLYPHS) if font else (0, 0)
+    return tuple(key)
 
 
 def read_glyphs(mem: ProcessMemory, ctx: int) -> Glyphs | None:

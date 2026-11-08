@@ -531,6 +531,28 @@ check("an unavailable item is said so", "JOIN, unavailable, WATCH, unavailable" 
 check("the focused row is marked for the review cursor", [line.selected for line in lines].count(True) == 1
       and lines[texts.index("CODE, Paste")].selected)
 
+# ------------------------------------------------------- fonts built again
+# SFVR builds its fonts again when a player's name brings a character they
+# lack, which moves every glyph. The reader must take the new table, but not
+# one read while the atlas was still changing.
+reader = n.PanelReader()
+reader.mem, reader.ctx, reader.glyphs, reader._atlas = object(), 1, "old table", ("atlas", 191)
+keys, real_key, real_read = [], n.atlas_key, n.read_glyphs
+n.atlas_key = lambda mem, ctx: keys.pop(0)
+n.read_glyphs = lambda mem, ctx: "new table"
+try:
+    keys[:] = [("atlas", 191)]
+    reader._follow_atlas()
+    check("an unchanged atlas keeps the table", reader.glyphs == "old table" and not keys)
+    keys[:] = [("atlas", 192), ("atlas", 193)]
+    reader._follow_atlas()
+    check("a table read while the atlas moved is not taken", reader.glyphs == "old table")
+    keys[:] = [("atlas", 193), ("atlas", 193)]
+    reader._follow_atlas()
+    check("the fonts built again are read again", reader.glyphs == "new table" and reader._atlas == ("atlas", 193))
+finally:
+    n.atlas_key, n.read_glyphs = real_key, real_read
+
 # --------------------------------------------------------------- status line
 # The title callback as SFVR 0.2.2 builds it, at made-up addresses: the
 # prefix's lea, some code, then the line's length tested, a length check, and
