@@ -3,6 +3,21 @@ What's new in Street Fighter V Access
 Each test version, newest first. The version you have is in VERSION.txt, beside this file.
 
 
+7 November 2026
+
+SFVR 0.3, the new version of the rollback netcode mod, is read. It plays only against 0.3, and SFVR offers the update itself. The mod no longer reads SFVR 0.2.
+SFVR's screens, its hub, settings and dialogs: each says its title and what is selected, such as "SFVR SETTINGS. Check at start, On". Moving says the new selection ("Word filter, On"), and left or right says the new value alone ("Off"). A dialog says its message and its button, such as "Custom Rooms are unavailable. The rooms server is up, but isn't hosting rooms right now. Try again in a little while. Try again". Alt R adds what the selection does, from the panel beside it.
+Custom rooms: the room list says each room, such as "DCQ's room, 1 of 16. DCQ, 4 tables, first to 2, 7 open seats". In a room, the room's name, the selected table with its rules and both seats ("TABLE 2, First to 2, winner stays, up to 3, 99 seconds, 0 in queue, Sit here as P1, VS, Open seat"), and where you are: "You: Watching Table 1", "You: Table 2, seated". Where you are is said again whenever it changes, and on Alt R.
+Room chat: each message as it comes in, with who sent it ("SWEETSAKURASTAR: ggs"), and players joining and leaving.
+The players list: the line along the bottom is said as you move into it ("That's you."). Which player is selected is not read yet.
+Your character, MY CHARACTER: the fighter under the cursor as you move, then each loadout row and value.
+After each game of a set: both scores and votes, the countdown and the choice, such as "You: 0 of 2 to win the set, Choosing... Eastwood: 1 of 2 to win the set, Choosing... Rematch in 15 s. Rematch". Then Rematch, Character select, Leave and the delay as you move, your vote ("You: Rematch") and the other player's ("Eastwood: Rematch"). At the end of a set, who won it and how long until you go back to the room.
+SFVR's notices are said once as they appear: "Eastwood wants a rematch", "loading", "waiting for the other player".
+New key, F11: SFVR's status, such as "Watching, frame 1394, 434 frames in hand", or in a match the frame, ping and rollbacks. SFVR puts this in the game's window title, which screen readers read out every second; the mod now keeps it out of the title.
+Fixed: SFVR's select screen going silent after joining someone, or saying "Y"; wrapped text read with full stops in the middle of a sentence; symbols in players' names said as "question mark".
+Not yet: which player is selected in a room's players list, and Alt A in a room, which runs the tables and the players list together.
+
+
 1 November 2026
 
 SFVR, the rollback netcode mod (sfvr.pages.dev), is read if you have it installed beside the game. Its panel, opened with F1 or Back and Start, says "Netplay" as it opens and "Netplay closed" as it closes, and each item as you move: tabs as tabs, tick boxes with checked or not checked, and each box, list or slider with its label, such as "Latency (ms), 0".
