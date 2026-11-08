@@ -2290,7 +2290,18 @@ choice was seen. And a player's chat message is their name in blue at the
 chat's left with the message beside it ("FOREVER SOLO QUEUE", "They cant find
 you"); only the name was read, so the user missed four messages addressed to
 them; `chat_lines` now says "FOREVER SOLO QUEUE: They cant find you".
-Replayed against `netplay-030`, records 540 to 1345.
+Replayed against `netplay-030`, records 540 to 1345. Heard working by the
+user at 22:05 the same night ("seems like the after match screen worked"):
+"You: 0 of 2 to win the set, Choosing... Eastwood: 1 of 2 ...", "Eastwood:
+Rematch", "You: Rematch", "Eastwood: 2 of 2 to win the set, Wins the set",
+and in chat "SWEETSAKURASTAR: ggs". Three faults from that log were fixed
+after: notices kept a lone "?" ("? Eastwood ? wants a rematch", and "Eastwood
+?'s game"), now said through `say`; the row the cursor left fades a frame
+with its label still dark, so "V-Skill" was said before "V-Trigger, I
+DOHATSU SHOTEN" (`fading_out`); and the queue's buttons over the chat joined
+a chat line ("SFVR left: Ready, Leave queue"), now kept to the line's own
+letter size. A room coming back after a set read its table card with the
+next table's rules and loading texts run in; not fixed.
 
 ### Where UE4SS got to, and why it is not installed
 

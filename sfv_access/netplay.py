@@ -1093,8 +1093,8 @@ class PanelNarrator:
             return None
         now = time.monotonic() if now is None else now
         said: list[str] = []
-        shown = {tidy(r.text) for r in reading.toasts}
-        said += [t for t in (tidy(r.text) for r in reading.toasts) if t and t not in self.toasts]
+        shown = {say(r) for r in reading.toasts}
+        said += [t for t in (say(r) for r in reading.toasts) if t and t not in self.toasts]
         self.toasts = shown
 
         is_open = reading.open
@@ -1342,7 +1342,7 @@ class ResultNarrator:
         if not self.shown:
             said = result_intro(reading)
         else:
-            for item in (i for i in items if i not in self.items):
+            for item in (i for i in items if i not in self.items and not fading_out(i, self.items)):
                 was = next((o for o in self.items if o[:1] == item[:1] and o not in items), None)
                 said += [t for t in item if t not in was] if was else [commas(item)]
             said += [f"You: {t}" for t in my_statuses if t not in self.mine]
@@ -1436,7 +1436,7 @@ class MenuNarrator:
                 over = tuple(say(r) for r in lit_runs if shown.index(r) > first)
                 said += [commas(over)] if over else []
             else:
-                fresh = [item for item in items if item not in self.items]
+                fresh = [item for item in items if item not in self.items and not fading_out(item, self.items)]
                 for item in fresh:
                     # The same item with a value changed: its first text kept.
                     was = next((o for o in self.items if o[:1] == item[:1] and o not in items), None)
@@ -1490,6 +1490,13 @@ def same_but_unknown(before: str, now: str) -> bool:
     return re.fullmatch(pattern, now) is not None
 
 
+def fading_out(item: tuple, before: tuple) -> bool:
+    """Part of an item lit before: the row the cursor has just left, its
+    gold fading, its label still dark for a frame ("V-Skill" said before
+    "V-Trigger, I DOHATSU SHOTEN")."""
+    return any(len(item) < len(old) and old[:len(item)] == item for old in before)
+
+
 def lit_text(r: Run, items: tuple) -> bool:
     return any(say(r) in item for item in items)
 
@@ -1522,7 +1529,7 @@ def chat_lines(reading: Reading) -> tuple:
     for row in lines(under):
         if abs(row[0].left - heading.left) >= 3:
             continue
-        texts = [say(r) for r in row]
+        texts = [say(r) for r in row if abs(r.size - row[0].size) < 0.5]
         out.append(f"{texts[0]}: {commas(texts[1:])}" if len(texts) > 1 else texts[0])
     return tuple(out)
 
@@ -1721,10 +1728,11 @@ def commas(texts) -> str:
 def say(r: Run) -> str:
     """A screen text as said: "Setting 1 / 2" as "Setting 1 of 2", and a dot
     between parts as a pause ("First to 2, winner stays"). A "?" standing
-    alone is a symbol the font lacks, as in a player's name ("? EASTWOOD ?"),
-    and is left out; one ending a question stays."""
+    alone is a symbol the font lacks, as in a player's name ("? EASTWOOD ?",
+    "Eastwood ?'s game"), and is left out; one ending a question stays."""
     text = re.sub(r"(\s*\u00b7\s*)+", ", ", tidy(r.text)).strip(", ")
     if re.search(r"[A-Za-z0-9]", text):
+        text = re.sub(r"\s*\?+(?='s\b)", "", text)
         text = re.sub(r"\s+", " ", re.sub(r"(?:^|(?<=\s))\?+(?=\s|$)", "", text)).strip()
     return re.sub(r"(\d+) ?/ ?(\d+)", r"\1 of \2", text)
 

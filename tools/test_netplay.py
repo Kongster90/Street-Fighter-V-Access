@@ -654,6 +654,11 @@ said = lobby.step(room(table=0, seat="KONGSTER", status="Table 3 · seated", hel
                        chat=("DCQ left", "Forever Solo Queue joined", ("FOREVER SOLO QUEUE", "They cant find you"))),
                   5.0)
 check("a player's chat message is said with their name", said == "FOREVER SOLO QUEUE: They cant find you", str(said))
+over = room(chat=("SFVR left",))
+over = n.Reading(1, over.runs + (text("Leave queue", 1500, 904, 21.6),), width=1920.0)
+check("a button over the chat stays out of its line", n.chat_lines(over) == ("SFVR left",), str(n.chat_lines(over)))
+check("the row just left, fading, is not said again",
+      n.fading_out(("V-Skill",), (("V-Skill", "I RAKAN"),)) and not n.fading_out(("V-Trigger", "II"), (("V-Skill", "I"),)))
 
 
 # The window after a game, in front, as recorded: each player's label and
