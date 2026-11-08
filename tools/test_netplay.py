@@ -616,7 +616,11 @@ def room(table=2, seat="Sit here as P1", status="Watching Table 1", chat=("DCQ l
                  text("VS", 524, top + 95, 36.0, 0x8A8170), text("Open seat", 785, top + 106, 21.6)]
     runs += [text("KONGS...", 1253, 150, 22.8), text("(you)", 1335, 151, 21.6), text(status, 1392, 151, 21.6, 0x7FD88B),
              text("Wired", 1780, 152, 20.4), text("ROOM CHAT", 1092, 652, 19.2, 0xE9C46A)]
-    runs += [text(line, 1092, 904 - 27 * k, 22.8) for k, line in enumerate(reversed(chat))]
+    for k, line in enumerate(reversed(chat)):
+        if isinstance(line, tuple):
+            runs += [text(line[0], 1092, 904 - 27 * k, 22.8, 0xE9C46A), text(line[1], 1293, 904 - 27 * k, 22.8)]
+        else:
+            runs.append(text(line, 1092, 904 - 27 * k, 22.8))
     runs += [text("Say something (Back + Y, or click here)", 1108, 945, 22.8), text("Send", 1780, 945, 21.6, DARK),
              text(helpline, 57, 1026, 24.0)]
     return n.Reading(1, tuple(runs), width=1920.0)
@@ -645,6 +649,49 @@ check("a new chat line is said", said == "Forever Solo Queue joined", str(said))
 said = lobby.step(room(table=0, seat="KONGSTER", status="Table 3 · seated",
                        chat=("DCQ left", "Forever Solo Queue joined"), helpline="That's you."), 4.0)
 check("moving to the players list says the line along the bottom", said == "That's you.", str(said))
+
+said = lobby.step(room(table=0, seat="KONGSTER", status="Table 3 · seated", helpline="That's you.",
+                       chat=("DCQ left", "Forever Solo Queue joined", ("FOREVER SOLO QUEUE", "They cant find you"))),
+                  5.0)
+check("a player's chat message is said with their name", said == "FOREVER SOLO QUEUE: They cant find you", str(said))
+
+
+# The window after a game, in front, as recorded: each player's label and
+# name, a big score, their vote, and on the player's side the choices.
+def fore(t, left, top, size=19.2, rgb=LIGHT):
+    return n.Run(t, left, top, left + 12 * len(t), top + size, rgb, 255, "##Foreground", 0, size)
+
+
+def after_game(my_vote="Choosing...", their_vote="Choosing...", lit="Rematch", note="Rematch in 15 s", notice=None):
+    runs = [fore("P1 · YOU", 83, 480, 16.8), fore("Kongster", 427, 478, 18.0), fore("0", 83, 528, 48.0),
+            fore("of 2 to win the set", 125, 554), fore(my_vote, 83, 595)]
+    for t, left, top in (("Rematch", 249, 640), ("Character select", 219, 708), ("Leave", 261, 775)):
+        runs.append(fore(t, left, top, 21.6, DARK if t == lit else LIGHT))
+    runs += [fore("Delay", 110, 846, 21.6), fore("3 frames", 356, 846, 21.6),
+             fore("Suggested delay 1 (ping 64 ms)", 83, 897, 18.0), fore(note, 83, 956, 18.0),
+             fore("P2", 1432, 780, 16.8), fore("Forever Solo Queue", 1710, 778, 18.0), fore("1", 1432, 828, 48.0),
+             fore("of 2 to win the set", 1474, 854), fore(their_vote, 1432, 895),
+             fore("Input delay 0 frames", 1432, 956, 18.0)]
+    if notice:
+        runs.append(fore(notice, 1605, 40))
+    runs.append(text("Kongster (you)  (0/1)", 178, 4, 30.0))
+    return n.Reading(1, tuple(runs), width=1920.0)
+
+
+match = n.PanelNarrator()
+said = match.step(after_game(), 0.0)
+check("the window after a game says both scores, the countdown and the choice",
+      said == "You: 0 of 2 to win the set, Choosing... Forever Solo Queue: 1 of 2 to win the set, Choosing... "
+      "Rematch in 15 s. Rematch", str(said))
+said = match.step(after_game(lit="Leave", note="Leave ends the set here."), 1.0)
+check("moving says the choice and what it does", said == "Leave. Leave ends the set here.", str(said))
+said = match.step(after_game(lit="Leave", note="Leave ends the set here.", their_vote="Rematch",
+                             notice="Forever Solo Queue wants a rematch"), 2.0)
+check("the other player's vote and notice are said", said == "Forever Solo Queue wants a rematch. "
+      "Forever Solo Queue: Rematch", str(said))
+said = match.step(after_game(my_vote="Rematch", lit="Rematch", note="Leave ends the set here.", their_vote="Rematch",
+                             notice="Forever Solo Queue wants a rematch"), 3.0)
+check("the player's own vote is said as theirs", said == "Rematch. You: Rematch", str(said))
 
 # ------------------------------------------------------- fonts built again
 # SFVR builds its fonts again when a player's name brings a character they

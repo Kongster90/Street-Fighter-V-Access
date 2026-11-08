@@ -112,6 +112,10 @@ TOASTS = "##toasts"         # the notices, which also show with the panel closed
 # CHARACTER SELECT, LEAVE and the input delay, which take ImGui's focus with
 # the panel closed.
 SCREEN = "##Background"
+# SFVR 0.3.0 draws its window after each game (Rematch, Character select,
+# Leave) and its notices ("Forever Solo Queue wants a rematch", "loading")
+# in front of everything.
+FOREGROUND = "##Foreground"
 SIDES = "##side"
 # A screen's heading and the stage or fighter under its cursor are drawn this
 # big ("STAGE SELECT", "Ring of Power"); its prompts and button hints smaller.
@@ -141,6 +145,9 @@ LABEL_GAP = 16
 # said. And how much bigger than the selection a new text is to be a dialog's
 # heading.
 TOP_STRIP = 0.04
+# Notices in front sit along the top or in the bottom corner, below this
+# share of the width; the window after a game sits between.
+NOTICE_LOW = 0.52
 RAISED = 4.0
 # Titles are this big; the hints sharing the strip are smaller.
 TITLE_SIZE = 30.0
@@ -209,16 +216,33 @@ class Reading:
 
     @property
     def toasts(self) -> list[Run]:
-        return [r for r in self.runs if r.window == TOASTS]
+        """Notices: SFVR 0.2's own window of them, and 0.3.0's along the top
+        and in the bottom corner in front of everything."""
+        notices = [r for r in self.foreground if self.width and r.alpha >= 0xF0
+                   and (r.top < self.width * TOP_STRIP or r.top > self.width * NOTICE_LOW)]
+        return [r for r in self.runs if r.window == TOASTS] + notices
+
+    @property
+    def foreground(self) -> list[Run]:
+        return unshadowed([r for r in self.runs if r.window == FOREGROUND])
+
+    @property
+    def result(self) -> list[Run]:
+        """SFVR 0.3.0's window after each game of a set: each player's score
+        and vote, and on the player's side Rematch, Character select, Leave and
+        the input delay, the selection dark on gold. Settled, so not fading."""
+        if not self.width:
+            return []
+        window = [r for r in self.foreground
+                  if self.width * TOP_STRIP <= r.top <= self.width * NOTICE_LOW]
+        return window if any(is_dark(r) for r in window) else []
 
     @property
     def screen(self) -> list[Run]:
         """SFVR's own screen, its select screen. Each big text is drawn twice,
         the first time in black a little lower as its shadow (two pixels for
         the heading, four for a fighter); that is left out."""
-        runs = [r for r in self.runs if r.window == SCREEN]
-        return [r for r in runs if not (r.rgb == 0 and any(
-            s.rgb != 0 and s.text == r.text and abs(s.left - r.left) < 8 and abs(s.top - r.top) < 8 for s in runs))]
+        return unshadowed([r for r in self.runs if r.window == SCREEN])
 
     @property
     def surface(self) -> list[Run]:
@@ -259,7 +283,7 @@ class Reading:
     def showing(self) -> bool:
         """SFVR shows something of its own to read: its panel, its select
         screen, a side window with focus, or one of its menus."""
-        return bool(self.surface or body(self.screen) or self.lit)
+        return bool(self.surface or body(self.screen) or self.lit or self.result)
 
     def focused(self) -> list[Run]:
         """The text inside the focused item, in reading order.
@@ -1050,12 +1074,14 @@ class PanelNarrator:
     window: str = ""            # the window focus was last heard in
     screen: ScreenNarrator = field(default_factory=lambda: ScreenNarrator())
     menu: MenuNarrator = field(default_factory=lambda: MenuNarrator())
+    result: ResultNarrator = field(default_factory=lambda: ResultNarrator())
 
     def reset(self) -> None:
         self._leave()
         self.toasts = set()
         self.screen.reset()
         self.menu.reset()
+        self.result.reset()
 
     def _leave(self) -> None:
         """Focus has left SFVR's windows; what was heard in them is forgotten."""
@@ -1083,6 +1109,10 @@ class PanelNarrator:
                 return phrase(dedupe(said)) or None
             said.insert(0, "Netplay closed")
             self._leave()
+        if reading.result and not is_open:
+            said += self.result.step(reading)
+        else:
+            self.result.reset()
         if reading.fading and not is_open:
             pass
         elif reading.lit and not is_open:
@@ -1202,6 +1232,126 @@ class PanelNarrator:
                 else:
                     out.append(words(r, before))
         return out
+
+
+def unshadowed(runs: list[Run]) -> list[Run]:
+    """Texts without their shadows: SFVR draws a text again in black, a few
+    pixels off and faint, behind it (five times over in 0.3.0)."""
+    return [r for r in runs if not (r.rgb == 0 and any(
+        s.rgb != 0 and s.text == r.text and abs(s.left - r.left) < 8 and abs(s.top - r.top) < 8 for s in runs))]
+
+
+# A player's label in the window after a game ("P1 \u00b7 YOU", "P2"), and the
+# lines there that are a countdown, a delay or what a choice does.
+PLAYER_LABEL = re.compile(r"P[12]\b")
+RESULT_NOTE = re.compile(r"(?i)\bdelay\b|\bin \d+ s$|^leave ")
+COUNTDOWN = re.compile(r"\bin \d+ s$")
+
+
+@dataclass(frozen=True)
+class Side:
+    """One player's half of the window after a game."""
+    name: str
+    score: str          # "0 of 2 to win the set"
+    statuses: tuple     # their vote and the like: "Choosing...", "Rematch", "Wins the set"
+    notes: tuple        # "Rematch in 15 s", "Suggested delay 1 (ping 64 ms)"
+
+
+def result_sides(reading: Reading, window: list[Run]) -> tuple[Side | None, Side | None]:
+    """The player's half (the one with the selection) and the other's."""
+    lit = [r for r in window if is_dark(r)]
+    mine = half(reading, lit[0])
+    out: dict[int, Side] = {}
+    for s in (0, 1):
+        runs = [r for r in window if half(reading, r) == s]
+        rows = lines(runs)
+        if not rows:
+            continue
+        margin = min(r.left for r in runs)
+        label = rows[0]
+        name = (commas(say(r) for r in label if not PLAYER_LABEL.match(tidy(r.text)))
+                or commas(say(r) for r in label))
+        score_row = next((row for row in rows if any(r.size >= BIG_TEXT and tidy(r.text).isdigit()
+                                                     for r in row)), [])
+        statuses, notes = [], []
+        for row in rows[1:]:
+            if row is score_row or any(is_dark(r) for r in row) or abs(row[0].left - margin) > 3:
+                continue
+            text = commas(say(r) for r in row)
+            (notes if RESULT_NOTE.search(text) else statuses).append(text)
+        out[s] = Side(name, " ".join(say(r) for r in score_row), tuple(statuses), tuple(notes))
+    return out.get(mine), out.get(1 - mine) if mine in (0, 1) else None
+
+
+def result_intro(reading: Reading, every_note: bool = False) -> list[str]:
+    """The window after a game as it comes up: "You: 0 of 2 to win the set,
+    Choosing... Forever Solo Queue: 1 of 2 to win the set, Choosing...
+    Rematch in 15 s. Rematch"."""
+    window = reading.result
+    if not window:
+        return []
+    mine, theirs = result_sides(reading, window)
+    said: list[str] = []
+    if mine:
+        said.append(commas([f"You: {mine.score}" if mine.score else "You"] + list(mine.statuses)))
+    if theirs:
+        said.append(commas([f"{theirs.name}: {theirs.score}"] + list(theirs.statuses)))
+    if mine:
+        said += [n for n in mine.notes if every_note or COUNTDOWN.search(n)]
+    said += [commas(say(r) for r in row) for row in lines([r for r in window if is_dark(r)])]
+    if every_note and theirs:
+        said += list(theirs.notes)
+    return said
+
+
+def read_result(reading: Reading) -> list[str]:
+    """Alt R on the window after a game: all of it, the delay suggested too."""
+    return result_intro(reading, every_note=True)
+
+
+@dataclass
+class ResultNarrator:
+    """Decides what to say on SFVR 0.3.0's window after each game of a set.
+
+    Coming up it says both scores and votes, the countdown and the selection
+    (see `result_intro`); then each choice moved to ("Character select"), a
+    value changed alone ("4 frames"), what a choice does when that line
+    changes ("Leave ends the set here."), the player's own vote or state as
+    it changes ("You: Rematch"), and the other player's ("Forever Solo
+    Queue: Rematch"). The countdown ticking is not said. Recorded 7 November 2026;
+    the user heard nothing there, since SFVR draws it in front, where the mod
+    did not read.
+    """
+    shown: bool = False
+    items: tuple = ()
+    mine: tuple = ()
+    theirs: tuple = ()
+    notes: frozenset = frozenset()
+
+    def reset(self) -> None:
+        self.shown, self.items, self.mine, self.theirs, self.notes = False, (), (), (), frozenset()
+
+    def step(self, reading: Reading) -> list[str]:
+        window = reading.result
+        mine, theirs = result_sides(reading, window)
+        items = tuple(tuple(say(r) for r in row) for row in lines([r for r in window if is_dark(r)]))
+        my_statuses = mine.statuses if mine else ()
+        their_statuses = theirs.statuses if theirs else ()
+        notes = frozenset(re.sub(r"\d+", "#", n) for n in (mine.notes if mine else ()))
+        said: list[str] = []
+        if not self.shown:
+            said = result_intro(reading)
+        else:
+            for item in (i for i in items if i not in self.items):
+                was = next((o for o in self.items if o[:1] == item[:1] and o not in items), None)
+                said += [t for t in item if t not in was] if was else [commas(item)]
+            said += [f"You: {t}" for t in my_statuses if t not in self.mine]
+            if theirs:
+                said += [f"{theirs.name}: {t}" for t in their_statuses if t not in self.theirs]
+            said += [n for n in (mine.notes if mine else ())
+                     if re.sub(r"\d+", "#", n) not in self.notes and not n.lower().startswith("suggested")]
+        self.shown, self.items, self.mine, self.theirs, self.notes = True, items, my_statuses, their_statuses, notes
+        return said
 
 
 @dataclass
@@ -1358,14 +1508,23 @@ def you_status(reading: Reading) -> str:
 
 
 def chat_lines(reading: Reading) -> tuple:
-    """A room's chat, oldest first: the lines set under its heading ("ROOM
-    CHAT") at the heading's left; the box to type in sits further in."""
+    """A room's chat, oldest first: the lines starting under its heading
+    ("ROOM CHAT") at the heading's left; the box to type in sits further in.
+    A player's message is their name with the message beside it, said as
+    "FOREVER SOLO QUEUE: They cant find you"; at first only the name was
+    read, and the user missed what was said to them (7 November 2026)."""
     shown = reading.screen
     heading = next((r for r in shown if tidy(r.text).endswith("CHAT") and tidy(r.text).isupper()), None)
     if heading is None:
         return ()
-    return tuple(say(r) for r in sorted(shown, key=lambda r: r.top)
-                 if r is not heading and r.top > heading.top and abs(r.left - heading.left) < 3)
+    under = [r for r in shown if r is not heading and r.top > heading.top and r.left > heading.left - 3]
+    out = []
+    for row in lines(under):
+        if abs(row[0].left - heading.left) >= 3:
+            continue
+        texts = [say(r) for r in row]
+        out.append(f"{texts[0]}: {commas(texts[1:])}" if len(texts) > 1 else texts[0])
+    return tuple(out)
 
 
 def new_chat(before: tuple, now: tuple) -> list[str]:
@@ -1664,7 +1823,7 @@ def read_focus(reading: Reading) -> str:
                  and len(tidy(r.text)) > 1 and not r.disabled]
         if under:
             said = phrase([said] + [tidy(r.text) for r in sorted(under, key=lambda r: r.top)])
-    screen = [] if reading.open else (read_menu(reading) or read_screen(reading))
+    screen = [] if reading.open else (read_result(reading) or read_menu(reading) or read_screen(reading))
     shown = [tidy(r.text) for r in reading.runs if r.window.startswith("##Tooltip")]
     return phrase(screen + [said] + shown) or "Nothing focused"
 

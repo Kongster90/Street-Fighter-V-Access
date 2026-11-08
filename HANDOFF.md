@@ -2259,8 +2259,38 @@ comma. A title is no longer a button hint (30 pixels at least, the hints
 on both halves, the fighter left and the loadout right; it was heard as
 "Other player, ZEKU", and `my_half` now takes it all as the player's. Not
 yet seen or done: the players list's outline, the table rules dialog (read
-roughly), other players' chat messages, a match called from a queue, and
-Alt A, which still runs the columns together.
+roughly), a match called from a queue, and Alt A, which still runs the
+columns together.
+
+Later that evening: a room's first table sits 106 pixels down, inside the
+title strip as it was (0.06 of the width), so Table 1 was never said; the
+strip is 0.04 now. A "?" standing alone (a symbol the font lacks in a
+player's name, "? EASTWOOD ?") is left out by `say`.
+
+**After a game, notices and chat messages (0.3.0).** SFVR draws two windows
+only: `##Background`, everything above, and `##Foreground`, in front. The
+foreground holds the window after each game of a set (`Reading.result`, the
+foreground between the top strip and 0.52 of the width, when something there
+is lit): per player a label ("P1 · YOU", "P2"), their name, a big score with
+"of 2 to win the set", their vote ("Choosing...", "Rematch", "Set over",
+"Wins the set", "No one's waiting, so you can keep playing."), and on the
+player's side Rematch, Character select and Leave (centred, the selection
+dark on gold), the Delay with its value, "Suggested delay 1 (ping 64 ms)" and
+a countdown ("Rematch in 15 s", "Back to the room in 15 s"; with Leave
+selected "Leave ends the set here." or "Leave returns to the room."). Status
+lines start at the panel's left, the choices further in. `ResultNarrator`
+says on coming up "You: 0 of 2 to win the set, Choosing... Forever Solo Queue:
+1 of 2 to win the set, Choosing... Rematch in 15 s. Rematch", then each choice,
+"You: Rematch" for the player's vote, the other's ("Forever Solo Queue:
+Rematch"), and new notes, not the countdown ticking. The foreground's top
+strip and bottom corner hold notices, now part of `Reading.toasts`: "Forever
+Solo Queue wants a rematch", "Back + Start or F1 for the SFVR menu",
+"jumping into battle", "loading", "waiting for the other player". No replay
+choice was seen. And a player's chat message is their name in blue at the
+chat's left with the message beside it ("FOREVER SOLO QUEUE", "They cant find
+you"); only the name was read, so the user missed four messages addressed to
+them; `chat_lines` now says "FOREVER SOLO QUEUE: They cant find you".
+Replayed against `netplay-030`, records 540 to 1345.
 
 ### Where UE4SS got to, and why it is not installed
 
