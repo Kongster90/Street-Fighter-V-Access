@@ -1416,6 +1416,8 @@ class MenuNarrator:
         self.unsettled = None
         if title != self.title:
             said += [title] if title else []
+            code = room_code(reading)
+            said += [code] if code else []
             said += [commas(item) for item in items]
             said += [status] if status else []
         else:
@@ -1566,6 +1568,25 @@ def menu_title(reading: Reading) -> str:
     return say(max(along, key=lambda r: r.size)) if along else ""
 
 
+def room_code(reading: Reading) -> str:
+    """Beside a room's name, whether it is public or private and its code,
+    the code spelled: "Private, Code, P K G 7 N U, Copy code". Copy code, on
+    the Back button, puts the code on the clipboard. Nothing on a screen
+    whose title has no code beside it. The user, in a private room, could not
+    find the code to give friends (7 November 2026)."""
+    top = reading.width * TOP_STRIP
+    along = [r for r in reading.screen if r.top < top and worth(r)]
+    big = [r for r in along if r.size >= TITLE_SIZE]
+    if not big:
+        return ""
+    title = max(big, key=lambda r: r.size)
+    row = next((row for row in lines(along) if title in row), [])
+    texts = [say(r) for r in row if r is not title]
+    if not any(CODE.fullmatch(t) for t in texts):
+        return ""
+    return commas(spell(t) if CODE.fullmatch(t) else t for t in texts)
+
+
 def read_menu(reading: Reading) -> list[str]:
     """Alt R on one of SFVR 0.3.0's screens: the selection, then the
     sentences on the screen, which say what it does ("Word filter, On. Hides
@@ -1574,8 +1595,10 @@ def read_menu(reading: Reading) -> list[str]:
         return []
     items = menu_items(reading)
     status = you_status(reading)
+    code = room_code(reading)
     return ([commas(item) for item in items] + ([status] if status else [])
-            + [say(r) for r in reading.screen if is_sentence(r) and not lit_text(r, items)])
+            + [say(r) for r in reading.screen if is_sentence(r) and not lit_text(r, items)]
+            + ([code] if code else []))
 
 
 @dataclass

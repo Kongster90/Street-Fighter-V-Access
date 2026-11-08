@@ -2303,6 +2303,16 @@ a chat line ("SFVR left: Ready, Leave queue"), now kept to the line's own
 letter size. A room coming back after a set read its table card with the
 next table's rules and loading texts run in; not fixed.
 
+A room's code. In a private room the user could not find the code to give
+friends. It sits on the title's row: "Public" or "Private", "Code", the six
+characters, and "Copy code" on the Back button, which puts the code on the
+clipboard (Streamer mode hides it on screen; Copy still copies the real
+one). `room_code` says that row, the code spelled, after the title on
+entering a room and at the end of Alt R; a title row with no code (hub,
+settings) says nothing more. A room's name need not hold the word "room"
+("Beginners Welcome!"). Chat: the box's prompt is "Say something (Back + Y,
+or click here)"; what is typed into it is not read back yet.
+
 ### Where UE4SS got to, and why it is not installed
 
 Tried thoroughly and abandoned one symbol short. Nothing of it is installed;

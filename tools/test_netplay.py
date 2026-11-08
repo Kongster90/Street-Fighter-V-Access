@@ -654,6 +654,13 @@ said = lobby.step(room(table=0, seat="KONGSTER", status="Table 3 · seated", hel
                        chat=("DCQ left", "Forever Solo Queue joined", ("FOREVER SOLO QUEUE", "They cant find you"))),
                   5.0)
 check("a player's chat message is said with their name", said == "FOREVER SOLO QUEUE: They cant find you", str(said))
+coded = room()
+coded = n.Reading(1, coded.runs + (text("Private", 490, 46, 24.0, 0x7FD88B), text("Code", 564, 46, 24.0),
+                                   text("PKG7NU", 616, 46, 24.0, 0xE9C46A), text("Copy code", 758, 46, 24.0)),
+                  width=1920.0)
+said = n.PanelNarrator().step(coded, 0.0)
+check("a room says whether it is private and its code, spelled",
+      said.startswith("Kongster's room. Private, Code, P K G 7 N U, Copy code. TABLE 2"), str(said))
 over = room(chat=("SFVR left",))
 over = n.Reading(1, over.runs + (text("Leave queue", 1500, 904, 21.6),), width=1920.0)
 check("a button over the chat stays out of its line", n.chat_lines(over) == ("SFVR left",), str(n.chat_lines(over)))
