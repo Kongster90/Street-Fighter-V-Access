@@ -2185,6 +2185,50 @@ on 0.2.2. A real session's select and loadout are still unrecorded: one
 taken by hand at 20:01 showed the loadout rows and READY but the dump was
 cut short, so whether a real loadout has a big text is not known.
 
+**SFVR 0.3.0: ImGui 1.92 and a new look.** Released the same evening;
+it plays only 0.3.0, on a new server, so the user installed it. Two things
+changed under the mod. First, SFVR moved to Dear ImGui 1.92.9b (the DLL
+says "Dear ImGui 1.92.9b (19291)", no docking), so `find_context` failed
+("a different ImGui"). The offsets came from compiling 1.92.9b's own headers
+(`gh api` on the v1.92.9b tag, into the scratchpad) with the toolchain's
+clang++ and printing offsetof, then checked on the live game: the context
+was found at once, the style colours read the same (hint 7e8a8c, tick
+8ce3ff). FrameCount moved to 0x4, IO to 0x28, Windows 0x1460, Viewports
+0x2008, nav 0x201C on; NavRectRel 0x3F8; the viewport's draw data 0x58;
+a draw list's owner name 0xD8. Fonts work differently in 1.92: each font
+is baked per size as it is drawn, in the atlas builder's BakedPool (an
+ImStableVector of ImFontBaked, 32 to a block, 0x68 each; Size 0x14, Glyphs
+0x30, WantDestroy bit 26 of 0x4C), glyphs are 0x2C with the codepoint
+above six flag bits, a glyph only measured has no texture place (U0 equal
+to U1), and a space may have no glyph, its advance only in IndexAdvanceX.
+`atlas_key` takes the texture (pointer, UniqueID, size, all new when it is
+packed again) and every baked table's length and place, so the table is
+read again as glyphs come. 0.2.x's 1.91 layout is not kept.
+
+Second, 0.3.0 draws its whole interface on `##Background` with no ImGui
+focus at all: a hub at launch (PLAY OFFLINE, a CUSTOM ROOMS card, "SFVR
+settings" on Start), a settings list with a panel beside it explaining the
+selection, and dialogs. The selection is the only text drawn dark on a gold
+bar (0b0b0b, or 122f3a for "Unavailable right now"), so `Reading.lit` is
+the dark texts below the title strip and `MenuNarrator` says a screen's
+title and selection, then each new selection, a new value alone on the
+same item, and a dialog (a new text bigger than the selection and over it)
+with its heading, sentence and only its own button (drawn after the screen
+under it, whose selection stays lit). Screens fade in and out with every
+text faint; `Reading.fading` frames say nothing. Alt R adds the screen's
+sentences ("Name, Kongster (Steam name). Shown to other players. ..."). The
+select screen, known by its lit step along the top, keeps `ScreenNarrator`,
+since its hints and READY are dark on gold too. Text drawn with five shadow
+copies, black at alpha 70 and 200, is left out as before. Replayed against
+`snapshots/netplay-030` (hub, the rooms-unavailable dialog, every setting);
+the rooms list, a room, chat, tables and a 0.3.0 select screen are unseen,
+since the rooms server was not hosting rooms that evening. Alt A still
+groups texts by height across the whole screen, the list and the panel
+beside it together. Wrapped lines are joined (`join_wrapped`: a line one
+line height under another at the same left, in its font and colour,
+starting in lower case) and a sentence is no longer followed by a comma
+(`commas`), both heard in 0.3.0's update notice.
+
 ### Where UE4SS got to, and why it is not installed
 
 Tried thoroughly and abandoned one symbol short. Nothing of it is installed;
@@ -2353,7 +2397,10 @@ SFVR's select screen after joining: SFVR builds its fonts again as names
 bring new characters, and the reader now follows that. See "SFVR builds its
 fonts again mid-session". The user also got stuck in the Debug previews
 (P2 window and Character select preview); F1, then All off, got them out.
-For the next What's new.
+Then SFVR 0.3.0 came out, on ImGui 1.92 with a new interface, and the
+reader was ported and given menu rules; see "SFVR 0.3.0: ImGui 1.92 and a
+new look". For the next What's new, along with Read me first's SFVR line,
+which still describes 0.2's F1 panel.
 
 **The session of 2026-11-01.** The user installed SFVR, a rollback netplay
 mod that draws its own panel with Dear ImGui, and SFV Access now reads its

@@ -17,14 +17,22 @@ so the focused item is whatever text lies inside that rectangle. Nothing is
 recognised off the picture, and the game is only read, but for one jump in
 SFVR that keeps its status line out of the window title (`StatusLine`).
 
-The structures were measured on SFVR 0.2.2 (1 November 2026). SFVR builds
-ImGui without docking, and the only copy on hand was the docking branch, so
-the offsets below were taken from that copy's header where the two agree and
-from the live game where they do not (`tools/record_netplay.py` shows what
-they read). The context is found again on every start by checking each
-pointer in the mod's data against several of these at once, so a new build
-of SFVR on the same ImGui is followed; a build on another ImGui fails that
-check and the panel stays silent rather than misreading.
+The structures are ImGui 1.92.9b's, without docking, as SFVR 0.3.0 (7
+November 2026) builds it: the offsets below came from compiling that
+release's headers with the toolchain and printing them, then checking each
+against the live game (`tools/record_netplay.py` shows what they read).
+SFVR 0.2.x was on ImGui 1.91.9b, whose layout differs throughout; 0.3.0 plays
+only 0.3.0, so that one is not kept. The context is found again on every
+start by checking each pointer in the mod's data against several of these at
+once, so a new build of SFVR on the same ImGui is followed; a build on
+another ImGui fails that check and the panel stays silent rather than
+misreading.
+
+ImGui 1.92 bakes each font at each size it is drawn at, its glyphs added as
+characters are first drawn, into an atlas texture that grows and is packed
+again as needed, which moves every glyph. So the glyphs are read from every
+baked font in the atlas builder's pool, and read again whenever the pool,
+a glyph table or the texture changes (`atlas_key`).
 """
 
 from __future__ import annotations
@@ -35,7 +43,7 @@ import struct
 import threading
 import time
 from ctypes import wintypes
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 
@@ -45,38 +53,51 @@ from .scaleform import phrase
 EXE = "StreetFighterV.exe"
 MODULE_PREFIX = "sfv_rollback"
 
-# ImGuiContext (ImGui 1.91.9b, no docking).
+# ImGuiContext (ImGui 1.92.9b, no docking).
 CTX_INITIALIZED = 0x0
-CTX_IO = 0x8
-IO_INI_SAVING_RATE = CTX_IO + 0x14
-IO_FONTS = CTX_IO + 0x30
-CTX_COLORS = 0xD24          # Style.Colors[], RGBA floats
-CTX_FRAME = 0x12F0          # FrameCount, which moves only while SFVR draws,
-CTX_FRAME_RENDERED = 0x12F8  # and FrameCountRendered, equal to it once a frame is whole
-CTX_WINDOWS = 0x1348
-CTX_VIEWPORTS = 0x1EE8
-CTX_NAV_ID = 0x1EFC
-CTX_NAV_WINDOW = 0x1F00
-CTX_NAV_LAYER = 0x1F0C
-CTX_SPAN = 0x1F20           # read in one piece to check a candidate context
+CTX_FRAME = 0x4             # FrameCount, which moves only while SFVR draws,
+CTX_FRAME_RENDERED = 0xC    # and FrameCountRendered, equal to it once a frame is whole
+CTX_IO = 0x28
+IO_INI_SAVING_RATE = CTX_IO + 0x1C
+IO_FONTS = CTX_IO + 0x38
+CTX_COLORS = 0xDCC          # Style.Colors[], RGBA floats
+CTX_WINDOWS = 0x1460
+CTX_VIEWPORTS = 0x2008
+CTX_NAV_ID = 0x201C
+CTX_NAV_WINDOW = 0x2020
+CTX_NAV_LAYER = 0x202C
+CTX_SPAN = 0x2030           # read in one piece to check a candidate context
 
 # ImGuiWindow
 WIN_CTX = 0x0
 WIN_NAME = 0x8
 WIN_CURSOR_START = 0x128    # DC.CursorStartPos, what NavRectRel is relative to
-WIN_NAV_RECT = 0x3E8        # NavRectRel[2]
+WIN_NAV_RECT = 0x3F8        # NavRectRel[2]
 
-# ImGuiViewportP, ImDrawData, ImDrawList, ImFontAtlas, ImFont
+# ImGuiViewportP, ImDrawData, ImDrawList
 VIEWPORT_DEFAULT_ID = 0x11111111
-VIEWPORT_DRAW_DATA = 0x50
+VIEWPORT_DRAW_DATA = 0x58
 DRAW_DATA_LISTS = 0x10
 DRAW_DATA_SIZE = 0x28       # DisplaySize, the game's picture in pixels
 DRAW_LIST_VERTICES = 0x20
-DRAW_LIST_OWNER = 0xD0
-ATLAS_FONTS = 0x50
-FONT_SIZE = 0x14
-FONT_GLYPHS = 0x28
-GLYPH_SIZE = 0x28
+DRAW_LIST_OWNER = 0xD8
+
+# ImFontAtlas, its texture and builder, whose pool holds every baked font,
+# 32 to a block; ImFontBaked; ImFontGlyph
+ATLAS_TEXTURE = 0x38        # TexData
+ATLAS_BUILDER = 0x2B0
+TEXTURE_ID = 0x0            # UniqueID, new each time the atlas is packed again
+TEXTURE_SIZE = 0x24         # Width, Height
+BUILDER_POOL = 0xC0         # BakedPool: Size, Capacity, then Blocks, a vector
+POOL_BLOCK = 32
+BAKED_STRIDE = 0x68
+BAKED_ADVANCES = 0x0        # IndexAdvanceX, by codepoint, a space's included
+BAKED_SIZE = 0x14
+BAKED_GLYPHS = 0x30
+BAKED_FLAGS = 0x4C          # MetricsTotalSurface:26, WantDestroy:1, ...
+BAKED_DESTROY = 1 << 26
+GLYPH_SIZE = 0x2C
+GLYPH_CODEPOINT_SHIFT = 6   # after Colored:1, Visible:1, SourceIdx:4
 
 COL_TEXT_DISABLED = 1       # ImGuiCol_TextDisabled: hint text in an empty box
 COL_FRAME_BG = (7, 8, 9)    # FrameBg, Hovered, Active: a tick box's square, among others
@@ -113,6 +134,14 @@ ATTACH_RETRY = 3.0
 # A widget's label sits this close to its right, ImGui's ItemInnerSpacing
 # (10 here); the next widget along is further, its text further still.
 LABEL_GAP = 16
+# SFVR 0.3.0's screens: the strip along the top holding a screen's title (and
+# the select screen's steps), as a share of the picture's width; and how much
+# bigger than the selection a new text is to be a dialog's heading.
+TOP_STRIP = 0.06
+RAISED = 4.0
+# A wrapped line starts this close to the one above's left, and one line
+# height below it.
+WRAP_SLACK = 1.5
 # How long the panel must stay gone to be closed rather than resizing.
 CLOSE_DELAY = 0.2
 # This many new texts at once is the screen changing rather than a line
@@ -193,10 +222,31 @@ class Reading:
         return [r for r in self.runs if root(r.window) == window]
 
     @property
+    def lit(self) -> list[Run]:
+        """The selection on SFVR 0.3.0's own screens, its hub, settings and
+        the rest: nothing there takes ImGui's focus, and the item SFVR's
+        cursor is on is drawn in dark letters on a gold bar ("Word filter",
+        "On"), every other text light. The row along the top, where the
+        select screen lights its step the same way, is left out, and the
+        select screen itself, known by that lit step, is `ScreenNarrator`'s:
+        its button hints and READY are dark on gold too. Minimised, SFVR draws
+        stray letters, some dark, so nothing is lit then."""
+        if not self.width or lit_step(self.screen):
+            return []
+        top = self.width * TOP_STRIP
+        return [r for r in self.screen if is_dark(r) and r.top >= top and worth(r)]
+
+    @property
+    def fading(self) -> bool:
+        """SFVR 0.3.0 fades a whole screen in or out, every text faint for a
+        few frames; read then, a screen was said before it had settled."""
+        return bool(self.screen) and max(r.alpha for r in self.screen) < 0xF0
+
+    @property
     def showing(self) -> bool:
         """SFVR shows something of its own to read: its panel, its select
-        screen, or a side window with focus."""
-        return bool(self.surface or body(self.screen))
+        screen, a side window with focus, or one of its menus."""
+        return bool(self.surface or body(self.screen) or self.lit)
 
     def focused(self) -> list[Run]:
         """The text inside the focused item, in reading order.
@@ -314,6 +364,28 @@ def decode(verts: np.ndarray, glyphs: Glyphs, window: str, mask: np.ndarray | No
                 window, r["font"], r["size"]) for r in runs]
 
 
+def join_wrapped(runs: list[Run]) -> list[Run]:
+    """Wrapped text as one run: each line ImGui wraps onto is drawn on its
+    own, one line height below the last at the same left, and was said as a
+    sentence of its own ("up to eight tables with. their own rules"). A line
+    so placed, in the same font and colour, that starts in lower case goes on
+    the end of the one above."""
+    out: list[Run] = []
+    line_top = 0.0
+    for r in runs:
+        last = out[-1] if out else None
+        if (last is not None and r.text[:1].islower() and r.window == last.window
+                and r.font == last.font and r.rgb == last.rgb and r.alpha == last.alpha
+                and abs(r.left - last.left) < WRAP_SLACK
+                and abs(r.top - line_top - r.size) < WRAP_SLACK):
+            out[-1] = replace(last, text=f"{last.text} {r.text}", right=max(last.right, r.right),
+                              bottom=r.bottom)
+        else:
+            out.append(r)
+        line_top = r.top
+    return out
+
+
 # ------------------------------------------------------------------- reading
 class PanelReader:
     """SFVR's frames out of the running game, once its ImGui context is found."""
@@ -369,11 +441,9 @@ class PanelReader:
                 self.note(f"netplay: {module.name} is loaded but its panel was not found "
                           "(not drawn yet, or a different ImGui)")
             return False
+        # Nothing drawn yet means no glyphs yet; they are followed as they come.
         atlas = atlas_key(mem, ctx)
-        glyphs = read_glyphs(mem, ctx)
-        if glyphs is None:
-            mem.close()
-            return False
+        glyphs = read_glyphs(mem, ctx) or Glyphs([])
         self.mem, self.ctx, self.glyphs, self._atlas = mem, ctx, glyphs, atlas
         count = COL_CHECK_MARK + 1
         colours = mem.read(ctx + CTX_COLORS, 16 * count)
@@ -416,14 +486,14 @@ class PanelReader:
             return None
 
     def _follow_atlas(self) -> None:
-        """Read the glyphs again when SFVR has built its fonts again.
+        """Read the glyphs again when they may have moved.
 
-        SFVR adds a character to every font when one it lacks turns up, as in
-        a player's name, and builds the atlas anew, which moves the glyphs.
-        Read with the old table, the select screen's headings and fighters
-        came back as "Y" or nothing (7 November 2026, 191 glyphs a font at
-        the start, 193 an hour later). The table is taken only if the atlas
-        held still while it was read.
+        ImGui 1.92 adds a glyph as a character is first drawn, bakes a font
+        anew for each new size, and grows and packs its texture again, which
+        moves every glyph. SFVR 0.2.x, on 1.91, did the like itself for a
+        player's name; read with the old table, the select screen's headings
+        and fighters came back as "Y" or nothing (7 November 2026). The table
+        is taken only if the atlas held still while it was read.
         """
         atlas = atlas_key(self.mem, self.ctx)
         if atlas == self._atlas:
@@ -431,7 +501,6 @@ class PanelReader:
         glyphs = read_glyphs(self.mem, self.ctx)
         if glyphs is not None and atlas_key(self.mem, self.ctx) == atlas:
             self.glyphs, self._atlas = glyphs, atlas
-            self.note(f"netplay: SFVR built its fonts again, {len(glyphs)} glyphs")
 
     def _whole_frame(self) -> int | None:
         """SFVR's frame number, or None while it is part way through building one.
@@ -474,14 +543,14 @@ class PanelReader:
                 owner = self._owner(dl)
                 if focus is not None and owner == name:
                     mask = np.zeros(len(verts), dtype=bool)
-                    runs += decode(verts, self.glyphs, owner, mask)
+                    runs += join_wrapped(decode(verts, self.glyphs, owner, mask))
                     checked = tick_box(verts, mask, focus, self.frame_rgbs, self.check_rgb)
                 elif owner == SCREEN:
                     mask = np.zeros(len(verts), dtype=bool)
-                    runs += decode(verts, self.glyphs, owner, mask)
+                    runs += join_wrapped(decode(verts, self.glyphs, owner, mask))
                     marks = cursor_bars(verts, mask)
                 else:
-                    runs += decode(verts, self.glyphs, owner)
+                    runs += join_wrapped(decode(verts, self.glyphs, owner))
         return Reading(frame, tuple(runs), focus_id, name, focus, self.hint_rgb, checked, width, marks)
 
     def _focus(self) -> tuple[int, str, tuple[float, float, float, float] | None]:
@@ -613,42 +682,82 @@ def is_context(mem: ProcessMemory, p: int) -> bool:
     return bool(viewport) and mem.u32(viewport) == VIEWPORT_DEFAULT_ID
 
 
-def atlas_key(mem: ProcessMemory, ctx: int) -> tuple:
-    """What changes when SFVR builds its fonts again: the atlas, and each
-    font's glyph table, its length and where it lives. A few small reads."""
+@dataclass(frozen=True)
+class Baked:
+    """One font baked at one size: where it sits in the pool, its size, and
+    its glyph table's length and place, and its advances by codepoint."""
+    index: int
+    size: float
+    glyphs: tuple[int, int]
+    advances: tuple[int, int]
+
+
+def baked_fonts(mem: ProcessMemory, ctx: int) -> tuple[tuple, list[Baked]]:
+    """The atlas's texture, as (atlas, texture, its id, width, height), and
+    every baked font in use; a read for the atlas, the texture and the pool,
+    then one a block of 32 fonts."""
     atlas = mem.ptr(ctx + IO_FONTS)
-    if not atlas:
-        return ()
-    count, fonts = vector(mem, atlas + ATLAS_FONTS)
-    pointers = mem.read(fonts, 8 * count) if 0 < count < 64 else b""
-    key = [atlas, count]
-    for (font,) in struct.iter_unpack("<Q", pointers or b""):
-        key += vector(mem, font + FONT_GLYPHS) if font else (0, 0)
-    return tuple(key)
+    head = mem.read(atlas, ATLAS_BUILDER + 8) if atlas else None
+    if not head or len(head) < ATLAS_BUILDER + 8:
+        return (), []
+    texture, builder = (struct.unpack_from("<Q", head, k)[0] for k in (ATLAS_TEXTURE, ATLAS_BUILDER))
+    tex = mem.read(texture, TEXTURE_SIZE + 8) if texture else None
+    texture_key = (atlas, texture) + (struct.unpack_from("<i", tex, TEXTURE_ID)
+                                      + struct.unpack_from("<ii", tex, TEXTURE_SIZE) if tex else ())
+    pool = mem.read(builder + BUILDER_POOL, 24) if builder else None
+    if not pool or len(pool) < 24:
+        return texture_key, []
+    size, _capacity, blocks, _cap, data = struct.unpack("<iiiiQ", pool)
+    if not 0 <= size <= 4096 or not 0 <= blocks <= 4096 // POOL_BLOCK:
+        return texture_key, []
+    pointers = mem.read(data, 8 * blocks) if blocks else b""
+    out: list[Baked] = []
+    for b, (block,) in enumerate(struct.iter_unpack("<Q", pointers or b"")):
+        count = min(POOL_BLOCK, size - b * POOL_BLOCK)
+        raw = mem.read(block, count * BAKED_STRIDE) if block and count > 0 else None
+        for k in range(len(raw or b"") // BAKED_STRIDE):
+            at = k * BAKED_STRIDE
+            if struct.unpack_from("<I", raw, at + BAKED_FLAGS)[0] & BAKED_DESTROY:
+                continue
+            advances = struct.unpack_from("<iiQ", raw, at + BAKED_ADVANCES)
+            glyphs = struct.unpack_from("<iiQ", raw, at + BAKED_GLYPHS)
+            out.append(Baked(b * POOL_BLOCK + k, struct.unpack_from("<f", raw, at + BAKED_SIZE)[0],
+                             (glyphs[0], glyphs[2]), (advances[0], advances[2])))
+    return texture_key, out
+
+
+def atlas_key(mem: ProcessMemory, ctx: int) -> tuple:
+    """What changes when the glyphs move: the texture packed again or grown,
+    a font baked at a new size, a glyph added to a table."""
+    texture, fonts = baked_fonts(mem, ctx)
+    return texture + tuple((f.index, f.glyphs) for f in fonts)
 
 
 def read_glyphs(mem: ProcessMemory, ctx: int) -> Glyphs | None:
-    atlas = mem.ptr(ctx + IO_FONTS)
-    if not atlas:
-        return None
-    count, fonts = vector(mem, atlas + ATLAS_FONTS)
-    if not 0 < count < 64:
-        return None
     out: list[tuple] = []
     sizes: dict[int, float] = {}
-    for index in range(count):
-        font = mem.ptr(fonts + 8 * index)
-        if not font:
-            continue
-        sizes[index] = mem.f32(font + FONT_SIZE) or 0.0
-        n, data = vector(mem, font + FONT_GLYPHS)
+    for font in baked_fonts(mem, ctx)[1]:
+        n, data = font.glyphs
         raw = mem.read(data, n * GLYPH_SIZE) if 0 < n < 100_000 else None
         if not raw:
             continue
+        sizes[font.index] = font.size
+        space = False
         for k in range(len(raw) // GLYPH_SIZE):
             bits, adv, x0, y0, x1, y1 = struct.unpack_from("<I5f", raw, k * GLYPH_SIZE)
             u0, v0, u1, v1 = struct.unpack_from("<4I", raw, k * GLYPH_SIZE + 0x18)
-            out.append((bits >> 2, adv, x0, y0, x1, y1, u0, v0, u1, v1, index))
+            cp = bits >> GLYPH_CODEPOINT_SHIFT
+            space = space or cp == 32
+            # A glyph only measured so far has no place in the texture yet.
+            if cp == 32 or (u0, v0) != (u1, v1):
+                out.append((cp, adv, x0, y0, x1, y1, u0, v0, u1, v1, font.index))
+        # A space is only measured, never drawn, so it may have no glyph;
+        # its advance is in the table by codepoint.
+        count, advances = font.advances
+        if count > 32 and not space:
+            space = mem.f32(advances + 4 * 32)
+            if space and space > 0:
+                out.append((32, space, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0, font.index))
     return Glyphs(out, sizes) if out else None
 
 
@@ -927,11 +1036,13 @@ class PanelNarrator:
     gone_since: float | None = None   # when the panel stopped showing, while it may come back
     window: str = ""            # the window focus was last heard in
     screen: ScreenNarrator = field(default_factory=lambda: ScreenNarrator())
+    menu: MenuNarrator = field(default_factory=lambda: MenuNarrator())
 
     def reset(self) -> None:
         self._leave()
         self.toasts = set()
         self.screen.reset()
+        self.menu.reset()
 
     def _leave(self) -> None:
         """Focus has left SFVR's windows; what was heard in them is forgotten."""
@@ -959,7 +1070,13 @@ class PanelNarrator:
                 return phrase(dedupe(said)) or None
             said.insert(0, "Netplay closed")
             self._leave()
-        said += self.screen.step(reading, now)
+        if reading.fading and not is_open:
+            pass
+        elif reading.lit and not is_open:
+            said += self.menu.step(reading, now)
+        else:
+            self.menu.leave(now)
+            said += self.screen.step(reading, now)
         surface = reading.surface
         if not surface:
             self._leave()
@@ -1075,6 +1192,98 @@ class PanelNarrator:
 
 
 @dataclass
+class MenuNarrator:
+    """Decides what to say on SFVR 0.3.0's own screens, its hub, settings and
+    the rest, which SFVR draws whole with its own cursor (`Reading.lit`).
+
+    A screen coming up says its title and the selection ("SFVR SETTINGS.
+    Check at start, On"); moving says the new selection ("Word filter, On");
+    left and right on the same item say the new value ("Off"). A dialog
+    coming up over the screen, a new text bigger than the selection and
+    standing over it, says its heading and sentences first ("Custom Rooms
+    are unavailable. The rooms server is up, ..."). What the selection does, shown beside
+    it or along the bottom, is for Alt R. Recorded on SFVR 0.3.0, 7 November
+    2026; the user heard the old select-screen rules read the settings with
+    unrelated texts run together.
+    """
+    title: str | None = None
+    lit: tuple = ()
+    known: set = field(default_factory=set)
+    gone_since: float | None = None
+
+    def reset(self) -> None:
+        self.title, self.lit, self.known, self.gone_since = None, (), set(), None
+
+    def leave(self, now: float) -> None:
+        """No selection showing; forgotten once it stays gone, since a screen
+        changing can leave a frame or so without one."""
+        if self.title is None and not self.lit:
+            return
+        self.gone_since = now if self.gone_since is None else self.gone_since
+        if now - self.gone_since >= CLOSE_DELAY:
+            self.reset()
+
+    def step(self, reading: Reading, now: float) -> list[str]:
+        self.gone_since = None
+        shown = reading.screen
+        lit_runs = [r for row in lines(reading.lit) for r in row]
+        lit = tuple(say(r) for r in lit_runs)
+        title = menu_title(reading)
+        said: list[str] = []
+        if title != self.title:
+            said += [title] if title else []
+            said.append(commas(lit))
+        else:
+            size = max(r.size for r in lit_runs)
+            top = reading.width * TOP_STRIP
+            new = [r for r in shown if key(r) not in self.known and r.top >= top]
+            # A dialog's heading stands over its own selected button; the
+            # panel beside a list, whose heading is as big, stands apart.
+            raised = sorted((r for r in new if r.size >= size + RAISED and say(r) not in lit
+                             and any(r.left < o.right and o.left < r.right for o in lit_runs)),
+                            key=lambda r: (r.top, r.left))
+            if raised:
+                said += [say(r) for r in raised]
+                said += [say(r) for r in new if is_sentence(r) and r not in raised and r not in lit_runs]
+                # The dialog is drawn after the screen under it, whose own
+                # selection stays lit; only the dialog's button is said.
+                first = min(shown.index(r) for r in raised)
+                over = tuple(say(r) for r in lit_runs if shown.index(r) > first)
+                if over:
+                    said.append(commas(over))
+                    self.title, self.lit, self.known = title, lit, {key(r) for r in shown}
+                    return said
+            if lit != self.lit:
+                same_item = (not raised and self.lit and len(lit) == len(self.lit) > 1
+                             and lit[0] == self.lit[0])
+                said += [t for t in lit if t not in self.lit] if same_item else [commas(lit)]
+        self.title, self.lit, self.known = title, lit, {key(r) for r in shown}
+        return said
+
+
+def is_dark(r: Run) -> bool:
+    """Dark letters, solid: the selection on SFVR 0.3.0's gold bar."""
+    return r.alpha >= 0xF0 and (r.rgb & 0xFF) + (r.rgb >> 8 & 0xFF) + (r.rgb >> 16 & 0xFF) < 0xC0
+
+
+def menu_title(reading: Reading) -> str:
+    """The biggest text along the top of one of SFVR's screens: "SFVR SETTINGS"."""
+    top = reading.width * TOP_STRIP
+    along = [r for r in reading.screen if r.top < top and worth(r)]
+    return say(max(along, key=lambda r: r.size)) if along else ""
+
+
+def read_menu(reading: Reading) -> list[str]:
+    """Alt R on one of SFVR 0.3.0's screens: the selection, then the
+    sentences on the screen, which say what it does ("Word filter, On. Hides
+    offensive names and words in public rooms.")."""
+    lit = [r for row in lines(reading.lit) for r in row]
+    if not lit:
+        return []
+    return [commas(say(r) for r in lit)] + [say(r) for r in reading.screen if is_sentence(r) and r not in lit]
+
+
+@dataclass
 class ScreenNarrator:
     """Decides what to say as SFVR's select screen changes.
 
@@ -1122,7 +1331,7 @@ class ScreenNarrator:
             said.insert(0, lit)
         row = cursor_row(reading, shown, mine)
         if row and (self.row_top is None or abs(row[0].top - self.row_top) > 2):
-            said.append(", ".join(say(r) for r in row))
+            said.append(commas(say(r) for r in row))
         elif row:
             # The same row, a value changed by left or right. Compared whole,
             # since "03" becoming "04" is a number only ticking over to `key`.
@@ -1132,7 +1341,7 @@ class ScreenNarrator:
             if len(small) >= SCREEN_CHANGE:
                 small = [r for r in small if is_sentence(r)]
             rows = lines([r for r in shown if r.size < BIG_TEXT and r in mine and worth(r)])
-            said += [", ".join(say(r) for r in row) for row in rows if any(r in small for r in row)]
+            said += [commas(say(r) for r in row) for row in rows if any(r in small for r in row)]
         self.known, self.lit = {key(r) for r in shown}, lit
         self.row, self.row_top = tuple(tidy(r.text) for r in row), (row[0].top if row else None)
         return said
@@ -1203,6 +1412,18 @@ def is_sentence(r: Run) -> bool:
     TENZAN")."""
     text = tidy(r.text)
     return len(text.split()) >= 3 and bool(re.search(r"[a-z]", text)) and (text.endswith(".") or ":" in text)
+
+
+def commas(texts) -> str:
+    """Texts side by side, as one line: "Costume, DEFAULT". After a sentence
+    the next text starts afresh rather than after a comma, which was heard
+    as "Play online in rooms of up to 16 players., Select"."""
+    out = ""
+    for text in texts:
+        if out and text:
+            out += " " if out[-1] in ".?!:" else ", "
+        out += text
+    return out
 
 
 def say(r: Run) -> str:
@@ -1304,7 +1525,7 @@ def read_focus(reading: Reading) -> str:
                  and len(tidy(r.text)) > 1 and not r.disabled]
         if under:
             said = phrase([said] + [tidy(r.text) for r in sorted(under, key=lambda r: r.top)])
-    screen = [] if reading.open else read_screen(reading)
+    screen = [] if reading.open else (read_menu(reading) or read_screen(reading))
     shown = [tidy(r.text) for r in reading.runs if r.window.startswith("##Tooltip")]
     return phrase(screen + [said] + shown) or "Nothing focused"
 
@@ -1327,5 +1548,5 @@ def read_lines(reading: Reading) -> list[Line]:
                 if r.disabled:
                     text += ", unavailable"
                 words.append(text)
-            out.append(Line(", ".join(words), any(id(r) in focused for r in row)))
+            out.append(Line(commas(words), any(id(r) in focused for r in row)))
     return out

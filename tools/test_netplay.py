@@ -531,6 +531,75 @@ check("an unavailable item is said so", "JOIN, unavailable, WATCH, unavailable" 
 check("the focused row is marked for the review cursor", [line.selected for line in lines].count(True) == 1
       and lines[texts.index("CODE, Paste")].selected)
 
+# ---------------------------------------------------------- wrapped lines
+# SFVR's update notice as 0.2.6.1 drew it (7 November 2026): a heading, then
+# a paragraph wrapped over lines 25 pixels apart, then a sentence of its own.
+def line(text, top, rgb=0x96A6A8, left=573.0):
+    return n.Run(text, left, top, left + 600, top + 25, rgb, 255, "###panel", 3, 25.0)
+
+
+notice = [line("SFVR 0.3.0 is available, from 2026-11-07.", 712, 0x8CE3FF),
+          line("Custom rooms: up to 16 players on up to eight tables with", 747),
+          line("their own rules, in public rooms anyone can find or private", 772),
+          line("ones by code, with chat.", 797),
+          line("Both players need the same version to play each other.", 832),
+          line("lower case but a widget further down", 900)]
+joined = [r.text for r in n.join_wrapped(notice)]
+check("wrapped lines are one paragraph", joined[1] == "Custom rooms: up to 16 players on up to eight tables with "
+      "their own rules, in public rooms anyone can find or private ones by code, with chat.", str(joined))
+check("a line in another colour, a capital, or further down stays apart", len(joined) == 4 and joined[0].startswith("SFVR")
+      and joined[2].startswith("Both") and joined[3].startswith("lower"), str(joined))
+check("a sentence then a button has no comma between",
+      n.commas(["Play online in rooms of up to 16 players.", "Select", "SFVR settings"])
+      == "Play online in rooms of up to 16 players. Select, SFVR settings")
+
+# ------------------------------------------------------ SFVR 0.3.0's menus
+# Shaped like the settings screen recorded on 7 November 2026: the title
+# along the top, rows of a label and a value, the selected row's text dark on
+# its gold bar, and a panel beside the list explaining the selection.
+LIGHT, DARK = 0xE8F1F4, 0x0B0B0B
+
+
+def text(t, left, top, size=25.2, rgb=LIGHT, alpha=255):
+    return n.Run(t, left, top, left + 12 * len(t), top + size, rgb, alpha, "##Background", 0, size)
+
+
+def settings(lit_row, value="Off", details="Check at start", alpha=255, dialog=False):
+    rows = [("Check at start", "On", 236), ("Name", "Kongster (Steam name)", 342), ("Streamer mode", value, 582)]
+    runs = [text("SFVR SETTINGS", 57, 26, 48.0, 0xFFFFFF, alpha), text("Version 0.3.0", 485, 46, 24.0, alpha=alpha)]
+    for label, val, top in rows:
+        rgb = DARK if label == lit_row and not dialog else LIGHT
+        runs += [text(label, 107, top, rgb=rgb, alpha=alpha), text(val, 810, top, rgb=rgb, alpha=alpha)]
+    runs += [text(details, 1231, 187, 33.6, alpha=alpha),
+             text("Shown to other players. Leave it empty to use your Steam name.", 1231, 247, 24.0, alpha=alpha)]
+    if dialog:
+        runs += [text("Custom Rooms are unavailable", 633, 408, 33.6),
+                 text("The rooms server is up, but isn't hosting rooms right now.", 633, 463, 22.8),
+                 text("Try again", 763, 552, 21.6, DARK), text("Close", 1114, 552, 21.6)]
+    return n.Reading(1, tuple(runs), width=1920.0)
+
+
+menu = n.PanelNarrator()
+check("a menu screen says its title and selection", menu.step(settings("Check at start"), 0.0)
+      == "SFVR SETTINGS. Check at start, On", str(menu.step(settings("Check at start"), 0.0)))
+said = menu.step(settings("Name", details="Kongster"), 1.0)
+check("moving says the selection alone, not the panel beside it", said == "Name, Kongster (Steam name)", str(said))
+menu.step(settings("Streamer mode", details="Streamer mode"), 2.0)
+said = menu.step(settings("Streamer mode", "On", details="Streamer mode"), 3.0)
+check("left or right says the new value", said == "On", str(said))
+said = menu.step(settings("Streamer mode", "On", details="Streamer mode", dialog=True), 4.0)
+check("a dialog says its heading, its sentence and its button", said ==
+      "Custom Rooms are unavailable. The rooms server is up, but isn't hosting rooms right now. Try again", str(said))
+check("a screen fading says nothing", n.PanelNarrator().step(settings("Name", alpha=50), 0.0) is None)
+check("Alt R adds what the selection does", n.read_focus(settings("Name", details="Kongster"))
+      == "Name, Kongster (Steam name). Shown to other players. Leave it empty to use your Steam name.",
+      n.read_focus(settings("Name", details="Kongster")))
+steps = [text(t, x, 28, 15.0, DARK if t == "Stage select" else LIGHT) for t, x in
+         (("Stage select", 45), ("Character", 188), ("Loadout", 311), ("Ready", 419))]
+select = n.Reading(1, tuple(steps + [text("STAGE SELECT", 827, 91, 50.4, 0xFFFFFF),
+                                     text("Stage", 1600, 1025, 20.0, DARK)]), width=1920.0)
+check("the select screen keeps its own rules", not select.lit)
+
 # ------------------------------------------------------- fonts built again
 # SFVR builds its fonts again when a player's name brings a character they
 # lack, which moves every glyph. The reader must take the new table, but not
