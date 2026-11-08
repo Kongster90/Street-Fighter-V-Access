@@ -1561,8 +1561,12 @@ def commas(texts) -> str:
 
 def say(r: Run) -> str:
     """A screen text as said: "Setting 1 / 2" as "Setting 1 of 2", and a dot
-    between parts as a pause ("First to 2, winner stays")."""
+    between parts as a pause ("First to 2, winner stays"). A "?" standing
+    alone is a symbol the font lacks, as in a player's name ("? EASTWOOD ?"),
+    and is left out; one ending a question stays."""
     text = re.sub(r"(\s*\u00b7\s*)+", ", ", tidy(r.text)).strip(", ")
+    if re.search(r"[A-Za-z0-9]", text):
+        text = re.sub(r"\s+", " ", re.sub(r"(?:^|(?<=\s))\?+(?=\s|$)", "", text)).strip()
     return re.sub(r"(\d+) ?/ ?(\d+)", r"\1 of \2", text)
 
 

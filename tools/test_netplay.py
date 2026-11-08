@@ -549,6 +549,8 @@ check("wrapped lines are one paragraph", joined[1] == "Custom rooms: up to 16 pl
       "their own rules, in public rooms anyone can find or private ones by code, with chat.", str(joined))
 check("a line in another colour, a capital, or further down stays apart", len(joined) == 4 and joined[0].startswith("SFVR")
       and joined[2].startswith("Both") and joined[3].startswith("lower"), str(joined))
+check("a symbol the font lacks is left out of a name, a question keeps its mark",
+      [n.say(line(t, 0)) for t in ("? EASTWOOD ?", "Leave the room?")] == ["EASTWOOD", "Leave the room?"])
 check("a sentence then a button has no comma between",
       n.commas(["Play online in rooms of up to 16 players.", "Select", "SFVR settings"])
       == "Play online in rooms of up to 16 players. Select, SFVR settings")
