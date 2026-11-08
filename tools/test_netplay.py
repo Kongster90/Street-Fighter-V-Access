@@ -629,6 +629,11 @@ said = lobby.step(room(table=3), 1.0)
 check("moving to another table says that table, not Send again",
       said == "TABLE 3, First to 2, winner stays, up to 3, 99 seconds, 0 in queue, Sit here as P1, VS, Open seat",
       str(said))
+said = lobby.step(room(table=1), 1.5)
+check("the top table is read, below the title strip",
+      said == "TABLE 1, First to 2, winner stays, up to 3, 99 seconds, 0 in queue, Sit here as P1, VS, Open seat",
+      str(said))
+lobby.step(room(table=3), 1.8)
 said = lobby.step(room(table=3, seat="KONGSTER", status="Table 3 · seated"), 2.0)
 check("sitting says who is in the seat now and where the player is", said == "KONGSTER. You: Table 3, seated",
       str(said))

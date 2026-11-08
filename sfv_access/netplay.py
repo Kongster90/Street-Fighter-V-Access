@@ -135,9 +135,12 @@ ATTACH_RETRY = 3.0
 # (10 here); the next widget along is further, its text further still.
 LABEL_GAP = 16
 # SFVR 0.3.0's screens: the strip along the top holding a screen's title (and
-# the select screen's steps), as a share of the picture's width; and how much
-# bigger than the selection a new text is to be a dialog's heading.
-TOP_STRIP = 0.06
+# the select screen's steps), as a share of the picture's width: titles and
+# what sits beside them reach 46 pixels down at 1920 wide, and a room's first
+# table starts at 106, which 0.06 took into the strip, so Table 1 was never
+# said. And how much bigger than the selection a new text is to be a dialog's
+# heading.
+TOP_STRIP = 0.04
 RAISED = 4.0
 # Titles are this big; the hints sharing the strip are smaller.
 TITLE_SIZE = 30.0
