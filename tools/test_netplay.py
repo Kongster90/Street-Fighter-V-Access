@@ -660,7 +660,20 @@ coded = n.Reading(1, coded.runs + (text("Private", 490, 46, 24.0, 0x7FD88B), tex
                   width=1920.0)
 said = n.PanelNarrator().step(coded, 0.0)
 check("a room says whether it is private and its code, spelled",
-      said.startswith("Kongster's room. Private, Code, P K G 7 N U, Copy code. TABLE 2"), str(said))
+      said.startswith("Kongster's room. Private, Code, P K G 7 N U. TABLE 2"), str(said))
+real_style = n.buttons.style
+try:
+    n.buttons.style = lambda: "playstation"
+    help_said = n.room_help(coded)
+    n.buttons.style = lambda: "keyboard"
+    keyboard_said = n.room_help(coded)
+finally:
+    n.buttons.style = real_style
+check("Alt R in a room says how to copy the code and to chat, in the chosen buttons",
+      help_said == ["Share copies the code.", "Chat box: Say something (Share + triangle, or click here)"],
+      str(help_said))
+check("with keyboard keys chosen, SFVR's controller names stay", keyboard_said[0] == "Back copies the code.",
+      str(keyboard_said))
 over = room(chat=("SFVR left",))
 over = n.Reading(1, over.runs + (text("Leave queue", 1500, 904, 21.6),), width=1920.0)
 check("a button over the chat stays out of its line", n.chat_lines(over) == ("SFVR left",), str(n.chat_lines(over)))

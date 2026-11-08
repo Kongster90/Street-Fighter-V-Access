@@ -47,6 +47,7 @@ from dataclasses import dataclass, field, replace
 
 import numpy as np
 
+from . import buttons
 from .memory import ProcessMemory, find_pid
 from .scaleform import phrase
 
@@ -1570,10 +1571,11 @@ def menu_title(reading: Reading) -> str:
 
 def room_code(reading: Reading) -> str:
     """Beside a room's name, whether it is public or private and its code,
-    the code spelled: "Private, Code, P K G 7 N U, Copy code". Copy code, on
-    the Back button, puts the code on the clipboard. Nothing on a screen
-    whose title has no code beside it. The user, in a private room, could not
-    find the code to give friends (7 November 2026)."""
+    the code spelled: "Private, Code, P K G 7 N U". "Copy code" stands there
+    too, by a picture of the Back button, which puts the code on the
+    clipboard; Alt R says that (`room_help`). Nothing on a screen whose
+    title has no code beside it. The user, in a private room, could not find
+    the code to give friends (7 November 2026)."""
     top = reading.width * TOP_STRIP
     along = [r for r in reading.screen if r.top < top and worth(r)]
     big = [r for r in along if r.size >= TITLE_SIZE]
@@ -1581,10 +1583,42 @@ def room_code(reading: Reading) -> str:
         return ""
     title = max(big, key=lambda r: r.size)
     row = next((row for row in lines(along) if title in row), [])
-    texts = [say(r) for r in row if r is not title]
+    texts = [say(r) for r in row if r is not title and say(r).lower() != "copy code"]
     if not any(CODE.fullmatch(t) for t in texts):
         return ""
     return commas(spell(t) if CODE.fullmatch(t) else t for t in texts)
+
+
+def pad_word(text: str) -> str:
+    """SFVR's own button names, Back and Y, in the style chosen with Alt B.
+    Keyboard keys are not offered: SFVR shows only controller buttons for
+    these, and whether the game's keys reach it is not known."""
+    chosen = "xbox" if buttons.style() == "keyboard" else buttons.style()
+    words = {"Back": buttons.name(15, chosen), "Y": buttons.name(5, chosen)}
+    return re.sub(r"\b(Back|Y)\b", lambda m: words[m.group(1)], text)
+
+
+def chat_box(reading: Reading) -> str:
+    """The room chat's box: its prompt, "Say something (Back + Y, or click
+    here)", or what has been typed into it. It sits under the chat's lines,
+    a little further in than they start."""
+    shown = reading.screen
+    heading = next((r for r in shown if tidy(r.text).endswith("CHAT") and tidy(r.text).isupper()), None)
+    if heading is None:
+        return ""
+    box = [r for r in shown if r.top > heading.top and heading.left + 3 < r.left < heading.left + 40]
+    return say(max(box, key=lambda r: r.top)) if box else ""
+
+
+def room_help(reading: Reading) -> list[str]:
+    """Alt R in a room: which button copies the code, and how to chat."""
+    if not room_code(reading):
+        return []
+    said = [pad_word("Back copies the code.")]
+    box = chat_box(reading)
+    if box:
+        said.append(f"Chat box: {pad_word(box)}")
+    return said
 
 
 def read_menu(reading: Reading) -> list[str]:
@@ -1598,7 +1632,7 @@ def read_menu(reading: Reading) -> list[str]:
     code = room_code(reading)
     return ([commas(item) for item in items] + ([status] if status else [])
             + [say(r) for r in reading.screen if is_sentence(r) and not lit_text(r, items)]
-            + ([code] if code else []))
+            + ([code] if code else []) + room_help(reading))
 
 
 @dataclass

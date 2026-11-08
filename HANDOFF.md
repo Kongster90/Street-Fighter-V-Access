@@ -2311,7 +2311,14 @@ one). `room_code` says that row, the code spelled, after the title on
 entering a room and at the end of Alt R; a title row with no code (hub,
 settings) says nothing more. A room's name need not hold the word "room"
 ("Beginners Welcome!"). Chat: the box's prompt is "Say something (Back + Y,
-or click here)"; what is typed into it is not read back yet.
+or click here)"; what is typed into it is not read back yet. At the user's
+suggestion Alt R in a room ends with how to copy the code and to chat
+(`room_help`): "Share copies the code. Chat box: Say something (Share +
+triangle, or click here)", Back and Y named in the Alt B style through
+`buttons.name` (15 and 5); with keyboard keys chosen the controller names
+stay, since SFVR shows only those and whether the game's keys reach it is
+not known. "Copy code" is left out of the line said on entering, the
+button being a picture beside it.
 
 ### Where UE4SS got to, and why it is not installed
 
