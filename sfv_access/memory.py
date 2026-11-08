@@ -6,6 +6,10 @@ because a wrong pointer then returns a failed read instead of crashing the
 game, and the mapping work that comes out of it transfers unchanged to an
 injected library later.
 
+One write is made, two bytes in SFVR, the netplay mod, that keep its status
+line out of the game's window title (`netplay.StatusLine`); `write` is for
+that alone.
+
 Street Fighter V's executable is wrapped in Steam's DRM, so its code is only
 decrypted in memory. Nothing here can be derived from the file on disk.
 """
@@ -22,6 +26,9 @@ psapi = ctypes.WinDLL("psapi", use_last_error=True)
 
 PROCESS_QUERY_INFORMATION = 0x0400
 PROCESS_VM_READ = 0x0010
+PROCESS_VM_OPERATION = 0x0008
+PROCESS_VM_WRITE = 0x0020
+PAGE_EXECUTE_READWRITE = 0x40
 LIST_MODULES_ALL = 0x03
 
 MEM_COMMIT = 0x1000
@@ -62,6 +69,21 @@ kernel32.ReadProcessMemory.argtypes = [
     ctypes.c_size_t,
     ctypes.POINTER(ctypes.c_size_t),
 ]
+kernel32.WriteProcessMemory.argtypes = [
+    wintypes.HANDLE,
+    ctypes.c_void_p,
+    ctypes.c_void_p,
+    ctypes.c_size_t,
+    ctypes.POINTER(ctypes.c_size_t),
+]
+kernel32.VirtualProtectEx.argtypes = [
+    wintypes.HANDLE,
+    ctypes.c_void_p,
+    ctypes.c_size_t,
+    wintypes.DWORD,
+    ctypes.POINTER(wintypes.DWORD),
+]
+kernel32.FlushInstructionCache.argtypes = [wintypes.HANDLE, ctypes.c_void_p, ctypes.c_size_t]
 kernel32.VirtualQueryEx.restype = ctypes.c_size_t
 kernel32.VirtualQueryEx.argtypes = [
     wintypes.HANDLE,
@@ -192,6 +214,35 @@ class ProcessMemory:
                 end = i
                 break
         return b[:end].decode("utf-16-le", "replace")
+
+    # ----------------------------------------------------------------- writes
+    def write(self, address: int, data: bytes) -> bool:
+        """Put `data` over code or constants, then give the page its protection back.
+
+        Its own handle, opened for the write and closed after it, so the one
+        every read uses can still only read.
+        """
+        handle = kernel32.OpenProcess(
+            PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE, False, self.pid
+        )
+        if not handle:
+            return False
+        try:
+            old = wintypes.DWORD()
+            where = ctypes.c_void_p(address)
+            if not kernel32.VirtualProtectEx(handle, where, len(data), PAGE_EXECUTE_READWRITE,
+                                             ctypes.byref(old)):
+                return False
+            try:
+                done = ctypes.c_size_t(0)
+                ok = kernel32.WriteProcessMemory(handle, where, data, len(data), ctypes.byref(done))
+                kernel32.FlushInstructionCache(handle, where, len(data))
+                return bool(ok) and done.value == len(data)
+            finally:
+                kernel32.VirtualProtectEx(handle, where, len(data), old.value,
+                                          ctypes.byref(wintypes.DWORD()))
+        finally:
+            kernel32.CloseHandle(handle)
 
     # ---------------------------------------------------------------- mapping
     def modules(self) -> list[Module]:

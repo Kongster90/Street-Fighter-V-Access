@@ -49,6 +49,7 @@ Alt H: during a fight, both fighters' health, V-Trigger and Critical Art.
 F5 and Shift F5: make the health beeps louder or quieter, 5 percent at a time. They start at 40 percent, and at 0 they are off.
 F6 and Shift F6: the same for the counter hit sound, which plays in the speaker on the side of whoever landed the hit.
 F7 and Shift F7: the same for the crossup sound, also on the side of whoever landed it.
+F11: if you have SFVR, the netplay mod, its status: while watching, the frame and how many frames it has in hand; in a match, the frame, ping, rollbacks and how far ahead you are. SFVR puts this in the game's window title, which screen readers read out every second, so the mod keeps it out of the title and says it on F11 instead.
 Alt M: turn menu reading off or on.
 F10: close the mod until the next time you start the game.
 

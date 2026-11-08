@@ -75,6 +75,7 @@ HOTKEYS = {
     "counter_quieter": ("shift+f6", "counter hit sound quieter"),
     "crossup_louder":  ("f7",       "crossup sound louder"),
     "crossup_quieter": ("shift+f7", "crossup sound quieter"),
+    "netplay_status":  ("f11",      "read SFVR's netplay status"),
     "snapshot":      ("alt+s",      "save a snapshot for calibration"),
     "status":        ("alt+g",      "status"),
     "stop_speech":   ("alt+x",      "stop speaking"),
@@ -166,6 +167,9 @@ class App:
         # Dear ImGui over the game, and SFVR's latest frame for the read keys.
         self.netplay = netplay.PanelReader(note=self.session.note)
         self.netplay_narrator = netplay.PanelNarrator()
+        # Its status line, kept out of the window title, where the screen
+        # reader said it every half second, and read on F11 instead.
+        self.netplay_status = netplay.StatusLine(note=self.session.note)
         self.netplay_reading: netplay.Reading | None = None
         self._hang_file = None
         self._crash_file = None
@@ -565,6 +569,12 @@ class App:
             f"Narration {'on' if self.watching else 'off'}, {source}."
         )
 
+    def on_netplay_status(self) -> None:
+        """SFVR's status line: "Watching, frame 1394, 434 frames in hand"."""
+        said = netplay.status_words(self.netplay_status.text())
+        print(f"[read] {said}")
+        self.speech.say(said)
+
     def on_snapshot(self) -> None:
         """A picture of the game and what memory reads at that moment, to check one against the other."""
         from PIL import Image
@@ -817,6 +827,7 @@ class App:
         """
         while not self._stop.wait(NETPLAY_POLL):
             try:
+                self.netplay_status.step()
                 reading = self.netplay.read()
                 self.netplay_reading = reading
                 if not self.watching:

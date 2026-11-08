@@ -531,5 +531,76 @@ check("an unavailable item is said so", "JOIN, unavailable, WATCH, unavailable" 
 check("the focused row is marked for the review cursor", [line.selected for line in lines].count(True) == 1
       and lines[texts.index("CODE, Paste")].selected)
 
+# --------------------------------------------------------------- status line
+# The title callback as SFVR 0.2.2 builds it, at made-up addresses: the
+# prefix's lea, some code, then the line's length tested, a length check, and
+# the line's own lea. A second test of another string, with no prefix before
+# it, must not be taken for it.
+CODE_BASE, PREFIX, LINE, OTHER = 0x10000, 0x90000, 0xA0770, 0xA0800
+DATA = (0xA0000, 0xB0000)
+
+
+def rip(opcode: bytes, at: int, target: int) -> bytes:
+    """An instruction ending in disp32 that points at `target`, placed at `at`."""
+    return opcode + struct.pack("<i", target - (at + len(opcode) + 4))
+
+
+def title_code(jump: bytes = b"\x0F\x84") -> tuple[bytes, int]:
+    code = bytearray(b"\xCC" * 0x40)
+    code += rip(b"\x48\x8D\x35", CODE_BASE + len(code), PREFIX)          # lea rsi, [prefix]
+    code += b"\x90" * 0x1F0
+    code += rip(b"\x48\x8B\x3D", CODE_BASE + len(code), LINE + 0x10)     # mov rdi, [line.size]
+    code += b"\x48\x85\xFF"                                              # test rdi, rdi
+    at = CODE_BASE + len(code)
+    code += jump + struct.pack("<i", 0x142)                              # je <title done>
+    code += b"\x48\x8B\xC1\x48\x2B\xC7\x48\x83\xF8\x01"                  # the length check
+    code += b"\x0F\x82" + struct.pack("<i", 0x36C)
+    code += rip(b"\x4C\x8D\x3D", CODE_BASE + len(code), LINE)            # lea r15, [line]
+    code += b"\xCC" * 0x900
+    code += rip(b"\x48\x8B\x3D", CODE_BASE + len(code), OTHER + 0x10)
+    code += b"\x48\x85\xFF\x0F\x84" + struct.pack("<i", 0x20)
+    code += rip(b"\x4C\x8D\x3D", CODE_BASE + len(code), OTHER)
+    return bytes(code), at
+
+
+code, jump_at = title_code()
+check("the title's status line is found by the prefix before it",
+      n.find_status_line(code, CODE_BASE, PREFIX, DATA) == (jump_at, LINE, False),
+      str(n.find_status_line(code, CODE_BASE, PREFIX, DATA)))
+quieted, _ = title_code(n.QUIET_JUMP)
+check("once quieted it is known as quieted, and found again",
+      n.find_status_line(quieted, CODE_BASE, PREFIX, DATA) == (jump_at, LINE, True))
+check("without the prefix nothing is taken", n.find_status_line(code, CODE_BASE, PREFIX + 8, DATA) is None)
+check("a line outside SFVR's data is not taken", n.find_status_line(code, CODE_BASE, PREFIX, (0, 0x1000)) is None)
+
+
+class StringMemory:
+    """Two std::strings as MSVC lays them out: one in place, one on the heap."""
+    def __init__(self) -> None:
+        heap = b"watching | frame 1394 | 434 frames in hand"
+        self.at = {
+            0x100: b"connection lost\0" + struct.pack("<QQ", 15, 15),
+            0x200: struct.pack("<Q", 0x900) + b"\0" * 8 + struct.pack("<QQ", len(heap), 47),
+            0x900: heap,
+            0x300: b"\0" * 16 + struct.pack("<QQ", 9999, 15),
+        }
+
+    def read(self, address: int, size: int) -> bytes | None:
+        raw = self.at.get(address)
+        return raw[:size] if raw is not None else None
+
+
+mem = StringMemory()
+check("a short status line is read in place", n.read_string(mem, 0x100) == "connection lost")
+check("a long one through its pointer", n.read_string(mem, 0x200) == "watching | frame 1394 | 434 frames in hand")
+check("a torn one is not read", n.read_string(mem, 0x300) is None)
+for line, words in (("watching | frame 1394 | 434 frames in hand", "Watching, frame 1394, 434 frames in hand"),
+                    ("P1 | frame 5000 | ping 40 ms | rollbacks 12 (max 3) | ahead 0.5 | DESYNC",
+                     "P1, frame 5000, ping 40 ms, rollbacks 12 (max 3), ahead 0.5, DESYNC"),
+                    ("connection lost", "Connection lost"),
+                    ("", "No netplay session."),
+                    (None, "No SFVR status found.")):
+    check(f"F11 says {words!r}", n.status_words(line) == words, n.status_words(line))
+
 print("all passed" if ok else "SOME FAILED")
 sys.exit(0 if ok else 1)

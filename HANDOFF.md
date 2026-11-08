@@ -2139,6 +2139,32 @@ The Ready step's line really reads "Ready: the match starts once both
 players are", cut short by SFVR. A fighter's shadow is four pixels down, not
 two, and was read twice. Not yet seen: the screen in a real session.
 
+**SFVR's window title, and F11.** Watching a session online on 2026-11-07,
+the user heard NVDA say the frames every second. That was not the mod:
+SFVR writes a status line into the game's window title, "StreetFighterV
+[sfv 0] watching | frame 1394 | 434 frames in hand" (in a match "P1 | frame
+%d | ping %u ms | rollbacks %u (max %u) | ahead %.1f", then "connection
+lost" and others), every 30 frames, and NVDA speaks a focused window's
+name each time it changes. SFVR has no setting for it. Disassembled with
+the toolchain's `llvm-objdump`: each state formats its line and passes it
+to one setter (SFVR 0.2.2, 0x1800b7950), which keeps it in a global MSVC
+std::string (0x180266770) and, when it changed, runs EnumWindows with the
+title callback (0x1800b7150). The callback writes "StreetFighterV [sfv N]"
+and adds " " and the line when the line is not empty (`mov rdi, [size]; test
+rdi, rdi; je`), compares with InternalGetWindowText, and sends WM_SETTEXT
+only if they differ. `netplay.StatusLine` turns that je into nop, jmp (same
+target, the empty-line path, so no temporary string is skipped half made),
+the one write the mod makes, through `ProcessMemory.write` with a handle of
+its own; the title then stays put and nothing is spoken. It is found from
+the prefix's text, the je within 0x800 bytes after its lea and the line's
+own lea within 0x40 after the je, so a rebuild that keeps the shape is
+followed, and one that does not is logged and left alone. A title already
+holding a line is cleared once on attaching. F11 reads the global string
+("Watching, frame 1394, 434 frames in hand"). Checked read-only against the
+live game while the user watched (it found the one site and read that
+line), and the write and title clearing on a stand-in process; not yet
+heard in play.
+
 ### Where UE4SS got to, and why it is not installed
 
 Tried thoroughly and abandoned one symbol short. Nothing of it is installed;
@@ -2298,6 +2324,11 @@ the user tried with it in the watch mode ended with "it works as it should".
 The user finds memory reading better and wants it everywhere; the pixel reader
 is kept as the fallback. The gauges moved to memory on 2026-09-28 (below).
 What follows is roughly in order of value.
+
+**The session of 2026-11-07.** Online watching a session, the user heard
+NVDA say SFVR's frame count every second, from the window title, and asked
+for silence and a key instead: the title is kept still and F11 says the
+status line. See "SFVR's window title, and F11". For the next What's new.
 
 **The session of 2026-11-01.** The user installed SFVR, a rollback netplay
 mod that draws its own panel with Dear ImGui, and SFV Access now reads its

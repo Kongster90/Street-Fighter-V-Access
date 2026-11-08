@@ -14,7 +14,8 @@ of the game and matching each quad's coordinates against the fonts' glyph
 tables gives back the exact text, where it sits and in what colour. ImGui's
 own navigation state says which item has focus and the rectangle it covers,
 so the focused item is whatever text lies inside that rectangle. Nothing is
-recognised off the picture, and the game is only read, as everywhere else.
+recognised off the picture, and the game is only read, but for one jump in
+SFVR that keeps its status line out of the window title (`StatusLine`).
 
 The structures were measured on SFVR 0.2.2 (1 November 2026). SFVR builds
 ImGui without docking, and the only copy on hand was the docking branch, so
@@ -28,9 +29,12 @@ check and the panel stays silent rather than misreading.
 
 from __future__ import annotations
 
+import ctypes
 import re
 import struct
+import threading
 import time
+from ctypes import wintypes
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -611,6 +615,224 @@ def read_glyphs(mem: ProcessMemory, ctx: int) -> Glyphs | None:
             u0, v0, u1, v1 = struct.unpack_from("<4I", raw, k * GLYPH_SIZE + 0x18)
             out.append((bits >> 2, adv, x0, y0, x1, y1, u0, v0, u1, v1, index))
     return Glyphs(out, sizes) if out else None
+
+
+# --------------------------------------------------------------- status line
+# SFVR puts a status line in the game's window title, "StreetFighterV [sfv 0]
+# watching | frame 1234 | 3 frames in hand", in a match "P1 | frame 5000 |
+# ping 40 ms | rollbacks 12 (max 3) | ahead 0.5", anew every half second, and
+# a screen reader says the title each time it changes: NVDA said the frames
+# every second while the user watched a session (7 November 2026). SFVR keeps
+# the line in a std::string of its own and adds it to the title in one place,
+# the window callback that writes "StreetFighterV [sfv N]" (SFVR 0.2.2):
+#
+#     mov  rdi, [line.size] ; test rdi, rdi ; je  <title done>
+#     (a length check)      ; lea r15, [line] ; " " + line on the end
+#
+# That je made a jmp, the title stays "StreetFighterV [sfv N]", and the line
+# is still there, read on F11. The callback is found from the prefix's text,
+# so a new build is followed while the code keeps that shape; one that does
+# not leaves the title as SFVR has it.
+TITLE_PREFIX = b"StreetFighterV [sfv \0"
+TITLE_BASE = re.compile(r"StreetFighterV \[sfv \d+\]")
+RIP_OPERAND = b"[\x05\x0D\x15\x1D\x25\x2D\x35\x3D]"     # ModRM of [rip + disp32]
+TITLE_JUMP = re.compile(
+    b"[\x48\x4C]\x8B" + RIP_OPERAND + b"(....)"           # mov r64, [line.size]
+    b"[\x48\x49\x4C\x4D]\x85[\xC0-\xFF]"                  # test r64, r64
+    b"(\x0F\x84|\x90\xE9)....",                           # je, or once quieted nop, jmp
+    re.DOTALL)
+LEA_RIP = re.compile(b"[\x48\x4C]\x8D" + RIP_OPERAND + b"(....)", re.DOTALL)
+QUIET_JUMP = b"\x90\xE9"    # the same target, since the jmp ends where the je did
+# How far ahead of the line's jump the prefix is put in the title, at most,
+# and how soon after it the line's own address is taken.
+TITLE_SPAN = 0x800
+LINE_REACH = 0x40
+# A std::string, as MSVC lays it out: its text in place up to 15 bytes, else
+# a pointer to it, then its length and capacity.
+STRING_LENGTH = 0x10
+STRING_CAPACITY = 0x18
+STRING_IN_PLACE = 15
+LINE_LIMIT = 512
+WM_SETTEXT = 0x000C
+SMTO_ABORTIFHUNG = 0x0002
+
+user32 = ctypes.WinDLL("user32", use_last_error=True)
+WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+user32.EnumWindows.argtypes = [WNDENUMPROC, wintypes.LPARAM]
+user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+user32.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+user32.SendMessageTimeoutW.restype = ctypes.c_ssize_t
+user32.SendMessageTimeoutW.argtypes = [
+    wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPCWSTR,
+    wintypes.UINT, wintypes.UINT, ctypes.POINTER(ctypes.c_size_t),
+]
+
+
+def rip_target(raw: bytes, match: re.Match, group: int, base: int) -> int:
+    """Where a [rip + disp32] operand points; disp32 is the instruction's last field."""
+    disp = struct.unpack_from("<i", raw, match.start(group))[0]
+    return base + match.end(group) + disp
+
+
+def leas(code: bytes, start: int, end: int, code_base: int) -> set[int]:
+    """Every address a lea r64, [rip + disp32] in code[start:end] takes."""
+    start = max(0, start)
+    part = code[start:end]
+    return {rip_target(part, m, 1, code_base + start) for m in LEA_RIP.finditer(part)}
+
+
+def find_status_line(code: bytes, code_base: int, prefix: int,
+                     data: tuple[int, int]) -> tuple[int, int, bool] | None:
+    """The title callback's jump past the status line, the line's std::string,
+    and whether the jump is quieted already; None unless exactly one fits.
+
+    `code` is SFVR's .text read from `code_base`, `prefix` where its
+    "StreetFighterV [sfv " lives, `data` the start and end of its .data.
+    """
+    found = []
+    for m in TITLE_JUMP.finditer(code):
+        line = rip_target(code, m, 1, code_base) - STRING_LENGTH
+        if (data[0] <= line < data[1]
+                and line in leas(code, m.end(), m.end() + LINE_REACH, code_base)
+                and prefix in leas(code, m.start() - TITLE_SPAN, m.start(), code_base)):
+            found.append((code_base + m.start(2), line, m.group(2) == QUIET_JUMP))
+    return found[0] if len(found) == 1 else None
+
+
+def read_string(mem: ProcessMemory, address: int) -> str | None:
+    """An MSVC std::string's text, or None if it does not read as one."""
+    head = mem.read(address, STRING_CAPACITY + 8)
+    if not head or len(head) < STRING_CAPACITY + 8:
+        return None
+    length, capacity = struct.unpack_from("<QQ", head, STRING_LENGTH)
+    if length > capacity or length > LINE_LIMIT:
+        return None
+    if capacity <= STRING_IN_PLACE:
+        raw = head[:length]
+    else:
+        raw = mem.read(struct.unpack_from("<Q", head, 0)[0], length) if length else b""
+        if raw is None or len(raw) != length:
+            return None
+    return raw.decode("utf-8", "replace")
+
+
+def status_words(line: str | None) -> str:
+    """SFVR's status line as said on F11: "Watching, frame 1234, 3 frames in hand"."""
+    if line is None:        # no SFVR, or a build whose line was not found
+        return "No SFVR status found."
+    line = tidy(line.replace("|", ","))
+    line = re.sub(r"\s+,", ",", line)
+    if not line:
+        return "No netplay session."
+    return line[0].upper() + line[1:]
+
+
+class StatusLine:
+    """SFVR's status line, kept out of the game's window title and read on a key.
+
+    Looked for every few seconds until SFVR is found, then the quieted jump is
+    checked as often, so a new game, or SFVR loaded again, is quieted too.
+    """
+
+    def __init__(self, note=None) -> None:
+        self.note = note or (lambda text: None)
+        self.mem: ProcessMemory | None = None
+        self.line = 0
+        self.jump = 0
+        self._kept = b""        # what the jump should read while all is well
+        self._retry_at = 0.0
+        self._missing: tuple[int, int] | None = None    # the game and SFVR searched in vain
+        self._lock = threading.Lock()
+
+    def step(self, now: float | None = None) -> None:
+        now = time.monotonic() if now is None else now
+        with self._lock:
+            if now < self._retry_at:
+                return
+            self._retry_at = now + ATTACH_RETRY
+            if self.mem is not None:
+                if self.mem.read(self.jump, len(self._kept)) == self._kept:
+                    return
+                self.note("netplay: SFVR's title code changed or went; looking again")
+                self._detach()
+            self._attach()
+
+    def text(self) -> str | None:
+        """The line as SFVR has it now, "" for none, or None without SFVR."""
+        with self._lock:
+            if self.mem is None:
+                self._attach()
+            if self.mem is None:
+                return None
+            for _ in range(3):      # SFVR may be part way through replacing it
+                line = read_string(self.mem, self.line)
+                if line is not None:
+                    return line
+                time.sleep(0.01)
+            return None
+
+    def _detach(self) -> None:
+        if self.mem is not None:
+            self.mem.close()
+        self.mem, self.line, self.jump, self._kept = None, 0, 0, b""
+
+    def _attach(self) -> None:
+        pid = find_pid(EXE, "Binaries", require_path=True)
+        if not pid:
+            return
+        try:
+            mem = ProcessMemory(pid)
+        except OSError:
+            return
+        module = next((m for m in mem.modules() if m.name.lower().startswith(MODULE_PREFIX)), None)
+        if module is None or self._missing == (pid, module.base):
+            mem.close()
+            return
+        text, rdata, data = (mem.section(module, name) for name in (".text", ".rdata", ".data"))
+        code = mem.read(text.base, text.size) if text else None
+        consts = mem.read(rdata.base, rdata.size) if rdata else None
+        at = consts.find(TITLE_PREFIX) if consts else -1
+        found = (find_status_line(code, text.base, rdata.base + at, (data.base, data.end))
+                 if code and at >= 0 and data else None)
+        if found is None:
+            mem.close()
+            self._missing = (pid, module.base)
+            self.note(f"netplay: {module.name}'s status line was not found; "
+                      "its window title is left as it is")
+            return
+        jump, line, quiet = found
+        if not quiet and mem.write(jump, QUIET_JUMP):
+            quiet = True
+            self.note(f"netplay: {module.name}'s status line kept out of the window title")
+        elif not quiet:
+            self.note(f"netplay: {module.name}'s window title could not be quieted")
+        self.mem, self.line, self.jump = mem, line, jump
+        self._kept = QUIET_JUMP if quiet else (mem.read(jump, 2) or b"")
+        if quiet:
+            clear_title(pid)
+
+
+def clear_title(pid: int) -> None:
+    """Take a status line already in the title off it, once, as SFVR would now.
+
+    Without this the title kept the last line ("connection lost") until SFVR
+    next changed it, then said its new title in the middle of a session. Every
+    window of the game is looked at, as SFVR does, minimised ones too.
+    """
+    @WNDENUMPROC
+    def each(hwnd, _lparam):
+        owner = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+        if owner.value == pid:
+            buf = ctypes.create_unicode_buffer(256)
+            user32.GetWindowTextW(hwnd, buf, 256)
+            base = TITLE_BASE.match(buf.value)
+            if base and base.group() != buf.value:
+                user32.SendMessageTimeoutW(hwnd, WM_SETTEXT, 0, base.group(),
+                                           SMTO_ABORTIFHUNG, 1000, None)
+        return True
+
+    user32.EnumWindows(each, 0)
 
 
 # ----------------------------------------------------------------- narration
