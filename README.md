@@ -145,7 +145,7 @@ These work while the game has focus, including in fullscreen.
 - F5 and Shift F5: health beeps louder or quieter, 5 percent at a time from 40, remembered between runs; 0 is off
 - F6 and Shift F6: the counter hit sound louder or quieter, the same way
 - F7 and Shift F7: the crossup sound louder or quieter, the same way
-- F11: SFVR's netplay status, such as "Watching, frame 1394, 434 frames in hand", or in a match the frame, ping, rollbacks and how far ahead. SFVR put this in the game's window title, where the screen reader said it every half second; the mod keeps it out of the title
+- F11: the netplay status of Polarity (formerly SFVR), such as "Watching, frame 1394, 434 frames in hand", or in a match the frame, ping, rollbacks and how far ahead. Polarity puts this in the game's window title, where the screen reader said it every half second; the mod keeps it out of the title
 - Alt S: save a picture of the game and what memory reads, for checking one against the other
 - Alt G: status
 - Alt X: stop speaking

@@ -75,7 +75,7 @@ HOTKEYS = {
     "counter_quieter": ("shift+f6", "counter hit sound quieter"),
     "crossup_louder":  ("f7",       "crossup sound louder"),
     "crossup_quieter": ("shift+f7", "crossup sound quieter"),
-    "netplay_status":  ("f11",      "read SFVR's netplay status"),
+    "netplay_status":  ("f11",      "read Polarity's netplay status"),
     "snapshot":      ("alt+s",      "save a snapshot for calibration"),
     "status":        ("alt+g",      "status"),
     "stop_speech":   ("alt+x",      "stop speaking"),

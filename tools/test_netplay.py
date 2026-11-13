@@ -808,7 +808,7 @@ for line, words in (("watching | frame 1394 | 434 frames in hand", "Watching, fr
                      "P1, frame 5000, ping 40 ms, rollbacks 12 (max 3), ahead 0.5, DESYNC"),
                     ("connection lost", "Connection lost"),
                     ("", "No netplay session."),
-                    (None, "No SFVR status found.")):
+                    (None, "No Polarity status found.")):
     check(f"F11 says {words!r}", n.status_words(line) == words, n.status_words(line))
 
 print("all passed" if ok else "SOME FAILED")

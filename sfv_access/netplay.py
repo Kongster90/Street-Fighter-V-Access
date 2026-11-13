@@ -1,11 +1,12 @@
-"""SFVR, the rollback netplay mod, read from its panel's Dear ImGui frames.
+"""Polarity, formerly SFVR, the rollback netplay mod, read from its Dear
+ImGui frames.
 
-SFVR (sfvr.pages.dev) loads beside the game as sfv_rollback.dll, through an
-xinput1_3.dll beside StreetFighterV.exe, and draws its own panel over the
-game with Dear ImGui 1.91.9b: hosting and joining matches, its lobby, its
-settings, and short notices ("Player Two joined"). F1, or Back and Start on a
-pad, opens the panel, and the game gets no input while it is open. None of it
-goes through Scaleform, so the reader in `scaleform` never sees any of it.
+Polarity loads beside the game as polarity.dll (SFVR's was sfv_rollback.dll;
+renamed with 0.4.0, 13 November 2026), through an xinput1_3.dll beside
+StreetFighterV.exe, and draws its own screens over the game with Dear ImGui:
+its hub, settings, rooms, the window after each game, and short notices.
+F1, or Back and Start on a pad, opens it. None of it goes through Scaleform,
+so the reader in `scaleform` never sees any of it.
 
 ImGui keeps no text once a frame is built, only the triangles it drew. Each
 character is a quad whose four corners carry that character's place in the
@@ -52,7 +53,9 @@ from .memory import ProcessMemory, find_pid
 from .scaleform import phrase
 
 EXE = "StreetFighterV.exe"
-MODULE_PREFIX = "sfv_rollback"
+# The library's name, as loaded: Polarity's ("polarity.live.0.0.dll", a copy
+# of polarity.dll) and SFVR's before it ("sfv_rollback.live.0.0.dll").
+MODULE_PREFIX = ("polarity", "sfv_rollback")
 
 # ImGuiContext (ImGui 1.92.9b, no docking).
 CTX_INITIALIZED = 0x0
@@ -901,7 +904,7 @@ def read_string(mem: ProcessMemory, address: int) -> str | None:
 def status_words(line: str | None) -> str:
     """SFVR's status line as said on F11: "Watching, frame 1234, 3 frames in hand"."""
     if line is None:        # no SFVR, or a build whose line was not found
-        return "No SFVR status found."
+        return "No Polarity status found."
     line = tidy(line.replace("|", ","))
     line = re.sub(r"\s+,", ",", line)
     if not line:
@@ -935,7 +938,7 @@ class StatusLine:
             if self.mem is not None:
                 if self.mem.read(self.jump, len(self._kept)) == self._kept:
                     return
-                self.note("netplay: SFVR's title code changed or went; looking again")
+                self.note("netplay: Polarity's title code changed or went; looking again")
                 self._detach()
             self._attach()
 

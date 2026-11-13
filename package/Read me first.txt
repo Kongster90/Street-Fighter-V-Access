@@ -49,7 +49,7 @@ Alt H: during a fight, both fighters' health, V-Trigger and Critical Art.
 F5 and Shift F5: make the health beeps louder or quieter, 5 percent at a time. They start at 40 percent, and at 0 they are off.
 F6 and Shift F6: the same for the counter hit sound, which plays in the speaker on the side of whoever landed the hit.
 F7 and Shift F7: the same for the crossup sound, also on the side of whoever landed it.
-F11: if you have SFVR, the netplay mod, its status: while watching, the frame and how many frames it has in hand; in a match, the frame, ping, rollbacks and how far ahead you are. SFVR puts this in the game's window title, which screen readers read out every second, so the mod keeps it out of the title and says it on F11 instead.
+F11: if you have Polarity, the netplay mod formerly called SFVR, its status: while watching, the frame and how many frames it has in hand; in a match, the frame, ping, rollbacks and how far ahead you are. Polarity puts this in the game's window title, which screen readers read out every second, so the mod keeps it out of the title and says it on F11 instead.
 Alt M: turn menu reading off or on.
 F10: close the mod until the next time you start the game.
 
@@ -72,7 +72,7 @@ CFN: its menu, the timeline, Pending CFN Friend Requests, Tournaments with their
 Replays: the controls with each button named, once as a replay begins and on Alt R.
 The Message Log, and the Gallery's Good Luck Charms with what each does.
 Fights: beeps as either fighter's health drops, and sounds for counter hits and crossups, each in the speaker on the side of whoever it belongs to, in replays and story fights too.
-SFVR 0.3, the rollback netcode mod, if you have it installed: its hub and settings (F1, or Back and Start), custom rooms with their tables, where you are and the chat, its own stage, character and loadout select, the window after each game, and its notices. Alt R reads what is selected with what it does.
+Polarity (formerly SFVR), the rollback netcode mod, version 0.3 or later, if you have it installed: its hub and settings (F1, or Back and Start), custom rooms with their tables, where you are and the chat, its own stage, character and loadout select, the window after each game, and its notices. Alt R reads what is selected with what it does.
 
 Not yet: a sound for the distance between the fighters.
 

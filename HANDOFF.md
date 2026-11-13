@@ -2480,6 +2480,18 @@ The user finds memory reading better and wants it everywhere; the pixel reader
 is kept as the fallback. The gauges moved to memory on 2026-09-28 (below).
 What follows is roughly in order of value.
 
+**The session of 2026-11-13.** SFVR is now called Polarity. Its 0.4.0
+update (13 November, 16:52) renamed the library to polarity.dll (loaded as
+polarity.live.0.0.dll), its folder to Polarity\ and its ini to
+polarity.ini, and the mod, matching the library by "sfv_rollback", found
+nothing after it: the user heard nothing of something on the main menu.
+Inside it is the same: Dear ImGui 1.92.9b, the "StreetFighterV [sfv "
+title and the status lines, and `find_status_line` finds its one site.
+`MODULE_PREFIX` now takes either name; F11 says "No Polarity status found."
+when there is none; Read me first, the README and the key list say
+Polarity (formerly SFVR). Checked on the live game: the panel found, F11
+read, the title quieted.
+
 **The session of 2026-11-07.** Online watching a session, the user heard
 NVDA say SFVR's frame count every second, from the window title, and asked
 for silence and a key instead: the title is kept still and F11 says the
