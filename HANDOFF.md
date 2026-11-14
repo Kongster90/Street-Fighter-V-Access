@@ -2523,7 +2523,8 @@ whiff, "Startup 4, total 13", `WHIFF_WAIT` after. Alt R in Training adds
 "Frame meter: startup 4, total 13, advantage plus 5". On a knockdown the
 meter gave +77 where SFV's own readout gave even. Replayed from
 `snapshots/polarity-040` records 337 to 368 and tested in test_scaleform;
-not yet heard.
+not yet heard. The user then asked for the total on Alt R only: after a move
+just the startup is said ("Startup 4"; "..., plus 5, startup 4"), `meter_words(full=True)` for Alt R.
 
 **The session of 2026-11-07.** Online watching a session, the user heard
 NVDA say SFVR's frame count every second, from the window title, and asked

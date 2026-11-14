@@ -1789,8 +1789,8 @@ moves = narrate_meter([(0.0, still, {}), (0.2, still, {"Startup": 4}), (0.4, sti
                        (1.6, training(TWO_HITS, "0 (+5)", None), {"Startup": 4, "Total": 13, "Advantage": 5}),
                        (1.9, training(TWO_HITS, "0 (+5)", None), {"Startup": 4, "Total": 13, "Advantage": 5}),
                        (2.2, training(TWO_HITS, "0 (+5)", None), {"Startup": 4, "Total": 13, "Advantage": 5})])
-check("with Polarity's frame meter, a whiff says its startup and total, a hit adds them to its line",
-      [s for _, s in moves] == ["Startup 4, total 13", "2 hits, 57 damage, plus 5, startup 4, total 13"], repr(moves))
+check("with Polarity's frame meter, a whiff says its startup, a hit adds it to its line; the total is for Alt R",
+      [s for _, s in moves] == ["Startup 4", "2 hits, 57 damage, plus 5, startup 4"], repr(moves))
 check("without Polarity, a hit's line is as before",
       [s for _, s in narrate([(t, items) for t, items, _ in [(0.0, still, None), (1.2, training(TWO_HITS, "12 (+5)", "16 (-5)"), None),
                                                              (1.6, training(TWO_HITS, "0 (+5)", None), None),

@@ -1293,13 +1293,15 @@ def frame_meter(reading: Reading | None, side: str = "P1") -> dict[str, int] | N
     return None
 
 
-def meter_words(meter: dict[str, int] | None, advantage: bool = False) -> str:
-    """The meter as said after SFV's own line: "startup 4, total 13", with the
-    advantage too where SFV's line has none to give."""
+def meter_words(meter: dict[str, int] | None, full: bool = False) -> str:
+    """The meter as said after SFV's own line: "startup 4", the total and
+    the advantage only in `full`, for Alt R. The user asked for the total
+    there rather than after every move (13 November 2026)."""
     if not meter:
         return ""
-    parts = [f"{label.lower()} {meter[label]}" for label in ("Startup", "Total") if label in meter]
-    if advantage and "Advantage" in meter:
+    labels = ("Startup", "Total") if full else ("Startup",)
+    parts = [f"{label.lower()} {meter[label]}" for label in labels if label in meter]
+    if full and "Advantage" in meter:
         value = meter["Advantage"]
         parts.append("advantage " + ("even" if value == 0 else f"{'plus' if value > 0 else 'minus'} {abs(value)}"))
     return ", ".join(parts)
