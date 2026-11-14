@@ -1782,15 +1782,16 @@ def narrate_meter(readings):
 # its startup and total, then empties as the next move starts. A hit moves
 # the attack data first, and the meter's figures join its line.
 still = training(ONE_HIT, "0 (0)", None)
-moves = narrate_meter([(0.0, still, {}), (0.2, still, {"Startup": 4}), (0.4, still, {"Startup": 4, "Total": 13}),
-                       (0.6, still, {"Startup": 4, "Total": 13}), (0.8, still, {"Startup": 4, "Total": 13}),
+WHIFFED = {"Startup": 4, "Total": 13, "Active": 2, "Recovery": 8}
+moves = narrate_meter([(0.0, still, {}), (0.2, still, {"Startup": 4}), (0.4, still, WHIFFED),
+                       (0.6, still, WHIFFED), (0.8, still, WHIFFED),
                        (1.0, still, {}), (1.2, training(TWO_HITS, "12 (+5)", "16 (-5)"), {"Startup": 4}),
                        (1.4, training(TWO_HITS, "0 (+5)", "4 (-5)"), {"Startup": 4, "Total": 13}),
                        (1.6, training(TWO_HITS, "0 (+5)", None), {"Startup": 4, "Total": 13, "Advantage": 5}),
                        (1.9, training(TWO_HITS, "0 (+5)", None), {"Startup": 4, "Total": 13, "Advantage": 5}),
                        (2.2, training(TWO_HITS, "0 (+5)", None), {"Startup": 4, "Total": 13, "Advantage": 5})])
-check("with Polarity's frame meter, a whiff says its startup, a hit adds it to its line; the total is for Alt R",
-      [s for _, s in moves] == ["Startup 4", "2 hits, 57 damage, plus 5, startup 4"], repr(moves))
+check("with Polarity's frame meter, a whiff says startup, active and recovery, a hit adds the startup to its line",
+      [s for _, s in moves] == ["Startup 4, active 2, recovery 8", "2 hits, 57 damage, plus 5, startup 4"], repr(moves))
 check("without Polarity, a hit's line is as before",
       [s for _, s in narrate([(t, items) for t, items, _ in [(0.0, still, None), (1.2, training(TWO_HITS, "12 (+5)", "16 (-5)"), None),
                                                              (1.6, training(TWO_HITS, "0 (+5)", None), None),

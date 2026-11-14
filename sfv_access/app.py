@@ -421,7 +421,12 @@ class App:
             if not said and attack is not None:
                 # In Training with nothing selected: the last attack in full,
                 # and Polarity's frame meter for it if it shows one.
-                meter = netplay.meter_words(netplay.frame_meter(self.netplay_reading), full=True)
+                shown = netplay.frame_meter(self.netplay_reading)
+                last = self.narrator.meter_last
+                if shown and last and "Active" not in shown and all(
+                        shown.get(k) == last.get(k) for k in ("Startup", "Total")):
+                    shown = {**last, **shown}
+                meter = netplay.meter_words(shown, full=True)
                 said = memory_narration.phrase(scaleform.attack_details(attack)
                                                + ([f"Frame meter: {meter}"] if meter else []))
             controls = scaleform.replay_controls(items)

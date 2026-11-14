@@ -209,6 +209,7 @@ class Reading:
     checked: bool | None = None   # the focused item is a tick box, ticked or not
     width: float = 0.0      # the picture's width, whose halves are the two players' on the select screen
     marks: tuple = ()       # the select screen's cursor bars, rectangles as (left, top, right, bottom)
+    bars: tuple = ()        # Polarity's frame meter bars: (side, ((stretch, frames), ...)) each
 
     @property
     def panel(self) -> list[Run]:
@@ -581,6 +582,7 @@ class PanelReader:
         checked = None
         width = mem.f32(draw_data + DRAW_DATA_SIZE) or 0.0
         marks: tuple = ()
+        bars: list = []
         if valid and valid[0]:
             count, lists = vector(mem, draw_data + DRAW_DATA_LISTS)
             pointers = mem.read(lists, 8 * count) if 0 < count < 256 else b""
@@ -597,13 +599,16 @@ class PanelReader:
                     mask = np.zeros(len(verts), dtype=bool)
                     runs += join_wrapped(decode(verts, self.glyphs, owner, mask))
                     checked = tick_box(verts, mask, focus, self.frame_rgbs, self.check_rgb)
-                elif owner == SCREEN:
+                elif owner in (SCREEN, FOREGROUND):
                     mask = np.zeros(len(verts), dtype=bool)
-                    runs += join_wrapped(decode(verts, self.glyphs, owner, mask))
-                    marks = cursor_bars(verts, mask)
+                    found = join_wrapped(decode(verts, self.glyphs, owner, mask))
+                    runs += found
+                    if owner == SCREEN:
+                        marks = cursor_bars(verts, mask)
+                    bars += meter_bars(verts, mask, found)
                 else:
                     runs += join_wrapped(decode(verts, self.glyphs, owner))
-        return Reading(frame, tuple(runs), focus_id, name, focus, self.hint_rgb, checked, width, marks)
+        return Reading(frame, tuple(runs), focus_id, name, focus, self.hint_rgb, checked, width, marks, tuple(bars))
 
     def _focus(self) -> tuple[int, str, tuple[float, float, float, float] | None]:
         """The focused item's id, its window's name and its rectangle on screen."""
@@ -1289,17 +1294,81 @@ def frame_meter(reading: Reading | None, side: str = "P1") -> dict[str, int] | N
             match = METER_VALUE.match(value)
             if label in METER_LABELS and match:
                 out[label] = int(match.group(1))
+        stretches = next((b for s, b in reading.bars if s == side), ())
+        out.update(move_frames(stretches, out.get("Startup"), out.get("Total")))
         return out
     return None
 
 
-def meter_words(meter: dict[str, int] | None, full: bool = False) -> str:
-    """The meter as said after SFV's own line: "startup 4", the total and
-    the advantage only in `full`, for Alt R. The user asked for the total
-    there rather than after every move (13 November 2026)."""
+# Under P1's row of the meter and over P2's, a bar of the frames, one
+# rectangle a frame in a colour for what the frame is. Read from a whiff each
+# time (13 November 2026, 30 moves from startup 3 to 22): the frames before
+# the move is active (always one fewer than its startup), the first active
+# frame, the rest of the active frames, recovery, then idle. A hit cuts the
+# active frames short where it lands, its first frame alone showing active.
+# Colours as ImGui packs them, 0xAABBGGRR.
+METER_STRETCH = {0xFF7EA31F: "before", 0xFFAEA3FF: "first active", 0xFF5A43E5: "active",
+                 0xFFF2DC5F: "recovery", 0xFFC4632A: "idle", 0xFF4AD9F2: "stun"}
+
+
+def meter_bars(verts: np.ndarray, mask: np.ndarray, runs: list[Run]) -> list[tuple]:
+    """The meter's bars in one draw list: for each player's row there, the
+    stretches of its bar in order, as (stretch, frames). Each frame is one
+    rectangle of four vertices; characters' vertices (`mask`) are left out."""
+    out = []
+    for side in ("P1", "P2"):
+        head = next((r for r in runs if tidy(r.text) == side and r.rgb != 0), None)
+        if head is None:
+            continue
+        size = head.bottom - head.top
+        top, bottom = ((head.bottom, head.bottom + 2 * size) if side == "P1"
+                       else (head.top - 2 * size, head.top))
+        y, col = verts["y"], verts["col"]
+        known = np.isin(col, np.array(list(METER_STRETCH), dtype=np.uint32))
+        pick = np.nonzero(~mask & known & (y >= top) & (y <= bottom))[0]
+        stretches: list[list] = []
+        for k in pick:
+            name = METER_STRETCH[int(col[k])]
+            if stretches and stretches[-1][0] == name and stretches[-1][2] == k - 1:
+                stretches[-1][1] += 1
+                stretches[-1][2] = int(k)
+            else:
+                stretches.append([name, 1, int(k)])
+        out.append((side, tuple((name, count // 4) for name, count, _ in stretches if count >= 4)))
+    return out
+
+
+def move_frames(stretches: tuple, startup: int | None, total: int | None) -> dict[str, int]:
+    """Active and recovery frames of the move the meter shows last: after
+    its run of frames before active (one fewer than its startup), its
+    active frames, first and rest, then its recovery. Given only when the
+    three add up to the total, the meter's own check."""
+    if not startup or not total:
+        return {}
+    for k in range(len(stretches) - 1, -1, -1):
+        name, frames = stretches[k]
+        if name != "before" or frames != startup - 1:
+            continue
+        active, j = 0, k + 1
+        while j < len(stretches) and stretches[j][0] in ("first active", "active"):
+            active += stretches[j][1]
+            j += 1
+        recovery = stretches[j][1] if j < len(stretches) and stretches[j][0] == "recovery" else 0
+        if active and frames + active + recovery == total:
+            return {"Active": active, "Recovery": recovery}
+    return {}
+
+
+def meter_words(meter: dict[str, int] | None, full: bool = False, whiff: bool = False) -> str:
+    """The meter as said after SFV's own line: "startup 4"; for a whiff, the
+    active and recovery frames too ("startup 4, active 2, recovery 8"),
+    which a hit cuts short; everything, total and advantage too, for Alt R
+    (`full`). The user asked for the total there rather than after every
+    move, and for active and recovery (13 November 2026)."""
     if not meter:
         return ""
-    labels = ("Startup", "Total") if full else ("Startup",)
+    labels = (("Startup", "Active", "Recovery", "Total") if full
+              else ("Startup", "Active", "Recovery") if whiff else ("Startup",))
     parts = [f"{label.lower()} {meter[label]}" for label in labels if label in meter]
     if full and "Advantage" in meter:
         value = meter["Advantage"]

@@ -72,7 +72,7 @@ CFN: its menu, the timeline, Pending CFN Friend Requests, Tournaments with their
 Replays: the controls with each button named, once as a replay begins and on Alt R.
 The Message Log, and the Gallery's Good Luck Charms with what each does.
 Fights: beeps as either fighter's health drops, and sounds for counter hits and crossups, each in the speaker on the side of whoever it belongs to, in replays and story fights too.
-Polarity (formerly SFVR), the rollback netcode mod, version 0.3 or later, if you have it installed: its hub and settings (F1, or Back and Start), custom rooms with their tables, where you are and the chat, its own stage, character and loadout select, the window after each game, and its notices. Alt R reads what is selected with what it does. In Training, with Polarity's frame meter shown (its settings, Frame meter), each move's startup is added to the line said after a hit or block, and a move that hits nothing says its startup alone; Alt R adds the move's total and advantage.
+Polarity (formerly SFVR), the rollback netcode mod, version 0.3 or later, if you have it installed: its hub and settings (F1, or Back and Start), custom rooms with their tables, where you are and the chat, its own stage, character and loadout select, the window after each game, and its notices. Alt R reads what is selected with what it does. In Training, with Polarity's frame meter shown (its settings, Frame meter), each move's startup is added to the line said after a hit or block, and a move that hits nothing says its startup, active and recovery frames; Alt R gives all of these with the move's total and advantage.
 
 Not yet: a sound for the distance between the fighters.
 

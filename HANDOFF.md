@@ -2523,8 +2523,29 @@ whiff, "Startup 4, total 13", `WHIFF_WAIT` after. Alt R in Training adds
 "Frame meter: startup 4, total 13, advantage plus 5". On a knockdown the
 meter gave +77 where SFV's own readout gave even. Replayed from
 `snapshots/polarity-040` records 337 to 368 and tested in test_scaleform;
-not yet heard. The user then asked for the total on Alt R only: after a move
-just the startup is said ("Startup 4"; "..., plus 5, startup 4"), `meter_words(full=True)` for Alt R.
+heard working live the same evening. The user then asked for the total on
+Alt R only, and for active and recovery frames.
+
+The bar under P1's row (over P2's) is one rectangle a frame, coloured by
+what the frame is. A capture of its shapes (`snapshots/polarity-meter`, 113
+changes from 55 moves the user did in Training) gave the colours, the same
+on every whiff from startup 3 to 22: teal 7ea31f the frames before active
+(always startup less one), pink aea3ff the first active frame, red 5a43e5
+the rest of the active frames, light blue f2dc5f recovery, dark blue c4632a
+idle, and yellow 4ad9f2 the other side's stun (as ImGui packs them, blue
+first). A hit shows one pink frame then recovery, the active frames cut
+short. `meter_bars` reads each side's stretches from the vertices of the
+draw list holding the meter (`Reading.bars`; the foreground is masked now
+as the background is), and `move_frames` finds the last "before" run of
+startup less one and gives Active and Recovery only when before, active and
+recovery add up to the Total. That fails once the bar has scrolled the
+move's first frames off its left edge, a moment after the move; the whiff
+is taken when Total first shows, before then, and the narrator keeps
+`meter_last` for Alt R. Said: a whiff "Startup 4, active 2, recovery 8"; a
+hit or block SFV's line and "startup 4"; Alt R "Frame meter: startup 4,
+active 2, recovery 8, total 13, advantage plus 5". A move with a Total and
+no Startup (a jump, a dash) says nothing. Of the 113 captured changes, 100
+gave active and recovery; the rest had scrolled or had no startup.
 
 **The session of 2026-11-07.** Online watching a session, the user heard
 NVDA say SFVR's frame count every second, from the window title, and asked

@@ -742,6 +742,34 @@ check("the benchmark's results are read in order, each figure with its label",
       said == "BENCHMARK, NOV 13, 17:03, Polarity 0.4.3. PASS, 60.0 fps average. 1% low 49.5 fps, "
       "Slowest frame 21.5 ms. No mods are installed. Done", str(said))
 
+# Polarity's frame meter bar: a rectangle a frame under P1's row, coloured
+# by what the frame is, as recorded on 13 November 2026.
+def bar_vertices(stretches, top):
+    colour = {v: k for k, v in n.METER_STRETCH.items()}
+    out, x = [], 360.0
+    for name, frames in stretches:
+        for _ in range(frames):
+            out += [(x, top, 0, 0, colour[name]), (x + 8, top, 0, 0, colour[name]),
+                    (x + 8, top + 24, 0, 0, colour[name]), (x, top + 24, 0, 0, colour[name])]
+            x += 9
+    return np.array(out, dtype=n.VERTEX)
+
+
+WHIFF = (("before", 3), ("first active", 1), ("active", 1), ("recovery", 8), ("idle", 12))
+head = n.Run("P1", 330, 746, 352, 771, 0xE8F1F4, 255, "##Background", 0, 25.2)
+verts = bar_vertices(WHIFF, 776)
+check("the meter's bar is read as its stretches",
+      n.meter_bars(verts, np.zeros(len(verts), dtype=bool), [head]) == [("P1", WHIFF)],
+      str(n.meter_bars(verts, np.zeros(len(verts), dtype=bool), [head])))
+check("a whiff's active and recovery come from the bar, when the parts add up to the total",
+      n.move_frames(WHIFF, 4, 13) == {"Active": 2, "Recovery": 8}
+      and n.move_frames((("before", 11), ("first active", 1), ("recovery", 21)), 12, 33) == {"Active": 1, "Recovery": 21}
+      and n.move_frames((("idle", 8), ("before", 2), ("first active", 1), ("recovery", 16)), 12, 28) == {})
+check("a whiff says startup, active and recovery; a hit startup; Alt R all of it",
+      [n.meter_words({"Startup": 4, "Total": 13, "Active": 2, "Recovery": 8, "Advantage": 5}, **kw)
+       for kw in ({"whiff": True}, {}, {"full": True})]
+      == ["startup 4, active 2, recovery 8", "startup 4", "startup 4, active 2, recovery 8, total 13, advantage plus 5"])
+
 # ------------------------------------------------------- fonts built again
 # SFVR builds its fonts again when a player's name brings a character they
 # lack, which moves every glyph. The reader must take the new table, but not

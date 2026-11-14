@@ -264,6 +264,9 @@ class Narrator:
         self.meter_connected = False
         self.meter_done: dict | None = None
         self.meter_done_at = 0.0
+        # The last move whose active and recovery frames the meter's bar gave,
+        # kept for Alt R: the bar scrolls its first frames away soon after.
+        self.meter_last: dict | None = None
         # Controller Setting's hint: when this visit began, whether the hint
         # has been said, and when the screen last showed.
         self.controls_arrived_at: float | None = None
@@ -351,13 +354,15 @@ class Narrator:
             if not self.meter_armed:
                 self.meter_armed, self.meter_connected = True, self.attack_pending
             return parts
+        if "Active" in meter:
+            self.meter_last = dict(meter)
         if self.meter_armed:
             self.meter_armed = False
             self.meter_done, self.meter_done_at = dict(meter), now
         if self.meter_done is not None and now - self.meter_done_at >= WHIFF_WAIT:
             done, self.meter_done = self.meter_done, None
             if not self.meter_connected and not self.attack_pending:
-                words = netplay_meter_words(done)
+                words = netplay_meter_words(done, whiff=True)
                 if words:
                     parts = (parts or []) + [words[0].upper() + words[1:]]
                     self.said = ""
