@@ -222,7 +222,7 @@ class Reading:
     def toasts(self) -> list[Run]:
         """Notices: SFVR 0.2's own window of them, and 0.3.0's along the top
         and in the bottom corner in front of everything."""
-        notices = [r for r in self.foreground if self.width and r.alpha >= 0xF0
+        notices = [r for r in self.foreground if self.width and r.alpha >= 0xF0 and len(tidy(r.text)) > 1
                    and (r.top < self.width * TOP_STRIP or r.top > self.width * NOTICE_LOW)]
         return [r for r in self.runs if r.window == TOASTS] + notices
 
@@ -235,6 +235,17 @@ class Reading:
         """SFVR 0.3.0's window after each game of a set: each player's score
         and vote, and on the player's side Rematch, Character select, Leave and
         the input delay, the selection dark on gold. Settled, so not fading."""
+        window = self._front_window()
+        return window if any(PLAYER_LABEL.match(tidy(r.text)) for r in window) else []
+
+    @property
+    def dialog(self) -> list[Run]:
+        """Any other window in front with a selection: Polarity's benchmark
+        results (PASS, the frame rate, Done, Run again)."""
+        window = self._front_window()
+        return window if window and not any(PLAYER_LABEL.match(tidy(r.text)) for r in window) else []
+
+    def _front_window(self) -> list[Run]:
         if not self.width:
             return []
         window = [r for r in self.foreground
@@ -287,7 +298,7 @@ class Reading:
     def showing(self) -> bool:
         """SFVR shows something of its own to read: its panel, its select
         screen, a side window with focus, or one of its menus."""
-        return bool(self.surface or body(self.screen) or self.lit or self.result)
+        return bool(self.surface or body(self.screen) or self.lit or self.result or self.dialog)
 
     def focused(self) -> list[Run]:
         """The text inside the focused item, in reading order.
@@ -1079,6 +1090,7 @@ class PanelNarrator:
     screen: ScreenNarrator = field(default_factory=lambda: ScreenNarrator())
     menu: MenuNarrator = field(default_factory=lambda: MenuNarrator())
     result: ResultNarrator = field(default_factory=lambda: ResultNarrator())
+    dialog: DialogNarrator = field(default_factory=lambda: DialogNarrator())
 
     def reset(self) -> None:
         self._leave()
@@ -1086,6 +1098,7 @@ class PanelNarrator:
         self.screen.reset()
         self.menu.reset()
         self.result.reset()
+        self.dialog.reset()
 
     def _leave(self) -> None:
         """Focus has left SFVR's windows; what was heard in them is forgotten."""
@@ -1097,8 +1110,11 @@ class PanelNarrator:
             return None
         now = time.monotonic() if now is None else now
         said: list[str] = []
-        shown = {say(r) for r in reading.toasts}
-        said += [t for t in (say(r) for r in reading.toasts) if t and t not in self.toasts]
+        # Compared with their numbers set aside: Polarity's benchmark counts
+        # down "0:44 left" in a notice, and was said every second.
+        shown = {re.sub(r"\d+", "#", say(r)) for r in reading.toasts}
+        said += [t for t in (say(r) for r in reading.toasts)
+                 if t and re.sub(r"\d+", "#", t) not in self.toasts]
         self.toasts = shown
 
         is_open = reading.open
@@ -1117,10 +1133,18 @@ class PanelNarrator:
             said += self.result.step(reading)
         else:
             self.result.reset()
+        if reading.dialog and not is_open:
+            said += self.dialog.step(reading)
+        else:
+            self.dialog.reset()
         if reading.fading and not is_open:
             pass
         elif reading.lit and not is_open:
-            said += self.menu.step(reading, now)
+            # Followed under a window in front, but not said: it was heard
+            # after the benchmark's results ("POLARITY SETTINGS. Run
+            # benchmark, Run").
+            behind = self.menu.step(reading, now)
+            said += [] if reading.result or reading.dialog else behind
         else:
             self.menu.leave(now)
             said += self.screen.step(reading, now)
@@ -1355,6 +1379,60 @@ class ResultNarrator:
             said += [n for n in (mine.notes if mine else ())
                      if re.sub(r"\d+", "#", n) not in self.notes and not n.lower().startswith("suggested")]
         self.shown, self.items, self.mine, self.theirs, self.notes = True, items, my_statuses, their_statuses, notes
+        return said
+
+
+def paired(rows: list[list[Run]]) -> list[str]:
+    """Rows as said, a row of labels over a row of values, each set at the
+    same left, said a label with its value: "Slowest frame 21.5 ms"."""
+    out: list[str] = []
+    k = 0
+    while k < len(rows):
+        row = rows[k]
+        below = rows[k + 1] if k + 1 < len(rows) else []
+        if len(row) >= 2 and len(below) == len(row) and all(abs(a.left - b.left) < 8 for a, b in zip(row, below)):
+            out.append(commas(f"{say(a)} {say(b)}" for a, b in zip(row, below)))
+            k += 2
+        else:
+            out.append(commas(say(r) for r in row))
+            k += 1
+    return out
+
+
+def dialog_intro(reading: Reading) -> list[str]:
+    """A dialog in front as it comes up: what it holds, top to bottom, down
+    to the row of its buttons, then the button selected ("BENCHMARK, NOV 13,
+    17:03, Polarity 0.4.3. PASS, 60.0 fps average, A pass needs 59 or more.
+    1% low 49.5 fps, Slowest frame 21.5 ms, ... Done")."""
+    window = reading.dialog
+    lit = [r for r in window if is_dark(r)]
+    if not lit:
+        return []
+    first = min(r.top for r in lit)
+    rows = [row for row in lines(window) if all(r.top < first - 2 for r in row)]
+    return paired(rows) + [commas(say(r) for r in lit)]
+
+
+def read_dialog(reading: Reading) -> list[str]:
+    return dialog_intro(reading)
+
+
+@dataclass
+class DialogNarrator:
+    """Decides what to say on a dialog in front that is not the window after
+    a game: all of it as it comes up (`dialog_intro`), then each button moved
+    to. Polarity's benchmark results were read as the window after a game,
+    "You: Frames over 20 ms" (13 November 2026)."""
+    shown: bool = False
+    lit: tuple = ()
+
+    def reset(self) -> None:
+        self.shown, self.lit = False, ()
+
+    def step(self, reading: Reading) -> list[str]:
+        lit = tuple(say(r) for r in reading.dialog if is_dark(r))
+        said = dialog_intro(reading) if not self.shown else ([commas(lit)] if lit != self.lit else [])
+        self.shown, self.lit = True, lit
         return said
 
 
@@ -1891,7 +1969,8 @@ def read_focus(reading: Reading) -> str:
                  and len(tidy(r.text)) > 1 and not r.disabled]
         if under:
             said = phrase([said] + [tidy(r.text) for r in sorted(under, key=lambda r: r.top)])
-    screen = [] if reading.open else (read_result(reading) or read_menu(reading) or read_screen(reading))
+    screen = [] if reading.open else (read_result(reading) or read_dialog(reading) or read_menu(reading)
+                                      or read_screen(reading))
     shown = [tidy(r.text) for r in reading.runs if r.window.startswith("##Tooltip")]
     return phrase(screen + [said] + shown) or "Nothing focused"
 

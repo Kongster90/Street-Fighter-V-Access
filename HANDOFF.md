@@ -2490,7 +2490,21 @@ title and the status lines, and `find_status_line` finds its one site.
 `MODULE_PREFIX` now takes either name; F11 says "No Polarity status found."
 when there is none; Read me first, the README and the key list say
 Polarity (formerly SFVR). Checked on the live game: the panel found, F11
-read, the title quieted.
+read, the title quieted. Then a benchmark run (Polarity Settings,
+BENCHMARK, Run benchmark; `snapshots/polarity-040`) was said every second:
+its countdown is a notice along the bottom in front ("Please wait, and keep
+the game window in focus · 0:44 left", "Stop"), and notices were compared
+whole; they are compared with numbers set aside now, so it is said once.
+Its results are a dialog in front (PASS, "60.0 fps average", three figures
+each under its label, two sentences, Done and Run again), taken for the
+window after a game ("You: Frames over 20 ms"). `Reading.result` now needs a
+player's label ("P1 · YOU", "P2"); any other window in front with a
+selection is `Reading.dialog`, read by `DialogNarrator`: its rows above the
+buttons, a row of labels over a row of values said in pairs (`paired`:
+"Slowest frame 21.5 ms"), then the selected button, then each button moved
+to; Alt R reads it whole. The menu behind a window in front is followed but
+not said. Notices of one character (stray letters while minimised) are left
+out.
 
 **The session of 2026-11-07.** Online watching a session, the user heard
 NVDA say SFVR's frame count every second, from the window title, and asked

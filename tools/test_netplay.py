@@ -718,6 +718,30 @@ said = match.step(after_game(my_vote="Rematch", lit="Rematch", note="Leave ends 
                              notice="Forever Solo Queue wants a rematch"), 3.0)
 check("the player's own vote is said as theirs", said == "Rematch. You: Rematch", str(said))
 
+# Polarity's benchmark: a countdown along the bottom, then its results, a
+# dialog in front with no players in it.
+def countdown(left):
+    return n.Reading(1, (fore("BENCHMARK", 57, 1042), fore(f"Please wait, and keep the game window in focus · {left} left",
+                                                            170, 1040, 21.6), fore("Stop", 1842, 1040, 20.4)), width=1920.0)
+
+
+bench = n.PanelNarrator()
+first = bench.step(countdown("0:44"), 0.0)
+check("a countdown in a notice is said once, not every second",
+      first == "BENCHMARK. Please wait, and keep the game window in focus, 0:44 left. Stop"
+      and bench.step(countdown("0:43"), 1.0) is None, str(first))
+results = n.Reading(1, (fore("BENCHMARK · NOV 13, 17:03", 453, 158), fore("Polarity 0.4.3", 1369, 157, 20.4),
+                        fore("PASS", 453, 192, 76.8, 0x7FD88B), fore("60.0 fps average", 695, 204, 33.6),
+                        fore("1% low", 475, 321, 20.4), fore("Slowest frame", 817, 321, 20.4),
+                        fore("49.5 fps", 475, 352, 31.2), fore("21.5 ms", 817, 352, 31.2),
+                        fore("No mods are installed.", 487, 542, 22.8),
+                        fore("Done", 682, 636, 21.6, DARK), fore("Run again", 1177, 636, 21.6)), width=1920.0)
+check("a dialog in front is not taken for the window after a game", not results.result and results.dialog)
+said = bench.step(results, 2.0)
+check("the benchmark's results are read in order, each figure with its label",
+      said == "BENCHMARK, NOV 13, 17:03, Polarity 0.4.3. PASS, 60.0 fps average. 1% low 49.5 fps, "
+      "Slowest frame 21.5 ms. No mods are installed. Done", str(said))
+
 # ------------------------------------------------------- fonts built again
 # SFVR builds its fonts again when a player's name brings a character they
 # lack, which moves every glyph. The reader must take the new table, but not
