@@ -2506,6 +2506,25 @@ to; Alt R reads it whole. The menu behind a window in front is followed but
 not said. Notices of one character (stray letters while minimised) are left
 out.
 
+Polarity's frame meter (Settings, TRAINING, Frame meter; Training only) is
+a row per player above the V-Trigger gauges, "P1" then "Startup" "4F" "·"
+"Total" "13F" "·" "Advantage" "+5F", label and value separate texts, on the
+background (or the foreground while a menu is over it), filled in as the
+move goes: Startup at its first active frame, Total when it ends, Advantage
+once both can act, never for a whiff; the row empties to "P1" as the next
+move starts. A bar under it numbers each stretch (3, 2, 8), not read.
+`netplay.frame_meter` reads a side's figures; at the user's request
+`memory_narration.Narrator` (given `meter`, which the app points at the
+netplay loop's latest reading) adds "startup 4, total 13" to Training's
+attack line ("1 hit, 30 damage, plus 5, startup 4, total 13"; the advantage
+agreed with SFV's own there), and says a move that ended (its Total showed
+while the row had been empty) with the attack data not stirring since as a
+whiff, "Startup 4, total 13", `WHIFF_WAIT` after. Alt R in Training adds
+"Frame meter: startup 4, total 13, advantage plus 5". On a knockdown the
+meter gave +77 where SFV's own readout gave even. Replayed from
+`snapshots/polarity-040` records 337 to 368 and tested in test_scaleform;
+not yet heard.
+
 **The session of 2026-11-07.** Online watching a session, the user heard
 NVDA say SFVR's frame count every second, from the window title, and asked
 for silence and a key instead: the title is kept still and F11 says the

@@ -23,6 +23,7 @@ import traceback
 from pathlib import Path
 
 from . import buttons, scaleform
+from .netplay import meter_words as netplay_meter_words
 
 LOG = Path(__file__).resolve().parent.parent / "snapshots" / "scaleform-log.txt"
 LOG_LIMIT = 5 * 1024 * 1024   # rotated to .old beyond this
@@ -54,6 +55,11 @@ ATTACK_SETTLE = 0.25
 # and long combos, the values holding still this long is taken as the end. In
 # the log the frame text came back about a second after a long combo's last hit.
 ATTACK_SETTLE_UNCOUNTED = 2.0
+# Polarity's frame meter, if it is there: a move that ends (its Total shows)
+# with Training's attack data not stirring since the move began whiffed, and
+# its startup and total are said alone this long after. A hit or block moves
+# the attack data before the move ends, so the wait only covers a slow read.
+WHIFF_WAIT = 0.3
 # Survival's health, for the supplement screen's sentence, is the run's own
 # number read from memory (`SurvivalHealth`), there the moment the fight ends.
 # It used to be measured off the bar still drawn behind the screen, which
@@ -172,7 +178,8 @@ class Narrator:
     replayed through it in a test.
     """
 
-    def __init__(self, subtitles: bool | str = False, health=None, health_known=None, side=None) -> None:
+    def __init__(self, subtitles: bool | str = False, health=None, health_known=None, side=None,
+                 meter=None) -> None:
         # How story scenes' subtitles are said, the player's choice, kept
         # across resets: "off", "on" (speaker and line) or "names" (the
         # speaker alone). True and False stand for on and off.
@@ -185,6 +192,9 @@ class Narrator:
         # Which side the player is on as the game has it, 0 the left, or None:
         # asked on the VS screen, and preferred to what the menus showed.
         self.side = side
+        # Asked for Polarity's frame meter, player 1's figures, or None when
+        # Polarity shows none (see `netplay.frame_meter`).
+        self.meter = meter
         self.reset()
 
     def reset(self) -> None:
@@ -247,6 +257,13 @@ class Narrator:
         self.attack_other_running = False
         self.attack_still_since: float | None = None
         self.attack_changed_at = 0.0
+        # Polarity's frame meter: whether a move is under way (its row
+        # emptied, no Total yet), whether the attack data stirred during it,
+        # and a move ended unanswered, with when, waiting to be said a whiff.
+        self.meter_armed = False
+        self.meter_connected = False
+        self.meter_done: dict | None = None
+        self.meter_done_at = 0.0
         # Controller Setting's hint: when this visit began, whether the hint
         # has been said, and when the screen last showed.
         self.controls_arrived_at: float | None = None
@@ -319,6 +336,32 @@ class Narrator:
         if not self.health_settled or self.health_value is None:
             return None
         return f"Health {round(self.health_value * 100)} percent"
+
+    def _whiff(self, meter: dict | None, now: float, parts):
+        """A move Polarity's frame meter saw end that connected with nothing:
+        its startup and total, said alone ("Startup 4, total 13"). Training's
+        own attack data says nothing for a whiff. A hit or block is said by
+        that, with the meter's figures added."""
+        if meter is None:
+            self.meter_armed, self.meter_done = False, None
+            return parts
+        if self.attack_pending:
+            self.meter_connected = True
+        if "Total" not in meter:
+            if not self.meter_armed:
+                self.meter_armed, self.meter_connected = True, self.attack_pending
+            return parts
+        if self.meter_armed:
+            self.meter_armed = False
+            self.meter_done, self.meter_done_at = dict(meter), now
+        if self.meter_done is not None and now - self.meter_done_at >= WHIFF_WAIT:
+            done, self.meter_done = self.meter_done, None
+            if not self.meter_connected and not self.attack_pending:
+                words = netplay_meter_words(done)
+                if words:
+                    parts = (parts or []) + [words[0].upper() + words[1:]]
+                    self.said = ""
+        return parts
 
     def step(self, items: list[scaleform.TextItem], now: float) -> str:
         """The sentence to speak for this reading, or an empty string."""
@@ -646,10 +689,13 @@ class Narrator:
             quiet = now - self.attack_changed_at
             counted = self.attack_still_since is not None and now - self.attack_still_since >= ATTACK_SETTLE
             uncounted = data.counter is None and not other_running and quiet >= ATTACK_SETTLE_UNCOUNTED
+            meter = self.meter() if self.meter else None
             if self.attack_pending and quiet >= ATTACK_SETTLE and (counted or uncounted):
                 self.attack_pending = False
-                parts = (parts or []) + [scaleform.attack_summary(data)]
+                extra = netplay_meter_words(meter)
+                parts = (parts or []) + [", ".join(p for p in (scaleform.attack_summary(data), extra) if p)]
                 self.said = ""   # the same result again is a new attack
+            parts = self._whiff(meter, now, parts)
 
         # Opening Controller Setting says, once per visit, how to change the
         # button names, after the row arrived on; the user asked for it.

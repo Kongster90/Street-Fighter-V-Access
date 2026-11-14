@@ -1765,6 +1765,39 @@ check("a combo is said once when over, not hit by hit, and the same attack again
       [s for _, s in combo] == ["2 hits, 57 damage, plus 9", "2 hits, 57 damage, minus 4"], repr(combo))
 
 
+def narrate_meter(readings):
+    """As `narrate`, with Polarity's frame meter for player 1 at each reading."""
+    shown = {}
+    narrator = mn.Narrator(meter=lambda: shown.get("now"))
+    out = []
+    for now, items, meter in readings:
+        shown["now"] = meter
+        said = narrator.step(items, now)
+        if said:
+            out.append((now, said))
+    return out
+
+
+# A whiff moves Training's attack data not at all; Polarity's meter fills in
+# its startup and total, then empties as the next move starts. A hit moves
+# the attack data first, and the meter's figures join its line.
+still = training(ONE_HIT, "0 (0)", None)
+moves = narrate_meter([(0.0, still, {}), (0.2, still, {"Startup": 4}), (0.4, still, {"Startup": 4, "Total": 13}),
+                       (0.6, still, {"Startup": 4, "Total": 13}), (0.8, still, {"Startup": 4, "Total": 13}),
+                       (1.0, still, {}), (1.2, training(TWO_HITS, "12 (+5)", "16 (-5)"), {"Startup": 4}),
+                       (1.4, training(TWO_HITS, "0 (+5)", "4 (-5)"), {"Startup": 4, "Total": 13}),
+                       (1.6, training(TWO_HITS, "0 (+5)", None), {"Startup": 4, "Total": 13, "Advantage": 5}),
+                       (1.9, training(TWO_HITS, "0 (+5)", None), {"Startup": 4, "Total": 13, "Advantage": 5}),
+                       (2.2, training(TWO_HITS, "0 (+5)", None), {"Startup": 4, "Total": 13, "Advantage": 5})])
+check("with Polarity's frame meter, a whiff says its startup and total, a hit adds them to its line",
+      [s for _, s in moves] == ["Startup 4, total 13", "2 hits, 57 damage, plus 5, startup 4, total 13"], repr(moves))
+check("without Polarity, a hit's line is as before",
+      [s for _, s in narrate([(t, items) for t, items, _ in [(0.0, still, None), (1.2, training(TWO_HITS, "12 (+5)", "16 (-5)"), None),
+                                                             (1.6, training(TWO_HITS, "0 (+5)", None), None),
+                                                             (2.2, training(TWO_HITS, "0 (+5)", None), None)]])]
+      == ["2 hits, 57 damage, plus 5"])
+
+
 def hits(n):
     return f"{24 * n + 30}(+24)\n{40 * n}(+40)\n{n}\n80%\nHIGH"
 

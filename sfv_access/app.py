@@ -160,7 +160,8 @@ class App:
         self.narrator = memory_narration.Narrator(subtitles=buttons.subtitle_mode(),
                                                  health=self.survival_health.read,
                                                  health_known=self.survival_health.known,
-                                                 side=self.fight.side)
+                                                 side=self.fight.side,
+                                                 meter=lambda: netplay.frame_meter(self.netplay_reading))
         # Button Preview: each button said as it is pressed, while it is open.
         self.presses = pads.PressWatcher(self._on_preview_press)
         # SFVR, the rollback netplay mod: its panel and notices, drawn with
@@ -418,8 +419,11 @@ class App:
                 said = memory_narration.phrase(keys)
             attack = scaleform.attack_data(items)
             if not said and attack is not None:
-                # In Training with nothing selected: the last attack in full.
-                said = memory_narration.phrase(scaleform.attack_details(attack))
+                # In Training with nothing selected: the last attack in full,
+                # and Polarity's frame meter for it if it shows one.
+                meter = netplay.meter_words(netplay.frame_meter(self.netplay_reading), advantage=True)
+                said = memory_narration.phrase(scaleform.attack_details(attack)
+                                               + ([f"Frame meter: {meter}"] if meter else []))
             controls = scaleform.replay_controls(items)
             words = controls[1] if controls else self.narrator.replay_controls
             if words and scaleform.in_replay(items) and not any(it.shown and it.highlighted for it in items):

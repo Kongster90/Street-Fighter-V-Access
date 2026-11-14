@@ -1262,6 +1262,49 @@ class PanelNarrator:
         return out
 
 
+# Polarity's frame meter in Training: a row per player above the V-Trigger
+# gauges, "P1", then "Startup" "4F", "·", "Total" "13F", "·", "Advantage"
+# "+5F", each label and value its own text, filled in as the move goes
+# (Startup when it first hits, Total when it ends, Advantage once both
+# players can act) and emptied to "P1" alone as the next move starts. Under
+# each row a bar of the move's frames, numbered by stretch, is not read.
+METER_LABELS = ("Startup", "Total", "Advantage")
+METER_VALUE = re.compile(r"^([+-]?\d+)F$")
+
+
+def frame_meter(reading: Reading | None, side: str = "P1") -> dict[str, int] | None:
+    """One player's figures on Polarity's frame meter, such as {"Startup": 4,
+    "Total": 13, "Advantage": 5}; empty while a move has none yet, None with
+    no meter showing. Recorded 13 November 2026."""
+    if reading is None or not reading.width:
+        return None
+    runs = unshadowed([r for r in reading.runs if r.window in (SCREEN, FOREGROUND)])
+    for head in (r for r in runs if tidy(r.text) == side):
+        row = sorted((r for r in runs if abs(r.top - head.top) < 3 and r.left > head.left), key=lambda r: r.left)
+        texts = [tidy(r.text) for r in row]
+        if any(t not in METER_LABELS and t != "\u00b7" and not METER_VALUE.match(t) for t in texts):
+            continue
+        out = {}
+        for label, value in zip(texts, texts[1:]):
+            match = METER_VALUE.match(value)
+            if label in METER_LABELS and match:
+                out[label] = int(match.group(1))
+        return out
+    return None
+
+
+def meter_words(meter: dict[str, int] | None, advantage: bool = False) -> str:
+    """The meter as said after SFV's own line: "startup 4, total 13", with the
+    advantage too where SFV's line has none to give."""
+    if not meter:
+        return ""
+    parts = [f"{label.lower()} {meter[label]}" for label in ("Startup", "Total") if label in meter]
+    if advantage and "Advantage" in meter:
+        value = meter["Advantage"]
+        parts.append("advantage " + ("even" if value == 0 else f"{'plus' if value > 0 else 'minus'} {abs(value)}"))
+    return ", ".join(parts)
+
+
 def unshadowed(runs: list[Run]) -> list[Run]:
     """Texts without their shadows: SFVR draws a text again in black, a few
     pixels off and faint, behind it (five times over in 0.3.0)."""
